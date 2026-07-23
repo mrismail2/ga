@@ -12,7 +12,8 @@
     "test:phase4-operational": "node phase4_operational_roles.test.js",
     "test:audit-fixes": "node phase1_4_audit_fixes.test.js",
     "test:final-security": "node final_security_corrections.test.js",
-    "test:phase4-db-rls": "node phase4_core.test.js && node phase4_runtime_fixes.test.js && node phase4_guardian_upgrade.test.js && node phase4_operational_roles.test.js && node phase1_4_audit_fixes.test.js && node final_security_corrections.test.js"
+    "test:final-privacy-security": "node final_privacy_and_lesson_security.test.js",
+    "test:phase4-db-rls": "node phase4_core.test.js && node phase4_runtime_fixes.test.js && node phase4_guardian_upgrade.test.js && node phase4_operational_roles.test.js && node phase1_4_audit_fixes.test.js && node final_security_corrections.test.js && node final_privacy_and_lesson_security.test.js"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.0"

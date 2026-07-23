@@ -20,7 +20,8 @@
     "test:phase4-runtime": "node scripts/phase4-runtime.behavior.test.js && node scripts/phase4-ui-components.test.js",
     "test:phase1-4-requirements": "node scripts/phase1-4-requirements.test.js",
     "test:phase1-4-audit-fixes": "node scripts/phase1-4-audit-fixes.test.js",
-    "test:phase1-4-final-security": "node scripts/phase1-4-final-security.test.js"
+    "test:phase1-4-final-security": "node scripts/phase1-4-final-security.test.js",
+    "test:phase1-4-privacy-security": "node scripts/phase1-4-privacy-security.test.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",

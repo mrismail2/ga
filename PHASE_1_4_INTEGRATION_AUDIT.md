@@ -207,3 +207,67 @@ earlier in this session (outside any correction-pass request):
 All of §1–8's OTHER claims were re-verified against this pass's tightened
 RLS and are unaffected — see `PHASE_1_4_COMPLETION_REPORT.md`'s current
 PASS/FAIL table.
+
+## 10. SECURITY RE-AUDIT PASS — 6 remaining defects (this update, 2026-07-24)
+
+A follow-up correction request asked this session to read
+`KOBCIYE_SECURITY_CORRECTED_REAUDIT_20260724.md`. **That file was not
+supplied** — verified absent from the workspace, and the newly uploaded
+ZIP was confirmed byte-identical to this session's own prior delivery. The
+request's own 6-item defect list was used as the audit findings instead;
+full defect-by-defect detail lives in
+`KOBCIYE_SECURITY_CORRECTED_REAUDIT_20260724.md` (written this session).
+
+What this pass's re-audit actually found, on inspection of the code
+described in §9 above:
+
+1. §9 item 2's "membership-only access" fix closed the direct-message
+   school-boundary gap, but the OWN membership table it depends on
+   (`conversation_members`) had a parallel gap: its self-update policy
+   pinned `profile_id` to the caller but never restricted `conversation_id`
+   or `joined_at` — a member could UPDATE their own row into a different
+   same-school conversation instead of going through the creator/admin-only
+   INSERT path. Fixed: a dedicated immutable-identity trigger now allows
+   only `last_read_at` to change.
+2. §9 item 2's direct-message policies were scoped to same-school
+   sender/recipient, but never excluded conversation rows outright — a
+   sender removed from `conversation_members` could still read their old
+   conversation message via the direct-message SELECT policy, because a
+   null `recipient_id` made that policy's own-message check pass with no
+   membership check at all. Fixed: both policies now require
+   `conversation_id IS NULL` explicitly.
+3. The recipient "marks read" UPDATE policy underneath §9's messaging
+   claims had no field-level restriction beyond "still my row" — a
+   recipient could rewrite `body`, `sender_id`, `school_id`, or
+   `conversation_id` on their own update. Fixed: an immutable-fields
+   trigger now allows only `read_at` to change.
+4. §9 item 3's lesson-plan fix scoped reads to the plan's own teacher, but
+   used `is_staff_of()` for the underlying role check — which also matches
+   `accountant` — so an accountant could set `teacher_profile_id` to their
+   own id and both create and read a "teacher" plan; the guard trigger
+   separately left an unresolvable `teacher_profile_id` silently unset
+   rather than rejecting it. Fixed: explicit `my_role() = 'teacher'` +
+   real `teachers`-row requirement on all three teacher policies; the
+   guard now rejects an unresolvable `teacher_profile_id` for every
+   caller, closing the same silent-unresolved-teacher_id gap for an admin
+   opening the same client modal.
+5. §9's `lesson_plans` fix didn't reach the client: `LessonPrepModal`
+   detected "Live Mode with real options" by array *length*, but Live Mode
+   always passes an array (possibly empty) — an empty array is falsy under
+   `.length`, so it fell into the exact same branch as Demo Mode and
+   offered the hardcoded `Form 5A`/`6B`/`7A` classes and a free-text
+   subject to a Live Mode teacher (or non-teacher) with zero real
+   assignments. Fixed: Live Mode is now detected by `Array.isArray`
+   (type, not length); the zero-assignment case renders an honest
+   disabled empty state and Save is disabled.
+6. `UniversityAppShell.js` (untouched by any prior pass) had two rendered
+   strings naming "Phase 4"/"Phase 5+". Fixed: both phase references
+   removed from the rendered Somali text; a full sweep of the rest of
+   `mobile/src` found no other rendered occurrence (only header comments,
+   one internal non-user-facing error string, and one dead/unreferenced
+   HTML string — all disclosed in
+   `KOBCIYE_SECURITY_CORRECTED_REAUDIT_20260724.md` §6).
+
+All of §1–9's OTHER claims were re-verified against this pass's tightened
+RLS/triggers and are unaffected — see `PHASE_1_4_COMPLETION_REPORT.md`'s
+current PASS/FAIL table.

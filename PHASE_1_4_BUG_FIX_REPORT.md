@@ -1,9 +1,61 @@
 # PHASE 1–4 BUG FIX REPORT
 
-Date: 2026-07-23 · Branch: `claude/kobciye-sms-continuation-9jw64v`
+Date: 2026-07-24 · Branch: `claude/kobciye-sms-continuation-9jw64v`
 Baseline: ZIP `kobciye_phase4_corrected_audited` (commit `4ed2689`)
 
-## FINAL SECURITY CORRECTION PASS — 4 remaining audit defects (this update)
+## SECURITY RE-AUDIT PASS — 6 remaining defects (this update, 2026-07-24)
+
+The audit report file named in this correction request
+(`KOBCIYE_SECURITY_CORRECTED_REAUDIT_20260724.md`) was **not supplied**
+anywhere reachable this session — verified absent from the workspace, and
+the newly uploaded ZIP was byte-identical to this session's own prior
+delivery. The request's own 6-item defect list was used directly. Full
+defect-by-defect root cause/fix/verification:
+`KOBCIYE_SECURITY_CORRECTED_REAUDIT_20260724.md`.
+
+| # | Problem found | Fix | Files |
+| --- | --- | --- | --- |
+| 1 | A conversation member could UPDATE their own membership row's `conversation_id`/`joined_at` freely, moving themselves into a private conversation they were never invited to | immutable-identity trigger: only `last_read_at` may ever change | migration `20260724000001` |
+| 2 | The legacy direct-message SELECT/INSERT policies never excluded conversation rows — a sender removed from a conversation could still read their old conversation message via the direct-message policy (`recipient_id is null` short-circuited the check) | both policies now require `conversation_id IS NULL` explicitly | migration `20260724000001` |
+| 3 | A message recipient's UPDATE policy had no field restriction beyond "still my row" — body/sender_id/school_id/conversation_id/etc. were all mutable | immutable-fields trigger: only `read_at` may ever change | migration `20260724000001` |
+| 4 | `lesson_plans` policies used `is_staff_of()` (includes accountant); an accountant could set `teacher_profile_id` to their own id and create/read a "teacher" plan; unresolved `teacher_profile_id` was silently ignored | policies now require `my_role()='teacher'` + a real `teachers` row; guard now rejects (never silently drops) an unresolvable `teacher_profile_id` | migration `20260724000001` |
+| 5 | `LessonPrepModal` detected Live Mode by array *length*, not type — a Live Mode teacher with zero real assignments silently fell back to demo classes (`Form 5A`/`6B`/`7A`) and free-text subjects | Live Mode now detected by `Array.isArray`; zero-assignment case shows an honest disabled empty state, Save disabled | `LessonPrepModal.js` |
+| 6 | `UniversityAppShell.js` had two rendered strings naming "Phase 4"/"Phase 5+" | phase references removed from both empty-state strings; sweep of the rest of the codebase found no other rendered occurrence | `UniversityAppShell.js` |
+
+### Verification of this pass's fixes
+
+- `supabase/tests/final_privacy_and_lesson_security.test.js` — 32 PASS (new
+  suite, real disposable Postgres): 7 membership-immutability assertions,
+  9 direct/conversation-message-separation assertions, 15 lesson-plan
+  assertions (accountant self-insert hole explicitly closed).
+- One pre-existing suite (`phase4_operational_roles.test.js`) needed a
+  1-line test-setup fix (missing `teachers` row for its teacher fixture —
+  tolerated by the old looser guard, correctly rejected by this pass's
+  stricter rule); all its other 36 assertions unaffected.
+- All 9 pre-existing DB suites re-run with the new migration applied —
+  345 total assertions, 0 failures, exit 0 each.
+- `mobile/scripts/phase1-4-privacy-security.test.js` — 13 PASS (new static
+  suite): zero-assignment lesson state, dev-label removal.
+- Full existing mobile suite re-run (`audit:foundation`,
+  `test:phase4-runtime`, `test:phase1-4-audit-fixes`,
+  `test:phase1-4-requirements`, `test:phase1-4-final-security`) — every
+  one PASS, zero regressions.
+- `npx expo export --platform web --max-workers 1` — success; title
+  exactly `Kobciye School Management`.
+
+### Not fixed / out of scope (honest)
+
+- Live-browser verification of any of these fixes: **BLOCKED — credentials
+  not supplied.**
+- `npm run test:stabilization` still does not exist in this project
+  (re-checked both package.json files).
+- `mobile/src/data/landingPageHtml.js` (dead/unreferenced code, confirmed
+  via `grep -rl` returning no importers) still contains one "Phase 3"
+  string inside its embedded static HTML. Left untouched — it is not a
+  runtime UI file (never imported by any active screen) — and disclosed
+  here rather than silently ignored, per "do not rewrite unrelated code."
+
+## PRIOR SECURITY CORRECTION PASS — 4 remaining audit defects (2026-07-23)
 
 The audit report file named in this correction request
 (`KOBCIYE_FINAL_CORRECTED_INDEPENDENT_AUDIT_20260723.md`) was **not

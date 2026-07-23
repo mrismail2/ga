@@ -105,6 +105,7 @@ const ok = (name, cond) => {
   await asClient(a1);
   await db.exec(`select assign_role('${t1}', 'teacher', '${schoolA}')`);
   await db.exec(`select assign_role('${pp1}', 'parent', '${schoolA}')`);
+  await db.query(`insert into teachers (school_id, profile_id, full_name) values ('${schoolA}', '${t1}', 'Teacher Op')`);
 
   // classes for both schools (admin-created, canonical)
   await asClient(a1);

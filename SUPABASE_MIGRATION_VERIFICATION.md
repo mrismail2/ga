@@ -1,12 +1,49 @@
 # SUPABASE MIGRATION VERIFICATION
 
-Date: 2026-07-23 · Branch: `claude/kobciye-sms-continuation-9jw64v`
+Date: 2026-07-24 · Branch: `claude/kobciye-sms-continuation-9jw64v`
 
-## Migration set (current, this pass)
+## Migration set (current, this pass — 2026-07-24)
 
-`supabase/migrations/` contains 19 migrations, `20260702000001` …
-`20260723000002`. The newest,
-`20260723000002_final_security_corrections.sql`, is NEW this pass —
+`supabase/migrations/` contains 20 migrations, `20260702000001` …
+`20260724000001`. The newest,
+`20260724000001_final_privacy_and_lesson_security.sql`, is NEW this pass —
+**purely additive** on top of `20260723000002` (no table dropped, no
+column dropped, no user row deleted, no already-applied migration file
+edited). It:
+
+- adds `phase4_guard_conversation_member_identity()`, a `BEFORE UPDATE`
+  trigger on `conversation_members` that rejects any change to
+  `conversation_id`, `profile_id`, or `joined_at` — only `last_read_at`
+  may ever change on an existing membership row
+- replaces the `messages` INSERT policy `"send direct messages in
+  school"` and SELECT policy `"read own direct messages"` (both `create
+  or replace`... i.e. `drop policy if exists` + `create policy`, same
+  names) to additionally require `conversation_id IS NULL`, so neither
+  policy can ever match a conversation message; the recipient `"marks
+  read"` UPDATE policy gained the same guard
+- adds `phase4_guard_message_immutability()`, a `BEFORE UPDATE` trigger on
+  `messages` that rejects any change to `body`, `sender_id`,
+  `recipient_id`, `school_id`, `conversation_id`, `message_type`,
+  `attachment_uri`, or `created_at` — only `read_at` may ever change
+- replaces the `lesson_plans` SELECT/INSERT/UPDATE teacher policies to
+  require `my_role() = 'teacher'` and `school_id = my_school()` explicitly
+  (not the broader `is_staff_of()`, which also matches accountant); INSERT/
+  UPDATE additionally require a real, same-school `teachers` row linked to
+  the caller
+- extends `phase4_guard_lesson_plans()` (`create or replace function`,
+  same signature) so an unresolvable `teacher_profile_id` (no matching
+  `teachers` row) is **rejected**, not silently left `null`, for every
+  caller including admins; the assignment-match check now reads the
+  guaranteed-resolved `teacher_id` directly
+
+The School Admin's own `"admins manage lesson_plans"` `for all` policy,
+the conversation-message policies, and every unrelated table/policy are
+untouched by this migration.
+
+## Migration set (prior pass, unchanged this pass — 2026-07-23)
+
+The previous newest migration,
+`20260723000002_final_security_corrections.sql`, is unchanged this pass —
 **purely additive** on top of `20260723000001` (no table dropped, no
 column dropped, no user row deleted, no already-applied migration file
 edited). It:
@@ -33,10 +70,9 @@ edited). It:
 The conversation-based messaging path (`conversation_id IS NOT NULL`) and
 every unrelated table/policy are untouched by this migration.
 
-## Migration set (prior pass, unchanged this pass)
+## Migration set (earlier pass, unchanged this pass — 2026-07-23, first correction)
 
-The previous newest migration,
-`20260723000001_phase1_4_independent_audit_fixes.sql`, is unchanged this
+`20260723000001_phase1_4_independent_audit_fixes.sql` is unchanged this
 pass —
 **purely additive** on top of `20260717000001` (no table dropped, no column
 dropped, no user row deleted). It:
@@ -71,7 +107,7 @@ All verification ran against disposable in-process Postgres (pglite).
 
 ## Verification method
 
-Every suite boots a fresh pglite Postgres, applies ALL 19 migrations in
+Every suite boots a fresh pglite Postgres, applies ALL 20 migrations in
 filename order, then attacks the rules as `authenticated`/`anon` clients:
 
 ```
@@ -84,7 +120,8 @@ node phase4_runtime_fixes.test.js
 node phase4_guardian_upgrade.test.js
 node phase4_operational_roles.test.js
 node phase1_4_audit_fixes.test.js
-node final_security_corrections.test.js   # NEW this pass
+node final_security_corrections.test.js
+node final_privacy_and_lesson_security.test.js   # NEW this pass
 ```
 
 ## Results
@@ -99,24 +136,34 @@ node final_security_corrections.test.js   # NEW this pass
 | phase4_guardian_upgrade.test.js | 17 | PASS (exit 0) |
 | phase4_operational_roles.test.js | 37 | PASS (exit 0) |
 | phase1_4_audit_fixes.test.js | 31 | PASS (exit 0) |
-| **final_security_corrections.test.js (new)** | **19** | **PASS (exit 0)** |
+| final_security_corrections.test.js | 19 | PASS (exit 0) |
+| **final_privacy_and_lesson_security.test.js (new)** | **32** | **PASS (exit 0)** |
 
-Total: **313 assertions, 0 failures.** All 8 pre-existing suites were
-re-run because the migration set (RLS/guard changes on `messages` and
-`lesson_plans`) changed — they all still pass with `20260723000002`
-applied, confirming the tightened policies introduced zero regressions.
+Total: **345 assertions, 0 failures.** All 9 pre-existing suites were
+re-run because the migration set (immutability triggers + RLS/guard changes
+on `conversation_members`, `messages`, `lesson_plans`) changed — they all
+still pass with `20260724000001` applied, confirming the tightened
+policies introduced zero regressions. One suite
+(`phase4_operational_roles.test.js`) needed a 1-line test-setup fix (its
+teacher fixture was missing an explicit `teachers` row — tolerated by the
+old looser guard, correctly required by this pass's stricter rule); all its
+other assertions were unaffected.
 
-Key new-suite evidence (`final_security_corrections.test.js`): a same-school
-direct message is accepted; a cross-school direct message is rejected; a
-forged `sender_id` is rejected; a false `school_id` claim is rejected; an
-uninvolved cross-school user cannot read the message while the legitimate
-recipient still can; conversation-member messaging is completely
-unaffected; a teacher can create a lesson plan for an assigned class+subject
-but not an unassigned one (class or subject alone), while a class/subject-less
-draft remains allowed; a teacher reads their own plans but not another
-teacher's; a school admin still reads every plan in their own school;
-accountant/parent/student each read zero lesson plans; a teacher or admin
-in another school reads zero of school A's plans.
+Key new-suite evidence (`final_privacy_and_lesson_security.test.js`): a
+conversation member can update their own `last_read_at` but not
+`conversation_id`/`profile_id`/`joined_at`, and cannot move their
+membership into another same-school conversation; a non-member cannot
+insert themselves into a private conversation; same-school direct
+messaging works and cross-school is blocked; the direct-message policies'
+deployed SQL is confirmed to require `conversation_id IS NULL`; a
+conversation-message sender loses read access the moment they're removed
+from `conversation_members` (the exact closed bug); a recipient can update
+only `read_at` — not `body`/`sender_id`/`school_id`/`conversation_id`; a
+teacher can create a plan for an assigned class+subject but not an
+unassigned one, and cannot use another teacher's `teacher_profile_id`; an
+accountant can no longer create a "teacher" plan for themselves (the exact
+closed hole) and reads zero; parent/student are blocked from both read and
+create; cross-school teacher/admin access stays blocked.
 
 ## Application instructions (for later — NOT run against production here)
 
@@ -128,15 +175,17 @@ supabase db push   # or: run each file in supabase/migrations/ in filename
 ```
 
 `20260717000001_additional_phase1_4_requirements.sql`,
-`20260723000001_phase1_4_independent_audit_fixes.sql`, and
-`20260723000002_final_security_corrections.sql` are all additive and safe
-to run on a database that already has data — none drops a table, drops a
-column, or deletes an existing row. Each depends on the previous one already
-being applied (`20260723000002` replaces functions and policies first
-created/altered in `20260723000001`/`20260717000001`).
+`20260723000001_phase1_4_independent_audit_fixes.sql`,
+`20260723000002_final_security_corrections.sql`, and
+`20260724000001_final_privacy_and_lesson_security.sql` are all additive
+and safe to run on a database that already has data — none drops a table,
+drops a column, or deletes an existing row. Each depends on the previous
+one already being applied (`20260724000001` replaces functions and
+policies first created/altered in the three earlier files).
 
 ## npm scripts
 
-`supabase/tests/package.json` gained `test:final-security` (`node
-final_security_corrections.test.js`), appended to the `test:phase4-db-rls`
-script chain alongside the prior `test:audit-fixes`.
+`supabase/tests/package.json` gained `test:final-privacy-security` (`node
+final_privacy_and_lesson_security.test.js`), appended to the
+`test:phase4-db-rls` script chain alongside the prior `test:audit-fixes`
+and `test:final-security`.

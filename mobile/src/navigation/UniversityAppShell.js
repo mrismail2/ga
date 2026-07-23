@@ -112,7 +112,7 @@ export default function UniversityAppShell() {
           <Icon name={active.icon} size={28} color={c.muted2} />
           <Text style={[styles.emptyTitle, { color: c.ink }]}>{active.label}</Text>
           <Text style={[styles.emptySub, { color: c.muted }]}>
-            Cohort-ka iyo Level-ka waxaa lagu qoraa diiwaanka ardayga (Students → Cohort / Level) — liis gaar ah looma baahna Phase 4.
+            Cohort-ka iyo Level-ka waxaa lagu qoraa diiwaanka ardayga (Students → Cohort / Level) — liis gaar ah looma baahna.
           </Text>
         </View>
       ) : (
@@ -120,7 +120,7 @@ export default function UniversityAppShell() {
           <Icon name={active.icon} size={28} color={c.muted2} />
           <Text style={[styles.emptyTitle, { color: c.ink }]}>{active.label}</Text>
           <Text style={[styles.emptySub, { color: c.muted }]}>
-            Nidaamkan wali lama dhisin — wuxuu iman doonaa marxaladaha soo socda ee horumarinta (Phase 5+).
+            Nidaamkan wali lama dhisin — wuxuu iman doonaa marxaladaha soo socda ee horumarinta.
           </Text>
         </View>
       )}
