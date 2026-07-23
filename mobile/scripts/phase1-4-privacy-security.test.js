@@ -29,25 +29,28 @@ const modal = read('src/components/LessonPrepModal.js');
 const universityShell = read('src/navigation/UniversityAppShell.js');
 
 console.log('[5] Live zero-assignment lesson state — no demo fallback');
+// NOTE: updated 2026-07-24 for the pairs-based rewrite — see
+// mobile/scripts/phase1-4-membership-message-lesson-guards.test.js for the
+// full async-loading + valid-pair-only coverage added this pass.
 ok('Live Mode is detected by prop TYPE (an array), not by non-empty length',
-  /const isLiveAssignmentMode = Array\.isArray\(teacherClassOpts\)/.test(modal));
+  /const isLiveAssignmentMode = Array\.isArray\(teacherAssignmentPairs\)/.test(modal));
 ok('a Live Mode teacher with zero assignments is explicitly distinguished (liveHasNoAssignments)',
-  /const liveHasNoAssignments = isLiveAssignmentMode && \(!liveClassOpts\.length \|\| !liveSubjectOpts\.length\)/.test(modal));
+  /const liveHasNoAssignments = isLiveAssignmentMode && pairs\.length === 0/.test(modal));
 ok('the zero-assignment case renders a dedicated empty/disabled explanation, not the demo picker',
   /liveHasNoAssignments \? \(/.test(modal) && /Wali lagama xilsaarin fasal ama maaddo/.test(modal));
 ok('the empty/disabled state reuses the existing dashed cover-box style (no new visual language)',
   /styles\.cover, styles\.noAssignBox/.test(modal));
-ok('Save is disabled whenever there is no title OR the teacher has zero assignments',
-  /const canSave = title\.trim\(\) && !liveHasNoAssignments/.test(modal));
+ok('Save is disabled whenever there is no title, zero assignments, or an invalid pair',
+  /const canSave = !!title\.trim\(\) && !liveHasNoAssignments && hasValidLivePair/.test(modal));
 ok('the Save button itself is wired to canSave, not just title',
   /onPress={save} disabled={!canSave}/.test(modal));
 ok('save() itself refuses to proceed when canSave is false (defense in depth, not just a disabled button)',
   /const save = \(\) => \{\s*if \(!canSave\) return;/.test(modal));
 ok('the demo CLASS_OPTS fallback is reachable ONLY when Live Mode was never signalled at all',
   /const CLASS_OPTS = \['Form 5A', 'Form 6B', 'Form 7A'\]/.test(modal)
-  && /\(liveClassOpts \|\| CLASS_OPTS\.map/.test(modal));
-ok('a Live Mode teacher WITH real assignments still gets the real segmented pickers (unaffected)',
-  /liveSubjectOpts\.map\(\(o\) => \(/.test(modal));
+  && /isLiveAssignmentMode \? \(/.test(modal));
+ok('a Live Mode teacher WITH real assignments still gets the real segmented pickers sourced from canonical pairs (unaffected)',
+  /classOptions\.map/.test(modal) && /subjectOptionsForClass\.map/.test(modal));
 
 console.log('\n[6] University development-phase labels removed from rendered UI');
 ok('the Cohorts/Levels empty-state copy no longer mentions a Phase number',

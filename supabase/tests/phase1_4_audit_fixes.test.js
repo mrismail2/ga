@@ -252,8 +252,10 @@ const ok = (name, cond) => {
   ok('11. messages has message_type + attachment_uri + deleted_at', r.rows.length === 3);
 
   // 'ready' is now allowed alongside the existing review-workflow statuses
-  const lp = (await db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title, status)
-    values ('${schoolA}', '${t1}', 'T1', 'Cashar', 'draft') returning id`)).rows[0];
+  // (class_id/subject_id match t1's real assignment from the seed above —
+  // required for a teacher-authored plan since the 2026-07-24 rule change)
+  const lp = (await db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title, status, class_id, subject_id)
+    values ('${schoolA}', '${t1}', 'T1', 'Cashar', 'draft', '${classA1}', '${subjA}') returning id`)).rows[0];
   await asClient(t1);
   await db.query(`update lesson_plans set status = 'ready' where id = '${lp.id}'`);
   r = await db.query(`select status, teacher_id from lesson_plans where id = '${lp.id}'`);

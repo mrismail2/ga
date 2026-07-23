@@ -3,7 +3,65 @@
 Date: 2026-07-24 · Branch: `claude/kobciye-sms-continuation-9jw64v`
 Baseline: ZIP `kobciye_phase4_corrected_audited` (commit `4ed2689`)
 
-## SECURITY RE-AUDIT PASS — 6 remaining defects (this update, 2026-07-24)
+## FINAL VERIFIED RE-AUDIT PASS — 8 remaining defects (this update, same day follow-up)
+
+The audit report file named in this correction request
+(`KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md`) was **not supplied**
+anywhere reachable — the newly uploaded ZIP was confirmed **byte-identical**
+to this session's own immediately-prior delivery (zero-output `diff -rq`).
+The request's own defect list (sections 2–8) was used directly. Full
+defect-by-defect detail: `KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md`.
+
+| # | Problem found | Fix | Files |
+| --- | --- | --- | --- |
+| 1 | `conversation_members.id` (the row's own primary key) was still mutable despite the prior pass's identity trigger | `id` added to the immutable-field list | migration `20260724000002` |
+| 2 | `messages.id` and `messages.deleted_at` were still mutable by a recipient despite the prior pass's immutability trigger | both added to the immutable-field list (only `read_at` may change) | migration `20260724000002` |
+| 3 | Direct-message SELECT policy proved school isolation only indirectly (sender/recipient join), never checked the row's own `school_id` | explicit `school_id = my_school()` predicate added | migration `20260724000002` |
+| 4/5 | A teacher could still create a fully classless/subjectless lesson plan (the assignment-match guard only ran when a class/subject was supplied) | teacher-authored plans now require both non-null AND an exact `teacher_assignments` pair match (deliberate, disclosed change — supersedes the prior pass's "classless draft allowed" test, which is updated in place, not deleted) | migration `20260724000002` |
+| 6/7 | `LessonPrepModal`'s Class/Subject pickers used two independently-flattened lists (could offer an invalid combination) and only computed their default selection once at mount (a race if real assignments arrived after the modal opened) | `myTeacherAssignments()` now returns canonical `pairs`; the modal derives class/subject options from those pairs and a dedicated effect re-initializes the selection whenever `pairs` itself changes | `lessonPlans.js`, `LessonsScreen.js`, `LessonPrepModal.js` |
+| 8 | (re-confirmation only) Live Mode zero-assignment demo fallback | re-verified against the rewritten pairs-based source; no new defect found | — |
+
+### Verification of this pass's fixes
+
+- `supabase/tests/final_membership_message_lesson_guards.test.js` — 12 PASS
+  (new suite, real disposable Postgres): 3 membership-identity assertions,
+  5 message-immutability/policy assertions, 3 lesson-plan non-null
+  assertions, 1 positive control.
+- All 10 pre-existing DB suites re-run with the new migration applied —
+  358 total assertions, 0 failures, exit 0 each. One pre-existing test's
+  own assertion (`final_security_corrections.test.js` "3b.") was updated
+  in place to match the deliberate class/subject non-null rule change
+  (disclosed above, not silently altered); two other suites' teacher
+  lesson-plan fixtures were given real `teacher_assignments` + non-null
+  class/subject data (more realistic regardless of the rule change).
+- `mobile/scripts/phase1-4-membership-message-lesson-guards.test.js` — 15
+  PASS (new static suite): async-loading race, canonical-pairs-only
+  selectors, zero-assignment re-confirmation.
+- Two pre-existing static suites updated in place for the renamed
+  `teacherAssignmentPairs` prop (was `teacherClassOpts`/`teacherSubjectOpts`):
+  `phase1-4-final-security.test.js` §[4], `phase1-4-privacy-security.test.js`
+  §[5] — both re-run, all PASS.
+- Full existing mobile suite re-run (`audit:foundation`,
+  `test:phase4-runtime`, `test:phase1-4-audit-fixes`,
+  `test:phase1-4-requirements`, `test:phase1-4-final-security`,
+  `test:phase1-4-privacy-security`) — every one PASS, zero regressions.
+- `npx expo export --platform web --max-workers 1` — success; title
+  exactly `Kobciye School Management`.
+
+### Not fixed / out of scope (honest)
+
+- Live-browser verification of the async-loading-race fix's actual
+  interaction timing (open modal → assignments arrive later → selection
+  populates) requires a real browser session and cannot be exercised by a
+  static source-text test: **BLOCKED — credentials not supplied.**
+- `npm run test:stabilization` still does not exist in this project
+  (re-checked).
+- A guarded soft-delete mechanism for `messages.deleted_at` was
+  deliberately NOT implemented — nothing in the current codebase reads or
+  writes that column, so the field is simply locked (immutable) alongside
+  every other identity/content field until a real requirement exists.
+
+## PRIOR SECURITY RE-AUDIT PASS — 6 remaining defects (2026-07-24, earlier same-day pass)
 
 The audit report file named in this correction request
 (`KOBCIYE_SECURITY_CORRECTED_REAUDIT_20260724.md`) was **not supplied**

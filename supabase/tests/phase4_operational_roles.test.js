@@ -105,12 +105,15 @@ const ok = (name, cond) => {
   await asClient(a1);
   await db.exec(`select assign_role('${t1}', 'teacher', '${schoolA}')`);
   await db.exec(`select assign_role('${pp1}', 'parent', '${schoolA}')`);
-  await db.query(`insert into teachers (school_id, profile_id, full_name) values ('${schoolA}', '${t1}', 'Teacher Op')`);
+  const teacherRow1 = (await db.query(`insert into teachers (school_id, profile_id, full_name) values ('${schoolA}', '${t1}', 'Teacher Op') returning id`)).rows[0];
 
   // classes for both schools (admin-created, canonical)
   await asClient(a1);
   const classA = (await db.query(`insert into classes (school_id, name, code) values ('${schoolA}', 'Fasalka 1', 'G1') returning id`)).rows[0].id;
   const yearA = (await db.query(`insert into academic_years (school_id, name, starts_on, ends_on) values ('${schoolA}', '2026/2027', '2026-09-01', '2027-06-30') returning id`)).rows[0].id;
+  const subjMathOp = (await db.query(`insert into subjects (school_id, name) values ('${schoolA}', 'Xisaab') returning id`)).rows[0].id;
+  await db.query(`insert into teacher_assignments (school_id, teacher_id, subject_id, class_id, academic_year_id, is_active)
+    values ('${schoolA}', '${teacherRow1.id}', '${subjMathOp}', '${classA}', '${yearA}', true)`);
   await asClient(b1);
   const classB = (await db.query(`insert into classes (school_id, name, code) values ('${schoolB}', 'Form 1', 'F1') returning id`)).rows[0].id;
 
@@ -212,8 +215,8 @@ const ok = (name, cond) => {
   // 7. lesson_plans — canonical Casharrada with role rules + isolation
   // ============================================================
   await asClient(t1);
-  const lp1 = (await db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title, subject, class_label)
-    values ('${schoolA}', '${t1}', 'Macalin T', 'Xisaab: Isugeynta', 'Xisaab', 'Fasalka 1') returning id`)).rows[0].id;
+  const lp1 = (await db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title, subject, class_label, class_id, subject_id)
+    values ('${schoolA}', '${t1}', 'Macalin T', 'Xisaab: Isugeynta', 'Xisaab', 'Fasalka 1', '${classA}', '${subjMathOp}') returning id`)).rows[0].id;
   ok('7. teacher creates their own draft lesson plan', !!lp1);
   await db.query(`update lesson_plans set status = 'pending' where id = '${lp1}'`);
   r = await db.query(`select status from lesson_plans where id = '${lp1}'`);

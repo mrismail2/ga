@@ -47,13 +47,18 @@ ok('the (separately approved) logo swap is still present', /const LOGO = 'data:i
 ok('the web title config is unaffected by this pass', appJson.expo && appJson.expo.web && appJson.expo.web.name === 'Kobciye School Management');
 
 console.log('\n[4] lesson-plan Class/Subject pickers use real teacher assignments in Live Mode');
+// NOTE: superseded 2026-07-24 by the pairs-based design (see
+// mobile/scripts/phase1-4-membership-message-lesson-guards.test.js for the
+// full current coverage of async loading + valid-pair-only selection) —
+// these assertions are updated in place to match the current source
+// rather than left checking a removed API shape.
 ok('lessonPlans.js exposes myTeacherAssignments (real assignment data, not a demo list)', /export async function myTeacherAssignments/.test(lessonPlansSvc));
 ok('createLessonPlan persists the real class_id/subject_id when supplied', /class_id: classId \|\| null/.test(lessonPlansSvc) && /subject_id: subjectId \|\| null/.test(lessonPlansSvc));
-ok('LessonPrepModal accepts teacherClassOpts/teacherSubjectOpts props', /teacherClassOpts, teacherSubjectOpts/.test(lessonPrepModal));
-ok('LessonPrepModal sources its pickers from the live options when given (not the hardcoded CLASS_OPTS)', /liveClassOpts \? pickClass/.test(lessonPrepModal) && /liveSubjectOpts \? \(/.test(lessonPrepModal));
+ok('LessonPrepModal accepts a single teacherAssignmentPairs prop (canonical pairs, not two independent lists)', /teacherAssignmentPairs \}\) \{/.test(lessonPrepModal));
+ok('LessonPrepModal sources its pickers from the live pairs when given (not the hardcoded CLASS_OPTS)', /isLiveAssignmentMode \?/.test(lessonPrepModal) && /classOptions\.map/.test(lessonPrepModal));
 ok('the demo CLASS_OPTS fallback still exists (demo mode/no-assignments unaffected)', /const CLASS_OPTS = \['Form 5A', 'Form 6B', 'Form 7A'\]/.test(lessonPrepModal));
 ok('LessonsScreen fetches the signed-in teacher\'s own assignments in Live Mode', /myTeacherAssignments\(liveProfile\.school_id, liveProfile\.id\)/.test(lessonsScreen));
-ok('LessonsScreen only offers real options to LessonPrepModal when live', /teacherClassOpts={isLive \? myAssignments\.classes : null}/.test(lessonsScreen));
+ok('LessonsScreen only offers real options to LessonPrepModal when live', /teacherAssignmentPairs={isLive \? myAssignments\.pairs : null}/.test(lessonsScreen));
 
 console.log('\n[5] ClassDetail Live Mode: only Ardayda is offered (no Phase 5 tabs)');
 ok('a dedicated LIVE_TABS constant restricts Live Mode to Ardayda only', /const LIVE_TABS = \['Ardayda'\]/.test(classDetail));

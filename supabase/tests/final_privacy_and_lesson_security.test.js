@@ -130,7 +130,7 @@ const ok = (name, cond) => {
   await db.exec(`select assign_role('${pp1}', 'parent', '${schoolA}')`);
   await db.exec(`select assign_role('${stu1}', 'student', '${schoolA}')`);
   const teacherRow1 = (await db.query(`insert into teachers (school_id, profile_id, full_name) values ('${schoolA}', '${t1}', 'Teacher One') returning id`)).rows[0];
-  await db.query(`insert into teachers (school_id, profile_id, full_name) values ('${schoolA}', '${t1b}', 'Teacher One B') returning id`);
+  const teacherRow1b = (await db.query(`insert into teachers (school_id, profile_id, full_name) values ('${schoolA}', '${t1b}', 'Teacher One B') returning id`)).rows[0];
   const yearA = (await db.query(`insert into academic_years (school_id, name, starts_on, ends_on) values ('${schoolA}', '2026/2027', '2026-09-01', '2027-06-30') returning id`)).rows[0].id;
   const subjMath = (await db.query(`insert into subjects (school_id, name) values ('${schoolA}', 'Xisaab') returning id`)).rows[0].id;
   const subjEnglish = (await db.query(`insert into subjects (school_id, name) values ('${schoolA}', 'Ingiriisi') returning id`)).rows[0].id;
@@ -138,6 +138,10 @@ const ok = (name, cond) => {
   const classA2 = (await db.query(`insert into classes (school_id, name, code) values ('${schoolA}', 'Fasalka 2', 'S2') returning id`)).rows[0].id;
   await db.query(`insert into teacher_assignments (school_id, teacher_id, subject_id, class_id, academic_year_id, is_active)
     values ('${schoolA}', '${teacherRow1.id}', '${subjMath}', '${classA1}', '${yearA}', true)`);
+  // t1b is assigned to (classA2, English) only — used by test 6 below to
+  // prove a fully-assigned OTHER teacher's plan is still unreadable.
+  await db.query(`insert into teacher_assignments (school_id, teacher_id, subject_id, class_id, academic_year_id, is_active)
+    values ('${schoolA}', '${teacherRow1b.id}', '${subjEnglish}', '${classA2}', '${yearA}', true)`);
 
   await asClient(b1);
   await db.exec(`select assign_role('${t2}', 'teacher', '${schoolB}')`);
@@ -277,8 +281,8 @@ const ok = (name, cond) => {
 
   // 6. Teacher cannot read another teacher's plans.
   await asClient(t1b);
-  const otherTeacherPlan = (await db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title)
-    values ('${schoolA}', '${t1b}', 'Teacher One B', 'Cashar kale') returning id`)).rows[0].id;
+  const otherTeacherPlan = (await db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title, class_id, subject_id)
+    values ('${schoolA}', '${t1b}', 'Teacher One B', 'Cashar kale', '${classA2}', '${subjEnglish}') returning id`)).rows[0].id;
   await asClient(t1);
   r = await db.query(`select id from lesson_plans where id = '${otherTeacherPlan}'`);
   ok('6. teacher cannot read ANOTHER teacher\'s lesson plan', r.rows.length === 0);

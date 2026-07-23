@@ -102,6 +102,39 @@ All live-browser walkthroughs from PHASE_1_4_MANUAL_TEST_PLAN.md:
   4"/"Phase 5" text — `mobile/scripts/phase1-4-privacy-security.test.js`,
   13 assertions, PASS.
 
+- **New this pass (final verified re-audit, same-day follow-up)** —
+  membership/message row-identity immutability closes the remaining gaps:
+  a member cannot change their own membership row's `id`; a user cannot
+  update another member's row at all; a recipient cannot change a
+  message's `id`, `recipient_id`, or `deleted_at`; the recipient-update
+  policy grants zero rows on a conversation message; a recipient cannot
+  convert a direct message into a conversation message —
+  `supabase/tests/final_membership_message_lesson_guards.test.js`, 8
+  assertions, real Postgres, PASS.
+- **New this pass** — explicit direct-message school-boundary check: the
+  deployed SELECT policy is confirmed (via `pg_policy` introspection) to
+  require `school_id = my_school()` literally, not just as an inferred
+  consequence of other checks —
+  `supabase/tests/final_membership_message_lesson_guards.test.js`, PASS.
+- **New this pass** — teacher lesson plans now require BOTH class_id and
+  subject_id (previously only required when one was supplied): a teacher
+  cannot create a plan with either field independently null —
+  `supabase/tests/final_membership_message_lesson_guards.test.js`, 2
+  assertions + 1 positive control, PASS. (This is a disclosed, deliberate
+  rule change — see `PHASE_1_4_BUG_FIX_REPORT.md` — that supersedes the
+  prior pass's "classless draft allowed" test, which was updated in place
+  rather than silently altered.)
+- **New this pass** — LessonPrepModal's async-assignment-loading race and
+  canonical-pairs-only selection: static-source assertions confirm the
+  modal reacts to `teacherAssignmentPairs` changing after it has already
+  opened, keeps a still-valid selection, initializes the first real pair
+  once assignments exist, clears an invalid one, and gates Save on a
+  verified valid pair — `mobile/scripts/phase1-4-membership-message-lesson-guards.test.js`,
+  15 assertions, PASS. Live-browser verification of the actual interaction
+  timing (open modal → assignments arrive later → selection populates)
+  remains **BLOCKED — credentials not supplied**, same as every other UI
+  flow in this project.
+
 These automated results are NOT claimed as live-browser testing. Live
 role/browser verification (this pass's membership, messaging, and
 lesson-plan fixes included) remains **BLOCKED — credentials not

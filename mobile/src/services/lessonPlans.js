@@ -73,29 +73,38 @@ export async function createLessonPlan(schoolId, profileId, teacherName, v = {})
   return lessonRowToView(data);
 }
 
-/* the signed-in teacher's own assignments — used to build REAL class/
-   subject pickers (never a hardcoded/demo list) in Live Mode. */
+/* the signed-in teacher's own assignments — used to build REAL
+   class+subject PAIR pickers (never a hardcoded/demo list, and never two
+   independently-flattened lists that could be combined into an invalid
+   pair) in Live Mode. `pairs` is the single source of truth: each entry
+   is one exact, real, currently-active teacher_assignments row with its
+   class/subject names already resolved. */
 export async function myTeacherAssignments(schoolId, profileId) {
   requireClient();
   const { data: teacherRows, error: terr } = await supabase.from('teachers')
     .select('id').eq('school_id', schoolId).eq('profile_id', profileId).limit(1);
   if (terr) throw terr;
   const teacherId = teacherRows && teacherRows[0] && teacherRows[0].id;
-  if (!teacherId) return { classes: [], subjects: [] };
+  if (!teacherId) return { pairs: [] };
   const { data, error } = await supabase.from('teacher_assignments')
     .select('class_id, subject_id').eq('school_id', schoolId).eq('teacher_id', teacherId).eq('is_active', true);
   if (error) throw error;
-  const rows = data || [];
-  const classIds = [...new Set(rows.map((r) => r.class_id).filter(Boolean))];
-  const subjectIds = [...new Set(rows.map((r) => r.subject_id).filter(Boolean))];
+  const rows = (data || []).filter((r) => r.class_id && r.subject_id);
+  const classIds = [...new Set(rows.map((r) => r.class_id))];
+  const subjectIds = [...new Set(rows.map((r) => r.subject_id))];
   const [classesRes, subjectsRes] = await Promise.all([
     classIds.length ? supabase.from('classes').select('id, name').in('id', classIds) : { data: [] },
     subjectIds.length ? supabase.from('subjects').select('id, name').in('id', subjectIds) : { data: [] },
   ]);
+  const classNameById = new Map((classesRes.data || []).map((c) => [c.id, c.name]));
+  const subjectNameById = new Map((subjectsRes.data || []).map((s) => [s.id, s.name]));
   return {
-    classes: (classesRes.data || []).map((c) => ({ value: c.id, label: c.name })),
-    subjects: (subjectsRes.data || []).map((s) => ({ value: s.id, label: s.name })),
-    pairs: rows, // exact (class_id, subject_id) assignment pairs, for validation
+    pairs: rows.map((r) => ({
+      classId: r.class_id,
+      className: classNameById.get(r.class_id) || '—',
+      subjectId: r.subject_id,
+      subjectName: subjectNameById.get(r.subject_id) || '—',
+    })),
   };
 }
 

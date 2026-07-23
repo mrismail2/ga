@@ -122,6 +122,9 @@ const ok = (name, cond) => {
   // t1 is assigned to (classA1, Math) only
   await db.query(`insert into teacher_assignments (school_id, teacher_id, subject_id, class_id, academic_year_id, is_active)
     values ('${schoolA}', '${teacherRow1.id}', '${subjMath}', '${classA1}', '${yearA}', true)`);
+  // t1b is assigned to (classA2, English) only
+  await db.query(`insert into teacher_assignments (school_id, teacher_id, subject_id, class_id, academic_year_id, is_active)
+    values ('${schoolA}', '${teacherRow1b.id}', '${subjEnglish}', '${classA2}', '${yearA}', true)`);
 
   await asClient(b1);
   await db.exec(`select assign_role('${t2}', 'teacher', '${schoolB}')`);
@@ -189,19 +192,23 @@ const ok = (name, cond) => {
     await throwsWith(() => db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title, class_id, subject_id)
       values ('${schoolA}', '${t1}', 'Teacher One', 'Ingiriisi 1', '${classA1}', '${subjEnglish}')`), /not assigned/i));
 
-  // a plan with no class/subject yet (still drafting) remains allowed
-  r = await db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title)
-    values ('${schoolA}', '${t1}', 'Teacher One', 'Fikrad qoraal ah') returning id`);
-  ok('3b. a class/subject-less draft is still allowed (unaffected)', r.rows.length === 1);
+  // 2026-07-24 re-audit deliberately SUPERSEDES this: a teacher-authored
+  // plan now REQUIRES both class_id and subject_id (see migration
+  // 20260724000002 and supabase/tests/final_membership_message_lesson_guards.test.js
+  // for the full adversarial coverage of the new rule). School Admin's own
+  // broader "manage" policy is unaffected.
+  ok('3b. a class/subject-less draft is now REJECTED for a teacher author (2026-07-24 rule change)',
+    await throwsWith(() => db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title)
+      values ('${schoolA}', '${t1}', 'Teacher One', 'Fikrad qoraal ah')`), /requires both class_id and subject_id/i));
 
   // 4. Teacher can read their own permitted lesson plans.
   r = await db.query(`select id from lesson_plans where id = '${assignedPlanId}'`);
   ok('4. teacher reads their own lesson plan', r.rows.length === 1);
 
-  // create a second teacher's plan (t1b, unassigned/no class needed)
+  // create a second teacher's plan (t1b, own assigned class+subject)
   await asClient(t1b);
-  const otherTeacherPlan = (await db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title)
-    values ('${schoolA}', '${t1b}', 'Teacher One B', 'Cashar kale') returning id`)).rows[0].id;
+  const otherTeacherPlan = (await db.query(`insert into lesson_plans (school_id, teacher_profile_id, teacher_name, title, class_id, subject_id)
+    values ('${schoolA}', '${t1b}', 'Teacher One B', 'Cashar kale', '${classA2}', '${subjEnglish}') returning id`)).rows[0].id;
 
   // 5. Teacher cannot read another teacher's lesson plans.
   await asClient(t1);
@@ -209,9 +216,11 @@ const ok = (name, cond) => {
   ok('5. teacher cannot read ANOTHER teacher\'s lesson plan', r.rows.length === 0);
 
   // 6. School Admin can read lesson plans belonging to their school.
+  // (only 2 plans exist at this point: assignedPlanId + otherTeacherPlan —
+  // the 3b classless-draft attempt above is now REJECTED, so it created no row)
   await asClient(a1);
   r = await db.query(`select id from lesson_plans where school_id = '${schoolA}'`);
-  ok('6. school admin reads every lesson plan in their own school', r.rows.length === 3);
+  ok('6. school admin reads every lesson plan in their own school', r.rows.length === 2);
 
   // 7. Accountant, Parent and Student cannot access lesson plans.
   await asClient(ac1);

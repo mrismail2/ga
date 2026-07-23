@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { usePhotos } from '../context/PhotoContext';
@@ -24,36 +24,45 @@ function Field({ label, value, onChangeText, placeholder, multiline }) {
    important teaching details (topic, objectives, materials, duration,
    week, homework, notes). Frontend prototype; image via PhotoContext.
 
-   LIVE mode passes `teacherClassOpts`/`teacherSubjectOpts` as ARRAYS (the
-   teacher's own teacher_assignments, real canonical ids — see
-   LessonsScreen), even when the teacher has zero assignments yet (an empty
-   array, not null/undefined) — that emptiness is the live-mode signal
-   itself. DEMO mode passes neither (undefined), which is the only case
-   that still uses the hardcoded CLASS_OPTS/free-text subject field.
+   LIVE mode passes `teacherAssignmentPairs` as an ARRAY of the teacher's
+   own real, currently-active teacher_assignments (each entry:
+   { classId, className, subjectId, subjectName }) — even when the teacher
+   has zero assignments yet (an empty array, not null/undefined); that
+   emptiness is the live-mode signal itself. DEMO mode passes neither
+   (undefined), which is the only case that still uses the hardcoded
+   CLASS_OPTS/free-text subject field.
 
-   A live teacher WITH assignments gets the SAME segmented-picker visual
-   style sourced from their real pairs, and the picked class_id/subject_id
-   are included in onSave. A live teacher with ZERO assignments gets an
-   honest empty/disabled state (reusing the existing dashed-box style used
-   for the cover-photo empty state below) instead of any demo class or
-   free-text subject, and Save is disabled — no classless/subjectless plan
-   can be created from this modal in that state. The database itself
-   remains the real guard either way (an unassigned class/subject can never
-   be saved regardless of what the UI offers). */
-export default function LessonPrepModal({ visible, onClose, onSave, teacherClassOpts, teacherSubjectOpts }) {
+   Pairs, not two independent lists, are the single source of truth: the
+   class picker is built from the unique classes appearing in `pairs`, and
+   picking a class filters the subject picker to ONLY the subjects that are
+   actually paired with that class in teacher_assignments — an invalid
+   combination (e.g. a class from one pair with a subject from another)
+   can never be selected. Because `pairs` can arrive asynchronously AFTER
+   the modal has already opened, a dedicated effect (re)initializes the
+   selection whenever `pairs` changes: it clears a selection that is no
+   longer valid and picks the first real pair once assignments actually
+   exist, without ever clobbering a still-valid in-progress user choice.
+   Live Mode with ZERO assignments (before or after loading finishes) shows
+   an honest empty/disabled state (reusing the existing dashed-box style
+   used for the cover-photo empty state below) instead of any demo class or
+   free-text subject, and Save stays disabled — no classless/subjectless/
+   invalid-pair plan can ever be submitted from this modal. The database
+   itself remains the real guard either way. */
+export default function LessonPrepModal({ visible, onClose, onSave, teacherAssignmentPairs }) {
   const { c } = useTheme();
   const { photos, pickPhoto } = usePhotos();
-  const isLiveAssignmentMode = Array.isArray(teacherClassOpts);
-  const liveClassOpts = isLiveAssignmentMode ? teacherClassOpts : null;
-  const liveSubjectOpts = isLiveAssignmentMode ? (Array.isArray(teacherSubjectOpts) ? teacherSubjectOpts : []) : null;
-  const liveHasNoAssignments = isLiveAssignmentMode && (!liveClassOpts.length || !liveSubjectOpts.length);
-  const firstClass = liveClassOpts && liveClassOpts.length ? liveClassOpts[0] : null;
-  const firstSubject = liveSubjectOpts && liveSubjectOpts.length ? liveSubjectOpts[0] : null;
+  const isLiveAssignmentMode = Array.isArray(teacherAssignmentPairs);
+  const pairs = isLiveAssignmentMode ? teacherAssignmentPairs : [];
+  const liveHasNoAssignments = isLiveAssignmentMode && pairs.length === 0;
+  const classOptions = isLiveAssignmentMode
+    ? [...new Map(pairs.map((p) => [p.classId, { value: p.classId, label: p.className }])).values()]
+    : [];
+
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
-  const [subjectId, setSubjectId] = useState(firstSubject ? firstSubject.value : null);
-  const [cls, setCls] = useState(isLiveAssignmentMode ? (firstClass ? firstClass.label : '') : 'Form 5A');
-  const [classId, setClassId] = useState(firstClass ? firstClass.value : null);
+  const [subjectId, setSubjectId] = useState(null);
+  const [cls, setCls] = useState(isLiveAssignmentMode ? '' : 'Form 5A');
+  const [classId, setClassId] = useState(null);
   const [topic, setTopic] = useState('');
   const [objectives, setObjectives] = useState('');
   const [materials, setMaterials] = useState('');
@@ -63,19 +72,63 @@ export default function LessonPrepModal({ visible, onClose, onSave, teacherClass
   const [notes, setNotes] = useState('');
   const [id] = useState(() => 'lesson_' + Math.floor(1000 + Math.random() * 9000));
 
+  // Live Mode only: (re)initialize the class+subject selection whenever the
+  // real assignment pairs change (they may still be loading when the modal
+  // first opens). A currently-selected pair that's still valid is left
+  // alone; an invalid/stale one is cleared or replaced by the first real
+  // pair, so a delayed arrival of assignments never leaves a null
+  // selection behind once real options exist.
+  useEffect(() => {
+    if (!isLiveAssignmentMode) return;
+    setClassId((prevClassId) => {
+      const keepClass = pairs.some((p) => p.classId === prevClassId);
+      const nextClassId = keepClass ? prevClassId : (pairs[0] ? pairs[0].classId : null);
+
+      setSubjectId((prevSubjectId) => {
+        const keepPair = pairs.some((p) => p.classId === nextClassId && p.subjectId === prevSubjectId);
+        if (keepPair) return prevSubjectId;
+        const firstForClass = pairs.find((p) => p.classId === nextClassId);
+        return firstForClass ? firstForClass.subjectId : null;
+      });
+
+      const matchedClass = pairs.find((p) => p.classId === nextClassId);
+      setCls(matchedClass ? matchedClass.className : '');
+
+      return nextClassId;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLiveAssignmentMode, JSON.stringify(pairs)]);
+
   const cover = photos[id];
   const reset = () => {
     setTitle(''); setSubject(''); setTopic(''); setObjectives(''); setMaterials(''); setDuration(''); setWeek(''); setHomework(''); setNotes('');
-    setCls(isLiveAssignmentMode ? (firstClass ? firstClass.label : '') : 'Form 5A'); setClassId(firstClass ? firstClass.value : null);
-    setSubjectId(firstSubject ? firstSubject.value : null);
+    if (isLiveAssignmentMode) {
+      setCls(pairs.length ? pairs[0].className : ''); setClassId(pairs.length ? pairs[0].classId : null);
+      setSubjectId(pairs.length ? pairs[0].subjectId : null);
+    } else {
+      setCls('Form 5A'); setClassId(null); setSubjectId(null);
+    }
   };
-  const pickClass = (o) => { setCls(o.label); setClassId(o.value); };
+  // picking a class always snaps the subject to a real pair for that class
+  // (the subject list rendered below is already filtered to it, but this
+  // keeps state consistent even if called programmatically)
+  const pickClass = (o) => {
+    setClassId(o.value);
+    const match = pairs.find((p) => p.classId === o.value);
+    setCls(o.label);
+    setSubjectId(match ? match.subjectId : null);
+  };
   const pickSubject = (o) => { setSubject(o.label); setSubjectId(o.value); };
 
-  const canSave = title.trim() && !liveHasNoAssignments;
+  const subjectOptionsForClass = isLiveAssignmentMode
+    ? pairs.filter((p) => p.classId === classId).map((p) => ({ value: p.subjectId, label: p.subjectName }))
+    : [];
+  const hasValidLivePair = !isLiveAssignmentMode || pairs.some((p) => p.classId === classId && p.subjectId === subjectId);
+
+  const canSave = !!title.trim() && !liveHasNoAssignments && hasValidLivePair;
   const save = () => {
     if (!canSave) return;
-    const subjectName = liveSubjectOpts && liveSubjectOpts.length ? (liveSubjectOpts.find((o) => o.value === subjectId) || {}).label : (subject.trim() || 'Maadda');
+    const subjectName = isLiveAssignmentMode ? (pairs.find((p) => p.subjectId === subjectId) || {}).subjectName : (subject.trim() || 'Maadda');
     onSave({ id, title: title.trim(), subject: subjectName || 'Maadda', subjectId, cls, classId, topic, objectives, materials, duration, week, homework, notes });
     reset();
     onClose();
@@ -110,37 +163,46 @@ export default function LessonPrepModal({ visible, onClose, onSave, teacherClass
 
             <Field label="CINWAANKA CASHARKA" value={title} onChangeText={setTitle} placeholder="tusaale: Jajab & Boqolkiiba" />
 
-            {liveHasNoAssignments ? (
-              <View style={styles.field}>
-                <Text style={[styles.fLabel, { color: c.muted }]}>MAADDADA & FASALKA</Text>
-                <View style={[styles.cover, styles.noAssignBox, { backgroundColor: c.bg, borderColor: c.line }]}>
-                  <Text style={[styles.coverHint, { color: c.muted, textAlign: 'center' }]}>
-                    Wali lagama xilsaarin fasal ama maaddo. La xiriir maamulaha dugsiga si laguugu xilsaariyo, kadibna soo noqo si aad cashar u qorto.
-                  </Text>
+            {isLiveAssignmentMode ? (
+              liveHasNoAssignments ? (
+                <View style={styles.field}>
+                  <Text style={[styles.fLabel, { color: c.muted }]}>MAADDADA & FASALKA</Text>
+                  <View style={[styles.cover, styles.noAssignBox, { backgroundColor: c.bg, borderColor: c.line }]}>
+                    <Text style={[styles.coverHint, { color: c.muted, textAlign: 'center' }]}>
+                      Wali lagama xilsaarin fasal ama maaddo. La xiriir maamulaha dugsiga si laguugu xilsaariyo, kadibna soo noqo si aad cashar u qorto.
+                    </Text>
+                  </View>
                 </View>
-              </View>
+              ) : (
+                <>
+                  {/* class first — picking it determines which subjects are offered below */}
+                  <Text style={[styles.fLabel, { color: c.muted }]}>FASALKA</Text>
+                  <View style={styles.seg}>
+                    {classOptions.map((o) => (
+                      <TouchableOpacity key={o.value} onPress={() => pickClass(o)} style={[styles.segBtn, { borderColor: c.line, backgroundColor: classId === o.value ? c.blue : 'transparent' }]}>
+                        <Text style={[styles.segTxt, { color: classId === o.value ? '#fff' : c.ink2 }]}>{o.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={{ height: 14 }} />
+                  <Text style={[styles.fLabel, { color: c.muted }]}>MAADDADA</Text>
+                  <View style={styles.seg}>
+                    {subjectOptionsForClass.map((o) => (
+                      <TouchableOpacity key={o.value} onPress={() => pickSubject(o)} style={[styles.segBtn, { borderColor: c.line, backgroundColor: subjectId === o.value ? c.blue : 'transparent' }]}>
+                        <Text style={[styles.segTxt, { color: subjectId === o.value ? '#fff' : c.ink2 }]}>{o.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )
             ) : (
               <>
-                {liveSubjectOpts ? (
-                  <View style={{ marginBottom: 14 }}>
-                    <Text style={[styles.fLabel, { color: c.muted }]}>MAADDADA</Text>
-                    <View style={styles.seg}>
-                      {liveSubjectOpts.map((o) => (
-                        <TouchableOpacity key={o.value} onPress={() => pickSubject(o)} style={[styles.segBtn, { borderColor: c.line, backgroundColor: subjectId === o.value ? c.blue : 'transparent' }]}>
-                          <Text style={[styles.segTxt, { color: subjectId === o.value ? '#fff' : c.ink2 }]}>{o.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                ) : (
-                  <Field label="MAADDADA" value={subject} onChangeText={setSubject} placeholder="tusaale: Xisaab" />
-                )}
-
+                <Field label="MAADDADA" value={subject} onChangeText={setSubject} placeholder="tusaale: Xisaab" />
                 <Text style={[styles.fLabel, { color: c.muted }]}>FASALKA</Text>
                 <View style={styles.seg}>
-                  {(liveClassOpts || CLASS_OPTS.map((o) => ({ value: o, label: o }))).map((o) => (
-                    <TouchableOpacity key={o.value} onPress={() => (liveClassOpts ? pickClass(o) : setCls(o.value))} style={[styles.segBtn, { borderColor: c.line, backgroundColor: cls === o.label ? c.blue : 'transparent' }]}>
-                      <Text style={[styles.segTxt, { color: cls === o.label ? '#fff' : c.ink2 }]}>{o.label}</Text>
+                  {CLASS_OPTS.map((o) => (
+                    <TouchableOpacity key={o} onPress={() => setCls(o)} style={[styles.segBtn, { borderColor: c.line, backgroundColor: cls === o ? c.blue : 'transparent' }]}>
+                      <Text style={[styles.segTxt, { color: cls === o ? '#fff' : c.ink2 }]}>{o}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>

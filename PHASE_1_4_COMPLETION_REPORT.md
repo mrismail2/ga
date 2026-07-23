@@ -6,14 +6,156 @@ Baseline: uploaded ZIP `d27936da-kobciye_phase4_corrected_audited.zip`,
 imported at commit `4ed2689` on top of the pre-existing static-site commit
 `5222269` (nothing overwritten; no destructive git operation used).
 
-This report covers **four passes**: the original Phase 1–4 implementation
-pass, two independent-audit correction passes, and this session's
-**SECURITY RE-AUDIT PASS** responding to the 6 remaining defects. The
+This report covers **five passes**: the original Phase 1–4 implementation
+pass, three independent-audit correction passes, and this session's
+**FINAL VERIFIED RE-AUDIT PASS** responding to the 8 remaining defects. The
 newest pass is recorded first since it is the current state of the
 repository.
 
 ==================================================
-# SECURITY RE-AUDIT PASS (this session, 2026-07-24)
+# FINAL VERIFIED RE-AUDIT PASS (this session, 2026-07-24 follow-up)
+==================================================
+
+## Source of the correction request
+
+The task asked this session to read
+`KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md`. **That file does not exist**
+anywhere reachable — verified absent from the workspace before any work
+began, and the newly uploaded ZIP
+(`2b6870dc-kobciye_phase1_4_final_verified_20260724.zip`) was confirmed
+**byte-identical** to this session's own immediately-prior delivery (zero
+`diff -rq` output at all). The correction request's own defect list
+(sections 2–8) was used directly as the audit findings — see
+`KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md` (this session's honest
+write-up, defect-by-defect, with root cause / fix / files / verification
+for each).
+
+## Preserved from prior passes (not rewritten)
+
+Every prior pass's fixes — canonical sync, atomic Admissions, teacher/
+student RLS scoping, enrollment history, stable-classId routing, the
+approved landing-page UI, browser title, web Sign Out, Live Mode demo
+removal, Phase-5 tab suppression, university dev-label removal, the
+2026-07-24 (earlier) membership/message/lesson-plan RLS — were **not
+rewritten**, only extended where this pass's changes touched the exact
+same triggers/policies. All still pass unmodified except where explicitly
+and deliberately superseded (the teacher classless-lesson-plan rule — see
+below).
+
+## Exact files changed in this pass
+
+New (4):
+```
+supabase/migrations/20260724000002_final_membership_message_lesson_guards.sql
+supabase/tests/final_membership_message_lesson_guards.test.js
+mobile/scripts/phase1-4-membership-message-lesson-guards.test.js
++ KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md (this session's honest audit write-up)
+```
+
+Modified (7):
+```
+mobile/package.json
+mobile/src/components/LessonPrepModal.js
+mobile/src/screens/LessonsScreen.js
+mobile/src/services/lessonPlans.js
+supabase/tests/package.json
+supabase/tests/final_security_corrections.test.js   (1 assertion updated for the deliberate rule change)
+supabase/tests/phase1_4_audit_fixes.test.js         (1 insert given real class_id/subject_id data)
+```
+Also updated: `mobile/scripts/phase1-4-final-security.test.js` and
+`mobile/scripts/phase1-4-privacy-security.test.js` (regex updates only,
+for the renamed `teacherAssignmentPairs` prop), and
+`supabase/tests/phase4_operational_roles.test.js` (a teacher fixture
+given real class_id/subject_id data — same category of fix as the prior
+pass's missing-`teachers`-row fix).
+
+(+ the 7 reports updated: this file, PHASE_1_4_INTEGRATION_AUDIT.md,
+PHASE_1_4_BUG_FIX_REPORT.md, SUPABASE_MIGRATION_VERIFICATION.md,
+MANUAL_ROLE_TEST_REPORT.md, KOBCIYE_SECURITY_CORRECTED_REAUDIT_20260724.md
+(addendum), KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md (new))
+
+## Migration created
+
+`supabase/migrations/20260724000002_final_membership_message_lesson_guards.sql`
+— purely additive on top of `20260724000001`. No table dropped, no column
+dropped, no user row deleted, no already-applied migration file edited.
+Full contents: see `SUPABASE_MIGRATION_VERIFICATION.md`.
+
+**This migration has NOT been applied to any remote/production Supabase
+project.** Verified only against local disposable Postgres (pglite).
+
+## Exact commands executed (this pass)
+
+```
+# Supabase
+cd supabase/tests && npm ci                                    # PASS
+npm test                                                        # security.test.js — PASS
+npm run test:phase4-db-rls                                      # PASS (includes all 4 new/prior audit suites)
+npm run test:phase4-operational                                 # PASS
+node final_membership_message_lesson_guards.test.js             # PASS (new, 12 assertions)
+
+# Mobile
+cd mobile && npm ci                                             # PASS
+npm run audit:foundation                                        # PASS
+npm run test:phase4-runtime                                      # PASS
+npm run test:phase1-4-audit-fixes                               # PASS (prior pass, re-run)
+npm run test:phase1-4-requirements                              # PASS (prior pass, re-run)
+npm run test:phase1-4-final-security                            # PASS (prior pass, re-run, regex updated)
+npm run test:phase1-4-privacy-security                          # PASS (prior pass, re-run, regex updated)
+node scripts/phase1-4-membership-message-lesson-guards.test.js  # PASS (new, 15 assertions)
+npx expo export --platform web --max-workers 1                  # PASS
+```
+
+`npm run test:stabilization` was requested but **does not exist** in this
+project (re-checked — no such script anywhere, same finding as every
+prior pass). Reported honestly as N/A rather than fabricated or silently
+skipped.
+
+## PASS / FAIL / BLOCKED — this pass's items
+
+| # | Defect area | Result |
+| --- | --- | --- |
+| 1 | conversation_members.id immutable | **PASS** |
+| 2 | messages.id / deleted_at immutable (read_at-only) | **PASS** |
+| 3 | Direct-message SELECT explicitly requires school_id = my_school() | **PASS** |
+| 4/5 | Teacher lesson plans require non-null, exact-pair class_id + subject_id | **PASS** |
+| 6/7 | Async lesson-assignment loading race + canonical-pairs-only selectors | **PASS** (static); live-browser interaction timing **BLOCKED — credentials not supplied** |
+| 8 | Live Mode zero-assignment demo fallback (re-confirmed) | **PASS** |
+| — | Full 11-suite DB regression (358 assertions) | **PASS** |
+| — | Full mobile regression | **PASS** |
+| — | Expo web export, title exact match | **PASS** |
+| — | General live-browser verification (any role, any flow) | **BLOCKED — credentials not supplied** |
+
+## Unresolved issues
+
+1. Live role/browser testing requires real credentials — remains BLOCKED,
+   unchanged from every prior pass. This specifically includes the
+   async-loading race's real interaction timing (open modal → assignments
+   arrive later → selection populates), which cannot be exercised by a
+   static source-text test.
+2. `npm run test:stabilization` does not exist in this project.
+3. `messages.deleted_at` has no guarded delete mechanism (it is simply
+   immutable/locked) — nothing in the current codebase reads or writes it,
+   so building one was out of scope for this pass.
+4. `mobile/src/data/landingPageHtml.js` (dead/unreferenced code) still
+   contains one harmless "Phase 3" string — unchanged from the prior pass,
+   still out of scope (not a runtime UI file).
+
+## Confirmations
+
+- **Phase 5 was NOT started** this pass.
+- **NO UI REDESIGN OR GENERAL VISUAL CHANGE WAS PERFORMED.** The only
+  user-visible difference in LessonPrepModal is that Class now appears
+  before Subject in Live Mode (so picking a class can filter the subject
+  list to match) — same segmented-picker component, same styling, same
+  screen. No layout, color, spacing, icon, or component structure changed
+  anywhere else.
+- No remote Supabase database was deployed, migrated, or reset.
+- No secret, service-role key, or real `.env` value exists in the repo,
+  migration, or ZIP.
+
+==================================================
+# SECURITY RE-AUDIT PASS (earlier same-day pass, preserved, 2026-07-24)
 ==================================================
 
 ## Source of the correction request
@@ -532,7 +674,8 @@ area was touched again.)
 Original pass: `kobciye_phase1_4_source_20260723.zip`.
 First correction pass: `kobciye_phase1_4_final_corrected_20260723.zip`.
 Second correction pass: `kobciye_phase1_4_final_security_corrected_20260723.zip`.
-**This pass supersedes all three with**
-`kobciye_phase1_4_final_verified_20260724.zip` — see
+Third correction pass: `kobciye_phase1_4_final_verified_20260724.zip`.
+**This pass supersedes all four with**
+`kobciye_phase1_4_final_fully_verified_20260724.zip` — see
 `SUPABASE_MIGRATION_VERIFICATION.md` and the final chat summary for the
 verified contents listing.

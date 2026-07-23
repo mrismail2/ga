@@ -271,3 +271,52 @@ described in §9 above:
 All of §1–9's OTHER claims were re-verified against this pass's tightened
 RLS/triggers and are unaffected — see `PHASE_1_4_COMPLETION_REPORT.md`'s
 current PASS/FAIL table.
+
+## 11. FINAL VERIFIED RE-AUDIT PASS — 8 remaining defects (this update, same-day follow-up)
+
+A same-day follow-up correction request asked this session to read
+`KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md`. **That file was not
+supplied** — the newly uploaded ZIP was confirmed byte-identical (zero
+`diff -rq` output) to this session's own immediately-prior delivery. The
+request's own defect list (sections 2–8) was used as the audit findings
+instead; full defect-by-defect detail lives in
+`KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md` (written this session).
+
+What this pass's re-audit actually found, on inspection of the code
+described in §10 above:
+
+1. §10 item 1's conversation-membership immutability trigger protected
+   `conversation_id`/`profile_id`/`joined_at` but not the row's own
+   primary key `id` — a member could still UPDATE their own row's `id`.
+   Fixed: `id` added to the immutable-field set.
+2. §10 item 3's message-immutability trigger protected 8 fields but not
+   `id` or `deleted_at` — a recipient could still rewrite either. Fixed:
+   both added to the immutable-field set.
+3. §10 item 3's direct-message SELECT policy proved same-school access
+   only indirectly (a sender/recipient join), never checking the
+   message's own `school_id` against the caller's school directly — a
+   correctness gap in defense-in-depth even though the invariant held in
+   practice. Fixed: explicit `school_id = my_school()` predicate added.
+4. §10 item 4's lesson-plan assignment guard only validated class/subject
+   WHEN one was supplied — a teacher could still insert a fully
+   classless/subjectless plan, bypassing assignment validation entirely.
+   This pass's task explicitly and deliberately requires both non-null for
+   teacher authors, superseding the prior pass's (and the pass before
+   that's) "classless draft allowed" behavior for teachers specifically —
+   disclosed as a deliberate rule change, not a silent regression; the
+   pre-existing test asserting the old behavior was updated in place to
+   assert the new one. School Admin's own broader policy is unaffected.
+5. §10 item 5's client-side lesson-plan fix (zero-assignment empty state)
+   was correct for that ONE scenario, but the picker underneath it used
+   two independently-flattened class/subject lists and only computed its
+   default selection once at mount — a teacher WITH real assignments that
+   arrived asynchronously after the modal opened could be stuck with a
+   null selection, and nothing prevented an invalid class+subject
+   combination from being offered. Fixed: `myTeacherAssignments()` now
+   returns canonical assignment PAIRS; the modal derives its options from
+   those pairs and re-initializes the selection via a dedicated effect
+   whenever the pairs themselves change.
+
+All of §1–10's OTHER claims were re-verified against this pass's further
+tightened guards and are unaffected — see `PHASE_1_4_COMPLETION_REPORT.md`'s
+current PASS/FAIL table.

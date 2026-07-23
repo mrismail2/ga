@@ -39,13 +39,13 @@ export default function LessonsScreen({ navigation }) {
   // teacher_assignments — never a hardcoded/demo list (the database itself
   // still refuses an unassigned class/subject regardless of what a client
   // ever sends, but the UI should only ever OFFER real, permitted options).
-  const [myAssignments, setMyAssignments] = useState({ classes: [], subjects: [] });
+  const [myAssignments, setMyAssignments] = useState({ pairs: [] });
   useEffect(() => {
     let alive = true;
-    if (!isLive || !isTeacher || !liveProfile) { setMyAssignments({ classes: [], subjects: [] }); return undefined; }
+    if (!isLive || !isTeacher || !liveProfile) { setMyAssignments({ pairs: [] }); return undefined; }
     myTeacherAssignments(liveProfile.school_id, liveProfile.id)
       .then((a) => { if (alive) setMyAssignments(a); })
-      .catch(() => { if (alive) setMyAssignments({ classes: [], subjects: [] }); });
+      .catch(() => { if (alive) setMyAssignments({ pairs: [] }); });
     return () => { alive = false; };
   }, [isLive, isTeacher, liveProfile]);
 
@@ -201,8 +201,7 @@ export default function LessonsScreen({ navigation }) {
         visible={showAdd}
         onClose={() => setShowAdd(false)}
         onSave={addLesson}
-        teacherClassOpts={isLive ? myAssignments.classes : null}
-        teacherSubjectOpts={isLive ? myAssignments.subjects : null}
+        teacherAssignmentPairs={isLive ? myAssignments.pairs : null}
       />
       <LessonDetailModal visible={!!detail} lesson={detail} onClose={() => setDetail(null)} />
     </SafeAreaView>

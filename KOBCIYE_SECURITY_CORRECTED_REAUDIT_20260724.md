@@ -16,6 +16,19 @@ prior passes, handled the same way: the correction request's own 5-item
 list was used directly as the audit findings, and that is disclosed here
 rather than fabricating a document that was never supplied.
 
+## Addendum (2026-07-24, same day, follow-up pass)
+
+A subsequent correction request the same day
+(`KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md`) found and closed 5 more
+edge cases in the areas this report covers — the row-level `id` fields
+on `conversation_members`/`messages` and `deleted_at` were still mutable,
+the direct-message SELECT policy didn't check `school_id` explicitly, and
+teacher lesson plans could still be classless/subjectless. See
+`KOBCIYE_FINAL_VERIFIED_REAUDIT_20260724.md` and migration
+`20260724000002_final_membership_message_lesson_guards.sql` for the full
+detail. Everything below remains accurate as a record of what THIS pass
+(20260724000001) fixed and verified at the time.
+
 ## Defect-by-defect findings, root cause, fix, verification
 
 ### 1. Conversation-membership identity was not immutable
