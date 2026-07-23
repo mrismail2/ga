@@ -181,7 +181,7 @@ export function SchoolAdminDash({ navigation }) {
       <>
         <TouchableOpacity style={[styles.cta, { backgroundColor: c.navy }]} onPress={goManage} activeOpacity={0.9}>
           <Icon name="building" size={18} color="#fff" strokeWidth={2.2} />
-          <Text style={styles.ctaTxt}>Maamulka Dugsiga (Phase 4)</Text>
+          <Text style={styles.ctaTxt}>Maamulka Dugsiga</Text>
         </TouchableOpacity>
         {grid([
           { label: 'Tirada Ardayda', value: String(counts.students), icon: 'students', tone: 'blue' },

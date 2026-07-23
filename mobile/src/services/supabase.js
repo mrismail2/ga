@@ -417,15 +417,26 @@ export async function listInvitations() {
 }
 
 /* Live counts for a school (all zero for a brand-new school). Each count is
-   an independent head query so a new admin sees genuine zero states. */
+   an independent head query so a new admin sees genuine zero states. The
+   student count uses the canonical ACTIVE student_enrollments collection
+   (never the raw students table, which can include transferred/inactive
+   history) — the same source ClassesScreen/ClassDetail/School Management
+   use, so every count agrees. */
 export async function getSchoolCounts(schoolId) {
   if (!supabase || !schoolId) return { students: 0, classes: 0, teachers: 0, payments: 0 };
-  const tables = ['students', 'classes', 'teachers', 'payments'];
+  const tables = ['classes', 'teachers', 'payments'];
   const out = {};
-  await Promise.all(tables.map(async (t) => {
-    const { count } = await supabase.from(t).select('id', { count: 'exact', head: true }).eq('school_id', schoolId);
-    out[t] = count || 0;
-  }));
+  await Promise.all([
+    ...tables.map(async (t) => {
+      const { count } = await supabase.from(t).select('id', { count: 'exact', head: true }).eq('school_id', schoolId);
+      out[t] = count || 0;
+    }),
+    (async () => {
+      const { count } = await supabase.from('student_enrollments')
+        .select('id', { count: 'exact', head: true }).eq('school_id', schoolId).eq('status', 'active');
+      out.students = count || 0;
+    })(),
+  ]);
   return out;
 }
 

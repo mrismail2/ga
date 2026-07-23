@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ScrollView, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useRole } from '../context/RoleContext';
@@ -18,6 +18,7 @@ import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
 import { deactivateStudent } from '../services/appDataRepository';
 import useCanonicalRows from '../hooks/useCanonicalRows';
+import { p4ClassExistsInMySchool } from '../services/phase4';
 import { selectStudentsByClass, filterStudentsForProfile, getIncidentsByClass } from '../utils/dataSelectors';
 import {
   canPerformAction, classId, canEditPayment,
@@ -51,49 +52,107 @@ export default function ClassDetailScreen({ route, navigation }) {
   const { c } = useTheme();
   const { profile } = useRole();
   const { data: appData, reload } = useAppData();
-  const { cls } = route.params;
-  const [name, grade, teacher, students, cap, color, att] = cls;
+  const { isLive, roleKey } = useAuth();
+  const params = route.params || {};
+
+  // ---- LIVE: routed by a stable canonical classId ONLY — never a demo
+  // array/object, never a name-derived id (see AddClassModal/ClassesScreen:
+  // navigation.navigate('ClassDetail', isLive ? { classId } : { cls })).
+  // The class is loaded from the canonical repository and authorized
+  // server-side by RLS (RLS narrows `classes` to: admin sees their whole
+  // school; teacher sees only their assigned classes) — a returned row IS
+  // the authorization. Only School Admin / Super Admin / Teacher may even
+  // attempt this; Parent/Student/Accountant are denied outright, no query
+  // ever attempted. DEMO mode below is completely unchanged. ----
+  const liveRouteClassId = isLive ? (params.classId || null) : null;
+  const schoolId = profile.school_id;
+  const liveRoleMayAttempt = roleKey === 'superadmin' || roleKey === 'schooladmin' || roleKey === 'teacher';
+  const liveClasses = useCanonicalRows('classes', schoolId, { enabled: isLive && !!liveRouteClassId && liveRoleMayAttempt });
+  const liveClassRow = liveRouteClassId ? (liveClasses.rows.find((r) => r.id === liveRouteClassId) || null) : null;
+  const liveStillLoading = isLive && !!liveRouteClassId && liveRoleMayAttempt && liveClasses.loading;
+  const liveNotYetResolved = isLive && !!liveRouteClassId && liveRoleMayAttempt && !liveClassRow && !liveStillLoading;
+
+  // once the RLS-scoped list has settled and the class isn't in it, find out
+  // WHY — "genuinely doesn't exist" vs "exists in my school but I'm not
+  // authorized" — via a single safe boolean that never leaks class data and
+  // never confirms/denies existence outside the caller's own school.
+  const [liveExistsButDenied, setLiveExistsButDenied] = useState(null);
+  useEffect(() => {
+    setLiveExistsButDenied(null);
+    if (!liveNotYetResolved) return undefined;
+    let alive = true;
+    p4ClassExistsInMySchool(liveRouteClassId)
+      .then((exists) => { if (alive) setLiveExistsButDenied(exists); })
+      .catch(() => { if (alive) setLiveExistsButDenied(false); });
+    return () => { alive = false; };
+  }, [liveNotYetResolved, liveRouteClassId]);
+
+  // synthesize the SAME tuple shape the rest of this (large, pre-existing)
+  // screen already consumes, from the canonical row — nothing below this
+  // point needs to know whether the data came from live or demo.
+  const cls = isLive
+    ? (liveClassRow
+        ? [liveClassRow.name, liveClassRow.code || '', liveClassRow.code || 'Fasal', 0, liveClassRow.capacity || 0, '#5B5BD6', null, liveClassRow.school_id, liveClassRow.id]
+        : null)
+    : (params.cls || null);
+  const [name, grade, teacher, students, cap, color, att] = cls || ['', '', '', 0, 0, '#5B5BD6', null];
 
   // ---- strict access guard: verify BEFORE showing any class data ----
-  const allowed = canAccessClassDetail(profile, cls);
-  const mode = getClassDetailModeForProfile(profile, cls);   // 'denied' | 'readonly' | 'full'
-  const allowedTabs = getAllowedClassTabs(profile, cls);     // role-aware tab labels
+  // LIVE: a returned canonical row (found + role-eligible) IS the
+  // authorization — RLS already enforced it server-side. DEMO: unchanged
+  // client-side guard (canAccessClassDetail/getClassDetailModeForProfile).
+  const allowed = isLive ? (liveRoleMayAttempt && !!cls) : (cls ? canAccessClassDetail(profile, cls) : false);
+  const mode = isLive ? (allowed ? 'full' : 'denied') : (cls ? getClassDetailModeForProfile(profile, cls) : 'denied');
+  const allowedTabs = isLive ? (allowed ? TABS : []) : (cls ? getAllowedClassTabs(profile, cls) : []);
   const readOnly = mode === 'readonly';
+  // a genuinely-missing class vs an unauthorized one get distinct copy
+  const liveDenialKind = isLive && !allowed && !liveStillLoading
+    ? (liveExistsButDenied ? 'denied' : 'not_found')
+    : null;
 
-  // auto-redirect an unauthorized user back to a safe screen
+  // auto-redirect an unauthorized user back to a safe screen (not while a
+  // live lookup is still in flight, and not for a still-undetermined denial)
   useEffect(() => {
-    if (allowed) return;
+    if (allowed || liveStillLoading || (isLive && liveDenialKind === null)) return undefined;
     const t = setTimeout(() => redirectUnauthorizedClassAccess(navigation), 2500);
     return () => clearTimeout(t);
-  }, [allowed]);
+  }, [allowed, liveStillLoading, isLive, liveDenialKind]);
 
   const [tab, setTab] = useState(0);
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
-  // this class's canonical identifiers (multi-school safe — never default to
-  // school_001 and never key off the display name). LIVE class cards carry
-  // the canonical Supabase class uuid at cls[8].
-  const { isLive } = useAuth();
-  const liveClassId = cls[8] || null;
-  const clsSchoolId = cls[7] || 'school_001';
-  const clsClassId = liveClassId || classId(name, clsSchoolId);
-  // LIVE: the roster is the canonical `students` rows of this class — the
-  // SAME rows Admissions/Maamulka Dugsiga write (change-bus refreshed).
-  const liveStudents = useCanonicalRows('students', clsSchoolId, { enabled: isLive && !!liveClassId, watch: ['admissions'] });
+  // this class's canonical identifiers (multi-school safe — LIVE never
+  // falls back to a fixed school; a class with no canonical id is simply
+  // not loaded, never silently treated as some default school's data).
+  const liveClassId = isLive ? (liveClassRow ? liveClassRow.id : null) : null;
+  const clsSchoolId = isLive ? (liveClassRow ? liveClassRow.school_id : null) : (cls ? cls[7] : null);
+  const clsClassId = liveClassId || (cls ? classId(name, clsSchoolId) : null);
+  // LIVE: class membership comes from the canonical ACTIVE enrollment
+  // collection (never students.class_id directly, and never a fallback
+  // school) — the same source ClassesScreen/dashboard counts use.
+  const liveEnrollments = useCanonicalRows('student_enrollments', schoolId, { enabled: isLive && !!liveClassId, watch: ['admissions'] });
+  const liveStudents = useCanonicalRows('students', schoolId, { enabled: isLive && !!liveClassId, watch: ['admissions'] });
   // read-only roles (parent/student) only ever see their own child / self —
   // never the class-wide roster. The roster is the ONE central store filtered
   // by school_id + class_id; added students already live there and persist.
   const roster = useMemo(() => {
     if (isLive && liveClassId) {
+      const activeStudentIds = new Set(
+        liveEnrollments.rows.filter((e) => e.status === 'active' && e.class_id === liveClassId).map((e) => e.student_id)
+      );
       return liveStudents.rows
-        .filter((s) => s.class_id === liveClassId && s.status === 'active')
+        .filter((s) => activeStudentIds.has(s.id))
         .map((s) => ({ ...s, student_internal_id: s.id, name: s.full_name, att: null, className: name }));
     }
+    if (!cls || !clsSchoolId || !clsClassId) return [];
     const full = selectStudentsByClass(appData.students, clsSchoolId, clsClassId)
       .map((s) => ({ ...s, name: s.full_name || s.name, className: name }));
     return readOnly ? filterStudentsForProfile(profile, full) : full;
-  }, [isLive, liveClassId, liveStudents.rows, appData.students, clsSchoolId, clsClassId, readOnly, profile, name]);
+  }, [isLive, liveClassId, liveEnrollments.rows, liveStudents.rows, cls, appData.students, clsSchoolId, clsClassId, readOnly, profile, name]);
+  // the header KPI always reflects the ACTUAL roster length (never a
+  // possibly-stale count carried through navigation) live or demo.
+  const displayStudentCount = isLive ? roster.length : students;
   const [att2, setAtt2] = useState({});      // code -> { status, reason }
   const [attSaved, setAttSaved] = useState(false);
   const [month, setMonth] = useState(5);     // 0-indexed, Juun
@@ -267,14 +326,34 @@ export default function ClassDetailScreen({ route, navigation }) {
   const setAllFees = (key) => setFees((f) => { const m = {}; orderedRoster.forEach((s) => { m[s.student_internal_id] = key; }); return { ...f, [month]: m }; });
   const feeOf = (s) => (fees[month] || {})[s.student_internal_id] || s.fee;
 
-  // ---- access denied: show a clean message + button, never any data ----
+  // ---- LIVE: still resolving the class (RLS-scoped query in flight, or the
+  // not-found/denied distinction is still loading) — show a plain spinner,
+  // never a premature "not found"/"denied" flash and never any class data.
+  if (liveStillLoading || (isLive && !allowed && liveDenialKind === null)) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
+        <View style={styles.deniedWrap}>
+          <ActivityIndicator color={c.blue} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ---- access denied / not found: show a clean message + button, never
+  // any class data. LIVE distinguishes "Fasalkan lama helin" (the class
+  // genuinely does not exist, or exists in a different school) from a
+  // permission-denied message (it exists in my school but I'm not
+  // authorized) — DEMO keeps its single existing denial message. ----
   if (!allowed) {
+    const notFound = isLive && liveDenialKind === 'not_found';
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
         <View style={styles.deniedWrap}>
           <View style={[styles.deniedCard, { backgroundColor: c.surface, borderColor: c.line }]}>
-            <Icon name="shield" size={30} color={c.rose} />
-            <Text style={[styles.deniedTitle, { color: c.ink }]}>Ma lihid oggolaansho aad ku furto fasalkan.</Text>
+            <Icon name={notFound ? 'classes' : 'shield'} size={30} color={notFound ? c.muted2 : c.rose} />
+            <Text style={[styles.deniedTitle, { color: c.ink }]}>
+              {notFound ? 'Fasalkan lama helin' : 'Ma lihid oggolaansho aad ku furto fasalkan.'}
+            </Text>
             <Text style={[styles.deniedSub, { color: c.muted }]}>Si toos ah ayaa laguu celin doonaa.</Text>
             <TouchableOpacity style={[styles.deniedBtn, { backgroundColor: c.navy }]} onPress={() => redirectUnauthorizedClassAccess(navigation)}>
               <Text style={styles.deniedBtnTxt}>Ku Noqo Fasallada</Text>
@@ -287,8 +366,10 @@ export default function ClassDetailScreen({ route, navigation }) {
 
   // active tab is resolved against the role-allowed tab list
   const activeTab = allowedTabs[tab] || allowedTabs[0];
-  // only admins may add students; parent/student/teacher cannot
-  const canAddStudents = mode === 'full' && (profile.scope === 'platform' || profile.scope === 'school');
+  // only admins may add students; parent/student/teacher cannot. LIVE: the
+  // add-student sheet writes to the DEMO store, which is a guarded no-op in
+  // live mode — so it is never offered live (Admissions is the live path).
+  const canAddStudents = !isLive && mode === 'full' && (profile.scope === 'platform' || profile.scope === 'school');
   // only Super/School Admin + Accountant may change fees; parent/student read-only
   const canEditFees = mode === 'full' && canEditPayment(profile, null);
   const FEE_AMOUNT = 25; // standard monthly fee (prototype)
@@ -309,8 +390,8 @@ export default function ClassDetailScreen({ route, navigation }) {
         <Text style={styles.hName}>{name}</Text>
         <Text style={styles.hMeta}>{teacher} · {grade}</Text>
         <View style={styles.hKpis}>
-          <View><Text style={styles.hKpiVal}>{students}</Text><Text style={styles.hKpiLbl}>Arday</Text></View>
-          <View><Text style={styles.hKpiVal}>{att}%</Text><Text style={styles.hKpiLbl}>Xaadir</Text></View>
+          <View><Text style={styles.hKpiVal}>{displayStudentCount}</Text><Text style={styles.hKpiLbl}>Arday</Text></View>
+          <View><Text style={styles.hKpiVal}>{att == null ? '—' : `${att}%`}</Text><Text style={styles.hKpiLbl}>Xaadir</Text></View>
           <View><Text style={styles.hKpiVal}>{cap}</Text><Text style={styles.hKpiLbl}>Kaadhka</Text></View>
         </View>
       </View>

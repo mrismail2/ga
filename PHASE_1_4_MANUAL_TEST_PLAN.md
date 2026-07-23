@@ -65,6 +65,54 @@ and rollback are proven in `supabase/tests/phase4_operational_roles.test.js`
 
 ## 6. Expo web export
 
-`cd mobile && npx expo export --platform web` → **Expect:** exit 0, `dist/`
-with `index.html` (title “Kobciye School Management”), JS bundle and assets. *(Already ran —
-PASS.)*
+`cd mobile && npx expo export --platform web --max-workers 1` → **Expect:**
+exit 0, `dist/` with `index.html` (title “Kobciye School Management”), JS
+bundle and assets. *(Already ran — PASS.)*
+
+## 7. Teacher / Student RLS scoping (new — independent-audit correction)
+
+1. As School Admin, create two classes and assign a teacher to only ONE of
+   them (Maamulka Dugsiga → Qoondaynta Macallimiinta).
+2. Sign in as that teacher. Open Fasallada. **Expect:** only the assigned
+   class appears.
+3. Attempt to open the unassigned class directly (e.g. by URL/deep link
+   with its id). **Expect:** “Fasalkan lama helin” or a permission-denied
+   message — never the class's data.
+4. Admit a student into the assigned class. **Expect:** the teacher can see
+   this student (in Ardayda scoped to the class, or via ClassDetail).
+5. Admit a student into the UNassigned class. **Expect:** the teacher
+   cannot see this student anywhere.
+
+*Automated now:* all 5 of these, plus cross-school and admin-full-access
+checks, are proven in `supabase/tests/phase1_4_audit_fixes.test.js`
+(14 assertions) against a real Postgres.
+
+## 8. Student enrollment history (new — independent-audit correction)
+
+1. Admit a student into Class A.
+2. Later, re-run the admission (or a future transfer action) moving the
+   same student to Class B.
+3. **Expect:** the student's CURRENT class is B (Fasallada, ClassDetail,
+   dashboard counts all agree).
+4. **Expect:** a query of `student_enrollments` for this student shows TWO
+   rows: the original (Class A, `status='transferred'`, `ended_on` set) and
+   the new one (Class B, `status='active'`).
+5. **Expect:** exactly one row has `status='active'`.
+
+*Automated now:* all 5, plus a no-op-on-resubmission check and a
+year-only-change check, are proven in
+`supabase/tests/phase1_4_audit_fixes.test.js` (11 assertions).
+
+## 9. Student counts consistency (new — independent-audit correction)
+
+1. In a school with 2 active students and 1 transferred-away student,
+   compare: the Dashboard "Tirada Ardayda" count, a class card's student
+   count, ClassDetail's roster length, and Maamulka Dugsiga → Ardayda's
+   row count.
+2. **Expect:** all four agree, and all four count 2 (never 3 — the
+   transferred-away student's historical enrollment is excluded).
+
+*Automated now:* `mobile/scripts/phase1-4-audit-fixes.test.js` §8 confirms
+every one of these four surfaces reads the same active-enrollment source;
+`supabase/tests/phase1_4_audit_fixes.test.js` §5/5b/8 confirm the
+underlying enrollment data is correct after a transfer.

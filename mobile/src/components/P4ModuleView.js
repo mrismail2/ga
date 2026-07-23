@@ -14,7 +14,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal,
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import Icon from './Icon';
-import { p4List, p4Create, p4Update, p4Validate, p4FriendlyError, p4AdmitStudentAtomic } from '../services/phase4';
+import { p4List, p4Create, p4Update, p4Validate, p4FriendlyError, p4AdmitStudentAtomic, p4ActiveEnrollments } from '../services/phase4';
 import { onCanonicalChange } from '../services/canonicalStore';
 
 export default function P4ModuleView({ module, titleOverride }) {
@@ -38,7 +38,20 @@ export default function P4ModuleView({ module, titleOverride }) {
   const load = useCallback(async () => {
     if (!canUse) { setLoading(false); return; }
     setLoading(true); setLoadErr(null);
-    try { setRows(await p4List(module.table, schoolId)); }
+    try {
+      const listRows = await p4List(module.table, schoolId);
+      // the School Management student count/list uses the canonical ACTIVE
+      // enrollment collection (never raw student rows, which can include
+      // transferred-away/historical students) — the same source every other
+      // student count in the app now uses.
+      if (module.table === 'students') {
+        const active = await p4ActiveEnrollments(schoolId);
+        const activeIds = new Set(active.map((e) => e.student_id));
+        setRows(listRows.filter((r) => activeIds.has(r.id)));
+      } else {
+        setRows(listRows);
+      }
+    }
     catch (e) { setLoadErr(p4FriendlyError(e)); }
     finally { setLoading(false); }
   }, [canUse, schoolId, module.table]);
@@ -49,7 +62,10 @@ export default function P4ModuleView({ module, titleOverride }) {
   // from the Fasallada main-menu modal) re-reads the same canonical rows here
   useEffect(() => {
     if (!canUse) return undefined;
-    return onCanonicalChange((table) => { if (table === module.table) load(); });
+    return onCanonicalChange((table) => {
+      if (table === module.table) load();
+      else if (module.table === 'students' && table === 'student_enrollments') load();
+    });
   }, [canUse, module.table, load]);
 
   const openForm = async (row) => {

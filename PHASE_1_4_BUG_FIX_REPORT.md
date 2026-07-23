@@ -3,7 +3,53 @@
 Date: 2026-07-23 · Branch: `claude/kobciye-sms-continuation-9jw64v`
 Baseline: ZIP `kobciye_phase4_corrected_audited` (commit `4ed2689`)
 
-## Fixes completed in this session
+## FINAL CORRECTION PASS — independent-audit defects (this update)
+
+The audit report file named in the correction request
+(`KOBCIYE_PHASE1_4_INDEPENDENT_AUDIT_20260723.md`) was **not actually
+supplied** anywhere reachable this session; the request's own numbered
+defect list was used directly instead. Full defect-by-defect root
+cause/fix/verification: `KOBCIYE_PHASE1_4_INDEPENDENT_AUDIT_20260723.md`.
+
+| # | Problem found | Fix | Files |
+| --- | --- | --- | --- |
+| 12 | User-facing "Maamulka Dugsiga (Phase 4)" label | text corrected to "Maamulka Dugsiga" | `RoleDashboards.js` |
+| 13 | ClassDetail routed by the entire class object/array, not a stable id; teacher access check compared against stale demo IDs that could never match real UUIDs | live navigation now passes `{ classId }` only; ClassDetailScreen loads the class from the canonical repository by id and treats RLS-scoped visibility as the authorization | `ClassesScreen.js`, `ClassDetailScreen.js`, `phase4.js` |
+| 14 | Name-slugified class ids (`classId()` from `mock.js`) could theoretically leak into live routing | live mode never calls `classId()`; the canonical Supabase uuid is the only id used end to end | `ClassDetailScreen.js` |
+| 15 | `ClassDetailScreen` fell back to `'school_001'` when a live class's school id was unavailable | fallback removed; live queries now short-circuit to "not loaded" instead of assuming a default school | `ClassDetailScreen.js` |
+| 16 | RLS let any staff member (teacher, accountant) read every class/student in the school, not just assigned ones | `"school members read classes"`/`"staff read students"` dropped; replaced with admin-full-school OR teacher-of-assigned-class/student, via 2 new `SECURITY DEFINER` functions | migration `20260723000001` |
+| 17 | `admit_student_atomic` overwrote the existing active enrollment row in place on a class change, destroying history | rewritten to close (status='transferred', ended_on=today) + insert-new; unchanged resubmission is a no-op | migration `20260723000001` |
+| 18 | Student counts (dashboard, class card, ClassDetail roster, School Management) read raw `students`/`students.class_id`, not active enrollments | all four now derive from the canonical active `student_enrollments` collection | `supabase.js`, `phase4.js`, `ClassesScreen.js`, `ClassDetailScreen.js`, `P4ModuleView.js` |
+| 19 | `lesson_plans` missing `objectives`/`materials`/`lesson_content`/`homework_note`/`teacher_id` | all 5 added (additive, nullable); status check **widened** (never narrowed) to also accept `'ready'`, preserving the shipped review workflow | migration `20260723000001` |
+| 20 | `conversations`/`messages` missing `type`/`updated_at`/`message_type`/`attachment_uri`/`deleted_at` | all 5 added additively | migration `20260723000001` |
+
+### Verification of the correction-pass fixes
+
+- `supabase/tests/phase1_4_audit_fixes.test.js` — 30 PASS (new suite, real
+  disposable Postgres): 14 teacher/admin RLS scoping assertions, 11
+  enrollment-history assertions, 5 schema-completeness assertions.
+- All 7 pre-existing DB suites re-run with the new migration applied —
+  226+37=263 PASS total, exit 0 each (zero regressions from the RLS
+  narrowing or the `admit_student_atomic` rewrite).
+- `mobile/scripts/phase1-4-audit-fixes.test.js` — 27 PASS (new static
+  suite).
+- Full existing mobile suite re-run (11 scripts) — every one PASS.
+- `npx expo export --platform web --max-workers 1` — success; title
+  `Kobciye School Management`.
+
+### Not fixed / out of scope (honest)
+
+- Live-browser verification of any of these fixes: **BLOCKED — credentials
+  not supplied**.
+- `npm run test:stabilization` does not exist in this project (checked
+  both package.json files and every script) — reported as such, not
+  fabricated.
+- `lesson_plans.status` intentionally still accepts the pre-existing
+  `pending`/`approved`/`rejected` values alongside the newly-required
+  `draft`/`ready` — narrowing would have deleted already-shipped,
+  already-verified functionality (see the independent-audit write-up §9).
+
+## ORIGINAL FIXES (prior session, preserved)
 
 | # | Problem (in the imported baseline) | Fix | Files |
 | --- | --- | --- | --- |

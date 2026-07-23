@@ -74,21 +74,24 @@ export default function ClassesScreen({ navigation }) {
   const [classes, setClasses] = useState(() => filterClassesForProfile(profile, ALL_CLASSES));
   const [showAdd, setShowAdd] = useState(false);
 
-  // LIVE: canonical classes + students (for real per-class counts). RLS keeps
-  // other schools out; the change bus re-reads after ANY canonical mutation.
+  // LIVE: canonical classes + active enrollments (for real per-class counts —
+  // the canonical active-enrollment collection, never students.class_id
+  // directly). RLS keeps other schools out (and a Teacher to their assigned
+  // classes only); the change bus re-reads after ANY canonical mutation.
   const schoolId = profile.school_id;
   const live = useCanonicalRows('classes', schoolId, { enabled: isLive });
-  const liveStudents = useCanonicalRows('students', schoolId, { enabled: isLive });
+  const liveEnrollments = useCanonicalRows('student_enrollments', schoolId, { enabled: isLive, watch: ['admissions'] });
 
   const liveCards = useMemo(() => {
     if (!isLive) return [];
     const activeRows = live.rows.filter((r) => r.status !== 'archived');
+    const activeEnrollments = liveEnrollments.rows.filter((e) => e.status === 'active');
     return activeRows.map((r, i) => {
-      const count = liveStudents.rows.filter((s) => s.class_id === r.id && s.status === 'active').length;
+      const count = activeEnrollments.filter((e) => e.class_id === r.id).length;
       // demo card layout + [7]=school_id, [8]=canonical class id
       return [r.name, r.code || '', r.code || 'Fasal', count, r.capacity || 0, LIVE_COLORS[i % LIVE_COLORS.length], null, r.school_id, r.id];
     });
-  }, [isLive, live.rows, liveStudents.rows]);
+  }, [isLive, live.rows, liveEnrollments.rows]);
 
   const source = isLive ? liveCards : classes;
   const list = source.filter((cl) => cl[0].toLowerCase().includes(q.toLowerCase()));
@@ -131,7 +134,8 @@ export default function ClassesScreen({ navigation }) {
               <Text style={[styles.empty, { color: c.muted }]}>Weli fasal lama abuurin. Riix + si aad ugu darto fasalka ugu horreeya.</Text>
             ) : null}
             renderItem={({ item }) => (
-              <ClassCard cls={item} onPress={(cls) => navigation.navigate('ClassDetail', { cls })} />
+              <ClassCard cls={item} onPress={(cls) => navigation.navigate('ClassDetail',
+                isLive ? { classId: cls[8] } : { cls })} />
             )}
             showsVerticalScrollIndicator={false}
           />

@@ -28,13 +28,28 @@ All live-browser walkthroughs from PHASE_1_4_MANUAL_TEST_PLAN.md:
   `AuthContext.signOut`, which awaits Supabase `signOut()` and clears
   session/profile/role/mode state; App.js renders Landing/Login for
   `signed_out`, unmounting all protected screens
-  (`mobile/scripts/phase1-4-requirements.test.js`, section E — PASS).
+  (`mobile/scripts/phase1-4-requirements.test.js`, section E — PASS,
+  unchanged this pass).
 - Route-protection structure: protected shells render only when
   `auth.status === 'signed_in'` (App.js; unchanged behaviour, re-verified by
   the existing auth-routing suites — PASS).
 - Database-level role rules (real Postgres, caller JWT semantics):
   admissions/guardian atomicity, duplicate + cross-school rejection,
   teacher/admin lesson-plan rules, members-only messaging —
-  `supabase/tests/phase4_operational_roles.test.js`, 40 PASS.
+  `supabase/tests/phase4_operational_roles.test.js`, 37 PASS.
+- **New this pass** — Teacher/Student RLS scoping (independent-audit
+  correction): a teacher can read an assigned class and its enrolled
+  students, cannot read an unassigned class or its students even in the
+  same school, an unassigned teacher reads zero classes/students, a school
+  admin still reads everything in their own school, and cross-school access
+  stays blocked — `supabase/tests/phase1_4_audit_fixes.test.js`, 14
+  assertions, real Postgres, PASS.
+- **New this pass** — enrollment-history preservation on class transfer:
+  the original enrollment row is preserved untouched (class, date) and
+  marked `transferred`/`ended_on`; exactly one new `active` row exists
+  after a transfer; an identical resubmission is a no-op —
+  `supabase/tests/phase1_4_audit_fixes.test.js`, 11 assertions, PASS.
 
-These automated results are NOT claimed as live-browser testing.
+These automated results are NOT claimed as live-browser testing. Live
+role/browser verification (this pass's Teacher RLS fix included) remains
+**BLOCKED — credentials not supplied**, unchanged from the prior report.

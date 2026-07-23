@@ -25,6 +25,7 @@ const TABLES = {
   staff: { order: 'full_name' },
   teacher_assignments: { order: 'created_at' },
   students: { order: 'full_name' },
+  student_enrollments: { order: 'enrolled_on' },
   parents: { order: 'full_name' },
   student_parents: { order: 'student_id' },
   admissions: { order: 'created_at' },
@@ -81,6 +82,28 @@ export async function p4List(table, schoolId, { activeOnly = false, limit = 500 
   const { data, error } = await q;
   if (error) throw error;
   return data || [];
+}
+
+/* the canonical, active-only enrollment collection for a school — the
+   source of truth for every student count (dashboard, class card, class
+   detail roster, School Management). Never students.class_id directly:
+   that column is only a denormalized "current class" display cache. */
+export async function p4ActiveEnrollments(schoolId) {
+  requireTable('student_enrollments');
+  const { data, error } = await supabase.from('student_enrollments')
+    .select('*').eq('school_id', schoolId).eq('status', 'active').limit(2000);
+  if (error) throw error;
+  return data || [];
+}
+
+/* distinguishes "class does not exist" from "class exists in my school but
+   I'm not authorized to open it" — a single safe boolean, never class data,
+   and never confirms/denies existence outside the caller's own school. */
+export async function p4ClassExistsInMySchool(classId) {
+  if (!isSupabaseConfigured() || !supabase) return false;
+  const { data, error } = await supabase.rpc('class_exists_in_my_school', { p_class: classId });
+  if (error) throw error;
+  return data === true;
 }
 
 export async function p4Create(table, row) {
@@ -207,7 +230,7 @@ export async function p4AdmitStudentAtomic(schoolId, {
   });
   if (error) throw error;
   // one atomic write touched all of these canonical tables
-  ['students', 'admissions', 'parents', 'student_parents'].forEach(notifyCanonicalChange);
+  ['students', 'admissions', 'parents', 'student_parents', 'student_enrollments', 'classes'].forEach(notifyCanonicalChange);
   return data;
 }
 

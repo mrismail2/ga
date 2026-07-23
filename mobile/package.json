@@ -18,7 +18,8 @@
     "test:phase3-audit": "node scripts/phase3-audit.test.js",
     "test:phase4-ui": "node scripts/phase4-management.test.js",
     "test:phase4-runtime": "node scripts/phase4-runtime.behavior.test.js && node scripts/phase4-ui-components.test.js",
-    "test:phase1-4-requirements": "node scripts/phase1-4-requirements.test.js"
+    "test:phase1-4-requirements": "node scripts/phase1-4-requirements.test.js",
+    "test:phase1-4-audit-fixes": "node scripts/phase1-4-audit-fixes.test.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",

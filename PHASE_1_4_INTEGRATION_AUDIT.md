@@ -105,3 +105,53 @@ credentials not supplied** (see MANUAL_ROLE_TEST_REPORT.md).
   card shapes; unavailable live metrics render as “—”, never fake numbers).
 - No Phase 5 feature was started (no timetable, attendance workflow,
   homework, notifications, SMS, WhatsApp, parent portal).
+
+## 8. FINAL CORRECTION PASS — independent-audit findings (this update)
+
+A follow-up correction request asked this session to read
+`KOBCIYE_PHASE1_4_INDEPENDENT_AUDIT_20260723.md`. **That file was not
+supplied** — verified absent from the workspace and from the newly uploaded
+ZIP before any work began. The request's own numbered defect list (10
+concrete items) was used as the audit findings instead; full
+defect-by-defect detail lives in
+`KOBCIYE_PHASE1_4_INDEPENDENT_AUDIT_20260723.md` (written this session).
+
+What the independent audit actually found, on inspection of the code
+described in §3–7 above:
+
+1. The "Maamulka Dugsiga (Phase 4)" label from §3 was still literally
+   present in `RoleDashboards.js` — confirmed and fixed (text only).
+2. §3's "canonical class" claim was real for creation, but **class-detail
+   routing** still carried the entire class row through navigation
+   (`{ cls: item }`) rather than a stable id, and the teacher-authorization
+   check compared against a **static demo array** that a live identity
+   never populates — meaning a real live Teacher could never open any
+   class. Fixed: stable `classId`-only routing, canonical server-verified
+   load.
+3. §6's "voice/photo disabled live" and membership-only messaging claims
+   were correct and are unaffected by this pass. §4's atomic-admission
+   claim was correct in structure but had one real defect: the enrollment
+   step **overwrote history in place** on a class change. Fixed: close +
+   insert-new.
+4. RLS underneath the "canonical repository" claim in §3 was more
+   permissive than the UI implied: any staff member (not just an assigned
+   teacher) could read every class/student in the school at the database
+   layer, even though the client-side UI never exercised that excess
+   access. Fixed: RLS narrowed to match the intended access model.
+5. Student counts throughout (§3, §6) read `students`/`students.class_id`
+   directly rather than the canonical active-enrollment collection —
+   functionally correct in the common case (they were kept in sync) but
+   architecturally the wrong source of truth per the audit. Fixed: every
+   count now derives from `student_enrollments` where `status='active'`.
+6. `lesson_plans`/messaging schemas (§6) were functionally complete for
+   what the UI used, but missing several fields the audit's schema
+   contract requires. Fixed: fields added additively; the
+   `lesson_plans.status` constraint was **widened** (not narrowed) to avoid
+   deleting the already-shipped review workflow — a deliberate, documented
+   deviation from a literal two-value reading (see the independent-audit
+   write-up §9 for the reasoning).
+
+All of §3–7's OTHER claims (canonical sync design, two-way sync, Admissions
+UI, Sign Out, demo removal) were re-verified against the corrected RLS/count
+infrastructure and still hold — see `PHASE_1_4_COMPLETION_REPORT.md`'s
+correction-pass PASS/FAIL table for the complete, current list.
