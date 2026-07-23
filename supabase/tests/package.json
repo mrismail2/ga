@@ -1,0 +1,17 @@
+{
+  "name": "kobciye-supabase-security-tests",
+  "private": true,
+  "description": "Runs supabase/migrations/*.sql against a real disposable Postgres (pglite) and attacks the privilege-escalation/cross-school scenarios from the Phase 2 security review.",
+  "scripts": {
+    "test": "node security.test.js",
+    "test:institution": "node institution_type.test.js",
+    "test:invitations": "node phase3_invitations.test.js",
+    "test:phase3-invitation": "node phase3_invitations.test.js",
+    "test:phase4": "node phase4_core.test.js",
+    "test:phase4-runtime": "node phase4_runtime_fixes.test.js && node phase4_guardian_upgrade.test.js",
+    "test:phase4-db-rls": "node phase4_core.test.js && node phase4_runtime_fixes.test.js && node phase4_guardian_upgrade.test.js"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.0"
+  }
+}

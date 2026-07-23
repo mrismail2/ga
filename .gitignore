@@ -1,0 +1,10 @@
+node_modules/
+supabase/tests/node_modules/
+
+# Edge Function secrets — real values must never be committed
+supabase/functions/.env
+supabase/.env
+
+# Deno / Supabase local
+supabase/.branches/
+supabase/.temp/

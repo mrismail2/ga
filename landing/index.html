@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Public landing config (WhatsApp enquiry number + real app login URL).
+     Edit landing/config.js — see landing/README.md. -->
+<script src="./config.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+html{scroll-behavior:smooth}
+body{margin:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;color:#0F1B2D;background:#fff}
+@keyframes ipFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes ipShadow{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(.88);opacity:.55}}
+@keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+/* ---- Mobile: stack the hero cleanly instead of squeezing the desktop grid ---- */
+@media(max-width:860px){
+  header nav{display:none!important}
+  #home>div{grid-template-columns:1fr!important;padding-top:44px!important;gap:6px!important;text-align:center!important}
+  #home>div>div:first-child{padding-bottom:22px!important}
+  #home h1{font-size:clamp(30px,8vw,44px)!important;letter-spacing:-1px!important}
+  #home p{margin-left:auto!important;margin-right:auto!important}
+  #home div[style*="flex-wrap:wrap"]{justify-content:center!important}
+  #home div[style*="gap:38px"]{justify-content:center!important;gap:26px!important}
+  #home div[style*="540px"]{min-height:0!important;margin-top:6px!important}
+  div[style*="minmax(260px"]{grid-template-columns:1fr!important;gap:30px!important}
+  footer div[style*="1.4fr 1fr 1fr 1.2fr"]{grid-template-columns:1fr 1fr!important;gap:28px!important}
+}
+@media(max-width:480px){
+  #home h1{font-size:30px!important}
+  #home div[style*="gap:38px"]{gap:18px!important}
+  footer div[style*="1.4fr 1fr 1fr 1.2fr"]{grid-template-columns:1fr!important}
+}
+</style>
+</helmet>
+
+<!-- ============ HEADER ============ -->
+<header data-screen-label="Header" style="position:sticky;top:0;z-index:40;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-bottom:1px solid #EBEFF6">
+  <div style="max-width:1180px;margin:0 auto;height:74px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 24px">
+    <a href="#home" style="display:flex;align-items:center;gap:11px;text-decoration:none;color:#0F1B2D">
+      <img src="assets/kobciye-logo.png" alt="Kobciye — Management System" style="height:40px;width:auto;display:block">
+    </a>
+    <nav style="display:flex;gap:30px;font-size:14px;font-weight:600;color:#3A4A60">
+      <a href="#home" style="text-decoration:none;color:inherit" style-hover="color:#16A34A">Home</a>
+      <a href="#features" style="text-decoration:none;color:inherit" style-hover="color:#16A34A">About</a>
+      <a href="#qiimaha" style="text-decoration:none;color:inherit" style-hover="color:#16A34A">Pricing</a>
+      <a href="#xiriir" style="text-decoration:none;color:inherit" style-hover="color:#16A34A">Contact</a>
+    </nav>
+    <button onClick="{{ openLoginModal }}" style="border:0;background:#0A2E6B;color:#fff;padding:11px 20px;border-radius:11px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;box-shadow:0 8px 18px rgba(10,46,107,.22)" style-hover="background:#13458F">Gal akoonkaaga <span aria-hidden="true">→</span></button>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section id="home" data-screen-label="Hero" style="background:linear-gradient(115deg,#FBF1D9 0%,#F7F4EA 34%,#EFF5F0 62%,#EAF1FE 100%);overflow:hidden">
+  <div style="max-width:1180px;margin:0 auto;padding:64px 24px 0;display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center">
+    <div style="padding-bottom:64px">
+      <span style="display:inline-flex;align-items:center;gap:7px;background:#0A2E6B;color:#fff;border-radius:999px;padding:8px 16px;font-size:12px;font-weight:700;transform:rotate(-2deg);box-shadow:0 6px 14px rgba(10,46,107,.25)">☁️ Cloud-Based School Management</span>
+      <h1 style="font-size:clamp(38px,4.4vw,60px);line-height:1.1;letter-spacing:-1.8px;font-weight:800;margin:22px 0 16px;color:#0F1B2D;text-wrap:balance">Si Fudud U Maamul Xogta <span style="color:#16A34A">Ardayda</span> &amp; Dugsigaaga<span style="color:#CFAD5E">.</span></h1>
+      <p style="font-size:17px;line-height:1.6;color:#3A4A60;max-width:520px;margin:0 0 28px;font-weight:500;text-wrap:pretty">Diiwaan waxa uu kaa caawiyaa inaad qaab fudud u maamusho xogta ardayda iyo macluumaadka dugsigaaga — mar walba gacantaada ku jirta.</p>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <button onClick="{{ openLoginModal }}" style="border:0;background:#16A34A;color:#fff;padding:16px 28px;border-radius:13px;font-weight:800;font-size:15.5px;cursor:pointer;font-family:inherit;box-shadow:0 12px 24px rgba(22,163,74,.3);display:flex;align-items:center;gap:8px" style-hover="background:#15954C">Gal akoonkaga <span aria-hidden="true">→</span></button>
+        <a href="#features" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#0A2E6B;font-weight:700;font-size:14.5px">
+          <span style="width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:0 8px 18px rgba(10,46,107,.15);display:grid;place-items:center;color:#0A2E6B">▶</span>
+          Sida uu u shaqeeyo
+        </a>
+      </div>
+      <div style="display:flex;gap:38px;margin-top:40px">
+        <div><strong style="display:block;font-size:30px;font-weight:800;color:#0A2E6B;line-height:1">500+</strong><small style="font-size:12.5px;font-weight:700;color:#7C8AA0">Arday</small></div>
+        <div style="width:1px;background:#E2E8F2"></div>
+        <div><strong style="display:block;font-size:30px;font-weight:800;color:#0A2E6B;line-height:1">50+</strong><small style="font-size:12.5px;font-weight:700;color:#7C8AA0">Dugsi</small></div>
+        <div style="width:1px;background:#E2E8F2"></div>
+        <div><strong style="display:block;font-size:30px;font-weight:800;color:#0A2E6B;line-height:1">3</strong><small style="font-size:12.5px;font-weight:700;color:#7C8AA0">Magaalo</small></div>
+      </div>
+    </div>
+
+    <!-- phone mockup + decorative shapes -->
+    <div style="position:relative;display:flex;justify-content:center;align-items:flex-end;min-height:540px">
+      <div aria-hidden="true" style="position:absolute;right:-30px;bottom:-90px;width:300px;height:430px;background:#16A34A;border-radius:60px 60px 0 0;transform:rotate(14deg);opacity:.92"></div>
+      <div aria-hidden="true" style="position:absolute;left:6px;bottom:-70px;width:210px;height:340px;background:#0A2E6B;border-radius:50px 50px 0 0;transform:rotate(-12deg)"></div>
+      <div aria-hidden="true" style="position:absolute;left:30px;top:36px;width:52px;height:52px;border-radius:50%;background:#CFAD5E;opacity:.9"></div>
+      <div aria-hidden="true" style="position:absolute;right:40px;top:10px;width:20px;height:20px;border-radius:50%;background:#0A2E6B;opacity:.5"></div>
+      <div aria-hidden="true" style="position:absolute;right:110px;top:70px;width:12px;height:12px;border-radius:50%;background:#16A34A"></div>
+
+      <div style="position:relative;z-index:2;width:270px;animation:ipFloat 6s ease-in-out infinite">
+        <div style="padding:10px;border-radius:46px;background:linear-gradient(145deg,#e9edf2 0%,#c7ced8 22%,#9aa3b0 50%,#cdd4dd 74%,#eef1f5 100%);box-shadow:0 34px 70px -22px rgba(11,37,73,.45),0 4px 10px rgba(11,37,73,.18)">
+          <div style="position:relative;border-radius:38px;overflow:hidden;background:#F4F7FC;box-shadow:inset 0 0 0 2px rgba(0,0,0,.85)">
+            <div aria-hidden="true" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:86px;height:24px;border-radius:14px;background:#04060c;z-index:3"></div>
+            <!-- screen: Kobciye dashboard -->
+            <div style="background:linear-gradient(180deg,#13458F,#0A2E6B);color:#fff;padding:42px 16px 14px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <img src="assets/kobciye-logo-white.png" alt="Kobciye" style="height:22px;width:auto;display:block">
+                <span style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:12px">🔔</span>
+              </div>
+              <p style="margin:12px 0 0;font-size:12px;color:rgba(255,255,255,.75);font-weight:600">Subax wanaagsan 👋</p>
+              <p style="margin:2px 0 0;font-size:14.5px;font-weight:800">AL-MAAX SECONDARY</p>
+            </div>
+            <div style="display:flex;gap:6px;padding:12px 14px 4px">
+              <span style="background:#16A34A;color:#fff;border-radius:999px;padding:6px 11px;font-size:9.5px;font-weight:800">✓ Xaadiris</span>
+              <span style="background:#fff;color:#7C8AA0;border-radius:999px;padding:6px 11px;font-size:9.5px;font-weight:800;border:1px solid #EBEFF6">Imtixaanno</span>
+              <span style="background:#fff;color:#7C8AA0;border-radius:999px;padding:6px 11px;font-size:9.5px;font-weight:800;border:1px solid #EBEFF6">Maaliyad</span>
+            </div>
+            <div style="padding:8px 14px 14px;display:flex;flex-direction:column;gap:7px">
+              <div style="background:#fff;border:1px solid #EBEFF6;border-radius:13px;padding:10px 11px;display:flex;align-items:center;gap:9px">
+                <span style="width:32px;height:32px;border-radius:50%;background:#E4F6EC;color:#16A34A;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none">MA</span>
+                <span style="flex:1;min-width:0"><strong style="display:block;font-size:11.5px;font-weight:700">Mustafa Ali</strong><small style="font-size:9.5px;color:#7C8AA0;font-weight:600">Form 4A</small></span>
+                <em style="font-style:normal;background:#E4F6EC;color:#16A34A;border-radius:8px;padding:4px 8px;font-size:9px;font-weight:800">Joogaa</em>
+              </div>
+              <div style="background:#fff;border:1px solid #EBEFF6;border-radius:13px;padding:10px 11px;display:flex;align-items:center;gap:9px">
+                <span style="width:32px;height:32px;border-radius:50%;background:#EAF1FE;color:#2F6BF0;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none">SA</span>
+                <span style="flex:1;min-width:0"><strong style="display:block;font-size:11.5px;font-weight:700">Saadaqa Ahmed</strong><small style="font-size:9.5px;color:#7C8AA0;font-weight:600">Class 3</small></span>
+                <em style="font-style:normal;background:#E4F6EC;color:#16A34A;border-radius:8px;padding:4px 8px;font-size:9px;font-weight:800">Joogaa</em>
+              </div>
+              <div style="background:#fff;border:1px solid #EBEFF6;border-radius:13px;padding:10px 11px;display:flex;align-items:center;gap:9px">
+                <span style="width:32px;height:32px;border-radius:50%;background:#FBF1D9;color:#9A7A2E;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none">AY</span>
+                <span style="flex:1;min-width:0"><strong style="display:block;font-size:11.5px;font-weight:700">Amina Yonis</strong><small style="font-size:9.5px;color:#7C8AA0;font-weight:600">Form 3B</small></span>
+                <em style="font-style:normal;background:#FCEBEC;color:#E5484D;border-radius:8px;padding:4px 8px;font-size:9px;font-weight:800">Maqan</em>
+              </div>
+              <div style="background:#fff;border:1px solid #EBEFF6;border-radius:13px;padding:10px 11px;display:flex;align-items:center;gap:9px">
+                <span style="width:32px;height:32px;border-radius:50%;background:#FCEBEC;color:#E5484D;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none">AO</span>
+                <span style="flex:1;min-width:0"><strong style="display:block;font-size:11.5px;font-weight:700">Abdullahi Osman</strong><small style="font-size:9.5px;color:#7C8AA0;font-weight:600">Form 2D</small></span>
+                <em style="font-style:normal;background:#E4F6EC;color:#16A34A;border-radius:8px;padding:4px 8px;font-size:9px;font-weight:800">Joogaa</em>
+              </div>
+              <div style="background:#0A2E6B;color:#fff;border-radius:13px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;margin-top:2px">
+                <span style="font-size:10.5px;font-weight:700">Xaadiriska maanta</span>
+                <strong style="font-size:13px;font-weight:800;color:#7CE0A3">96%</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ABOUT + STATS ============ -->
+<sc-if value="{{ showStats }}" hint-placeholder-val="{{ true }}">
+<section data-screen-label="About" style="padding:76px 24px 66px">
+  <div style="max-width:860px;margin:0 auto;text-align:center">
+    <span style="display:inline-block;background:#16A34A;color:#fff;border-radius:999px;padding:7px 16px;font-size:11.5px;font-weight:800;transform:rotate(2deg)">Kobciye</span>
+    <h2 style="font-size:clamp(22px,2.4vw,30px);line-height:1.45;font-weight:700;margin:18px auto 0;color:#0F1B2D;max-width:760px;text-wrap:balance">Waxaan u heellanahay in dugsi kasta oo Soomaali ah uu helo nidaam casri ah, fudud oo lagu maamulo xogta ardayda — meel kasta iyo goor kasta.</h2>
+    <div style="display:flex;justify-content:center;gap:clamp(30px,6vw,80px);margin-top:44px;flex-wrap:wrap">
+      <div><strong style="display:block;font-size:clamp(34px,3.4vw,44px);font-weight:800;color:#0F1B2D;letter-spacing:-1px">500<span style="color:#16A34A">+</span></strong><small style="font-size:13px;font-weight:600;color:#7C8AA0">Arday oo diiwaan gashan<br>nidaamka Kobciye</small></div>
+      <div><strong style="display:block;font-size:clamp(34px,3.4vw,44px);font-weight:800;color:#0F1B2D;letter-spacing:-1px">50<span style="color:#CFAD5E">+</span></strong><small style="font-size:13px;font-weight:600;color:#7C8AA0">Dugsi oo isticmaala<br>maalin kasta</small></div>
+      <div><strong style="display:block;font-size:clamp(34px,3.4vw,44px);font-weight:800;color:#0F1B2D;letter-spacing:-1px">3</strong><small style="font-size:13px;font-weight:600;color:#7C8AA0">Magaalo oo uu<br>ka hawlgalo</small></div>
+    </div>
+  </div>
+</section>
+</sc-if>
+
+<!-- ============ FEATURES ============ -->
+<section id="features" data-screen-label="Nidaamyada" style="padding:30px 24px 90px">
+  <div style="max-width:1180px;margin:0 auto">
+    <span style="display:inline-block;background:#CFAD5E;color:#fff;border-radius:999px;padding:7px 16px;font-size:11.5px;font-weight:800;transform:rotate(-2deg)">Nidaamyada</span>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin:14px 0 34px;flex-wrap:wrap">
+      <h2 style="font-size:clamp(28px,3vw,40px);font-weight:800;letter-spacing:-1px;margin:0;color:#0F1B2D">Faa'iidooyinka Nidaamka <span style="color:#16A34A">Kobciye</span></h2>
+      <p style="margin:0;font-size:14.5px;color:#7C8AA0;font-weight:500;max-width:340px;text-wrap:pretty">Waa nidaam loo diyaariyay inuu daboolo baahiyaha gaarka ah ee xarumaha waxbarashada.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px">
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:26px;box-shadow:0 10px 26px rgba(11,37,73,.06);transition:transform .2s" style-hover="transform:translateY(-4px);box-shadow:0 18px 40px rgba(11,37,73,.1)">
+        <span style="width:50px;height:50px;border-radius:14px;background:#EAF1FE;display:grid;place-items:center;margin-bottom:16px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2F6BF0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+        <h3 style="margin:0 0 7px;font-size:17.5px;font-weight:800;color:#0F1B2D">Xogta Ardayda</h3>
+        <p style="margin:0;font-size:13.5px;line-height:1.6;color:#7C8AA0;font-weight:500;text-wrap:pretty">Diiwaangeli oo maamul xogta ardayda meel keliya — magac, fasal, waalid iyo taariikh oo dhan.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:26px;box-shadow:0 10px 26px rgba(11,37,73,.06);transition:transform .2s" style-hover="transform:translateY(-4px);box-shadow:0 18px 40px rgba(11,37,73,.1)">
+        <span style="width:50px;height:50px;border-radius:14px;background:#E4F6EC;display:grid;place-items:center;margin-bottom:16px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="m9 16 2 2 4-4"></path></svg></span>
+        <h3 style="margin:0 0 7px;font-size:17.5px;font-weight:800;color:#0F1B2D">Xaadiriska Ardayda</h3>
+        <p style="margin:0;font-size:13.5px;line-height:1.6;color:#7C8AA0;font-weight:500;text-wrap:pretty">Xaadiriska si fudud uga samee mobile-kaaga gacanta — uma baahnid inaad daabacdo waraaqo badan.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:26px;box-shadow:0 10px 26px rgba(11,37,73,.06);transition:transform .2s" style-hover="transform:translateY(-4px);box-shadow:0 18px 40px rgba(11,37,73,.1)">
+        <span style="width:50px;height:50px;border-radius:14px;background:#FBF1D9;display:grid;place-items:center;margin-bottom:16px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9A7A2E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></span>
+        <h3 style="margin:0 0 7px;font-size:17.5px;font-weight:800;color:#0F1B2D">Maaliyadda Dugsiga</h3>
+        <p style="margin:0;font-size:13.5px;line-height:1.6;color:#7C8AA0;font-weight:500;text-wrap:pretty">Ka rays buuggaagtii waaweynaa — si fudud u diiwaan geli lacag bixinta ardayda (Fee) iyo xisaabaadka dugsiga.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:26px;box-shadow:0 10px 26px rgba(11,37,73,.06);transition:transform .2s" style-hover="transform:translateY(-4px);box-shadow:0 18px 40px rgba(11,37,73,.1)">
+        <span style="width:50px;height:50px;border-radius:14px;background:#EAF1FE;display:grid;place-items:center;margin-bottom:16px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2F6BF0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"></path></svg></span>
+        <h3 style="margin:0 0 7px;font-size:17.5px;font-weight:800;color:#0F1B2D">Imtixaannaadka</h3>
+        <p style="margin:0;font-size:13.5px;line-height:1.6;color:#7C8AA0;font-weight:500;text-wrap:pretty">Uma baahnid in macalin kastaa maaddadiisa Excel ku soo qoro — nidaamku isku kaa gaynaya xogta imtixaannada.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:26px;box-shadow:0 10px 26px rgba(11,37,73,.06);transition:transform .2s" style-hover="transform:translateY(-4px);box-shadow:0 18px 40px rgba(11,37,73,.1)">
+        <span style="width:50px;height:50px;border-radius:14px;background:#E4F6EC;display:grid;place-items:center;margin-bottom:16px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
+        <h3 style="margin:0 0 7px;font-size:17.5px;font-weight:800;color:#0F1B2D">Amniga Xogta</h3>
+        <p style="margin:0;font-size:13.5px;line-height:1.6;color:#7C8AA0;font-weight:500;text-wrap:pretty">Xogtaadu waa ammaan — door kasta wuxuu arkaa oo keliya wixii loo oggol yahay.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:26px;box-shadow:0 10px 26px rgba(11,37,73,.06);transition:transform .2s" style-hover="transform:translateY(-4px);box-shadow:0 18px 40px rgba(11,37,73,.1)">
+        <span style="width:50px;height:50px;border-radius:14px;background:#FBF1D9;display:grid;place-items:center;margin-bottom:16px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9A7A2E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4 7 17M17 7l1.4-1.4"></path><circle cx="12" cy="12" r="4"></circle></svg></span>
+        <h3 style="margin:0 0 7px;font-size:17.5px;font-weight:800;color:#0F1B2D">AI Advisor</h3>
+        <p style="margin:0;font-size:13.5px;line-height:1.6;color:#7C8AA0;font-weight:500;text-wrap:pretty">Talooyin caqli-gal ah oo ku saleysan xogta dugsiga — kaaga caawiya go'aan-gaarista.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IMTIXAANNADA & LACAGAHA ============ -->
+<section id="imtixaannada" data-screen-label="Imtixaannada iyo Lacagaha" style="background:linear-gradient(160deg,#FBF1D9 0%,#F4F7FC 55%,#EAF1FE 100%);padding:90px 24px">
+  <div style="max-width:1180px;margin:0 auto">
+    <div style="text-align:center;max-width:640px;margin:0 auto 28px">
+      <span style="display:inline-block;background:#16A34A;color:#fff;border-radius:999px;padding:7px 16px;font-size:11.5px;font-weight:800;transform:rotate(2deg)">Imtixaanno &amp; Lacago</span>
+      <h2 style="font-size:clamp(28px,3vw,40px);font-weight:800;letter-spacing:-1px;margin:14px 0 10px;color:#0F1B2D;text-wrap:balance">Imtixaannada iyo Lacagaha — Meel Keliya</h2>
+      <p style="margin:0;font-size:14.5px;color:#7C8AA0;font-weight:500;text-wrap:pretty">Natiijooyinka imtixaannada iyo lacag bixinta ardayda — labadaba si habaysan oo toos ah ayaad u aragtaa.</p>
+    </div>
+    <div style="display:flex;justify-content:center;gap:10px;margin-bottom:36px">
+      <button onClick="{{ showExamsTab }}" style="{{ examsTabStyle }}">📝 Imtixaannada</button>
+      <button onClick="{{ showPaymentsTab }}" style="{{ paymentsTabStyle }}">💵 Lacagaha</button>
+    </div>
+
+    <sc-if value="{{ viewExams }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:880px;margin:0 auto">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">
+        <div style="background:#fff;border:1px solid #EBEFF6;border-radius:16px;padding:18px;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05)"><strong style="display:block;font-size:24px;font-weight:800;color:#0A2E6B">78%</strong><small style="font-size:12px;font-weight:700;color:#7C8AA0">Celceliska Guud</small></div>
+        <div style="background:#fff;border:1px solid #EBEFF6;border-radius:16px;padding:18px;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05)"><strong style="display:block;font-size:24px;font-weight:800;color:#16A34A">92%</strong><small style="font-size:12px;font-weight:700;color:#7C8AA0">Gudbay</small></div>
+        <div style="background:#fff;border:1px solid #EBEFF6;border-radius:16px;padding:18px;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05)"><strong style="display:block;font-size:24px;font-weight:800;color:#9A7A2E">12</strong><small style="font-size:12px;font-weight:700;color:#7C8AA0">Imtixaan · Term 1</small></div>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;overflow:hidden;box-shadow:0 10px 26px rgba(11,37,73,.06)">
+        <div style="background:#0A2E6B;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between"><strong style="font-size:14px;font-weight:800">Natiijada Imtixaanka · Form 4A · Term 1</strong><span style="font-size:11.5px;font-weight:700;color:#CFAD5E">La daabacay ✓</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #EBEFF6">
+          <span style="width:38px;height:38px;border-radius:50%;background:#E4F6EC;color:#16A34A;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none">MA</span>
+          <span style="flex:1;min-width:0"><strong style="display:block;font-size:13.5px;font-weight:700;color:#0F1B2D">Mustafa Ali</strong><small style="font-size:11.5px;color:#7C8AA0;font-weight:600">Wadarta: 452/500</small></span>
+          <strong style="font-size:14px;font-weight:800;color:#0A2E6B">90%</strong>
+          <em style="font-style:normal;background:#E4F6EC;color:#16A34A;border-radius:8px;padding:5px 11px;font-size:11px;font-weight:800">A · Gudbay</em>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #EBEFF6">
+          <span style="width:38px;height:38px;border-radius:50%;background:#EAF1FE;color:#2F6BF0;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none">SA</span>
+          <span style="flex:1;min-width:0"><strong style="display:block;font-size:13.5px;font-weight:700;color:#0F1B2D">Saadaqa Ahmed</strong><small style="font-size:11.5px;color:#7C8AA0;font-weight:600">Wadarta: 411/500</small></span>
+          <strong style="font-size:14px;font-weight:800;color:#0A2E6B">82%</strong>
+          <em style="font-style:normal;background:#E4F6EC;color:#16A34A;border-radius:8px;padding:5px 11px;font-size:11px;font-weight:800">B · Gudbay</em>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #EBEFF6">
+          <span style="width:38px;height:38px;border-radius:50%;background:#FBF1D9;color:#9A7A2E;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none">AY</span>
+          <span style="flex:1;min-width:0"><strong style="display:block;font-size:13.5px;font-weight:700;color:#0F1B2D">Amina Yonis</strong><small style="font-size:11.5px;color:#7C8AA0;font-weight:600">Wadarta: 376/500</small></span>
+          <strong style="font-size:14px;font-weight:800;color:#0A2E6B">75%</strong>
+          <em style="font-style:normal;background:#E4F6EC;color:#16A34A;border-radius:8px;padding:5px 11px;font-size:11px;font-weight:800">B · Gudbay</em>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 20px">
+          <span style="width:38px;height:38px;border-radius:50%;background:#FCEBEC;color:#E5484D;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none">AO</span>
+          <span style="flex:1;min-width:0"><strong style="display:block;font-size:13.5px;font-weight:700;color:#0F1B2D">Abdullahi Osman</strong><small style="font-size:11.5px;color:#7C8AA0;font-weight:600">Wadarta: 244/500</small></span>
+          <strong style="font-size:14px;font-weight:800;color:#0A2E6B">49%</strong>
+          <em style="font-style:normal;background:#FCEBEC;color:#E5484D;border-radius:8px;padding:5px 11px;font-size:11px;font-weight:800">D · Dib u qaad</em>
+        </div>
+      </div>
+      <p style="margin:16px 0 0;text-align:center;font-size:13px;color:#7C8AA0;font-weight:600">Macalin kastaa buundooyinkiisa toos ayuu u geliyaa — nidaamku isku daraa natiijada, waalidkuna wuu arkaa markii la daabaco.</p>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ viewPayments }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:880px;margin:0 auto">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">
+        <div style="background:#fff;border:1px solid #EBEFF6;border-radius:16px;padding:18px;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05)"><strong style="display:block;font-size:24px;font-weight:800;color:#16A34A">$1,240</strong><small style="font-size:12px;font-weight:700;color:#7C8AA0">La Ururiyay · Bishan</small></div>
+        <div style="background:#fff;border:1px solid #EBEFF6;border-radius:16px;padding:18px;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05)"><strong style="display:block;font-size:24px;font-weight:800;color:#E5484D">$180</strong><small style="font-size:12px;font-weight:700;color:#7C8AA0">La Sugayaa</small></div>
+        <div style="background:#fff;border:1px solid #EBEFF6;border-radius:16px;padding:18px;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05)"><strong style="display:block;font-size:24px;font-weight:800;color:#0A2E6B">96</strong><small style="font-size:12px;font-weight:700;color:#7C8AA0">Rasiid · Bishan</small></div>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;overflow:hidden;box-shadow:0 10px 26px rgba(11,37,73,.06)">
+        <div style="background:#16A34A;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between"><strong style="font-size:14px;font-weight:800">Lacag Bixinta Ardayda · Juun 2026</strong><span style="font-size:11.5px;font-weight:700;color:rgba(255,255,255,.85)">Fee-ga Bisha</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #EBEFF6">
+          <span style="width:38px;height:38px;border-radius:50%;background:#E4F6EC;color:#16A34A;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none">MA</span>
+          <span style="flex:1;min-width:0"><strong style="display:block;font-size:13.5px;font-weight:700;color:#0F1B2D">Mustafa Ali</strong><small style="font-size:11.5px;color:#7C8AA0;font-weight:600">Form 4A · Rasiid #0142</small></span>
+          <strong style="font-size:14px;font-weight:800;color:#0F1B2D">$15</strong>
+          <em style="font-style:normal;background:#E4F6EC;color:#16A34A;border-radius:8px;padding:5px 11px;font-size:11px;font-weight:800">✓ La bixiyay</em>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #EBEFF6">
+          <span style="width:38px;height:38px;border-radius:50%;background:#EAF1FE;color:#2F6BF0;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none">SA</span>
+          <span style="flex:1;min-width:0"><strong style="display:block;font-size:13.5px;font-weight:700;color:#0F1B2D">Saadaqa Ahmed</strong><small style="font-size:11.5px;color:#7C8AA0;font-weight:600">Class 3 · Rasiid #0143</small></span>
+          <strong style="font-size:14px;font-weight:800;color:#0F1B2D">$12</strong>
+          <em style="font-style:normal;background:#E4F6EC;color:#16A34A;border-radius:8px;padding:5px 11px;font-size:11px;font-weight:800">✓ La bixiyay</em>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #EBEFF6">
+          <span style="width:38px;height:38px;border-radius:50%;background:#FBF1D9;color:#9A7A2E;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none">AY</span>
+          <span style="flex:1;min-width:0"><strong style="display:block;font-size:13.5px;font-weight:700;color:#0F1B2D">Amina Yonis</strong><small style="font-size:11.5px;color:#7C8AA0;font-weight:600">Form 3B · Rasiid #0144</small></span>
+          <strong style="font-size:14px;font-weight:800;color:#0F1B2D">$15</strong>
+          <em style="font-style:normal;background:#FCEBEC;color:#E5484D;border-radius:8px;padding:5px 11px;font-size:11px;font-weight:800">⏳ Sugaya</em>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 20px">
+          <span style="width:38px;height:38px;border-radius:50%;background:#FCEBEC;color:#E5484D;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none">AO</span>
+          <span style="flex:1;min-width:0"><strong style="display:block;font-size:13.5px;font-weight:700;color:#0F1B2D">Abdullahi Osman</strong><small style="font-size:11.5px;color:#7C8AA0;font-weight:600">Form 2D · Rasiid #0145</small></span>
+          <strong style="font-size:14px;font-weight:800;color:#0F1B2D">$15</strong>
+          <em style="font-style:normal;background:#E4F6EC;color:#16A34A;border-radius:8px;padding:5px 11px;font-size:11px;font-weight:800">✓ La bixiyay</em>
+        </div>
+      </div>
+      <p style="margin:16px 0 0;text-align:center;font-size:13px;color:#7C8AA0;font-weight:600">Rasiid kasta si toos ah ayaa loo diiwaan geliyaa — buuggaagtii waaweynaa way dhammaadeen.</p>
+    </div>
+    </sc-if>
+  </div>
+</section>
+
+<!-- ============ QIIMAHA (pricing) ============ -->
+<section id="qiimaha" data-screen-label="Qiimaha" style="padding:90px 24px">
+  <div style="max-width:1080px;margin:0 auto">
+    <div style="text-align:center;max-width:640px;margin:0 auto 30px">
+      <span style="display:inline-block;background:#CFAD5E;color:#fff;border-radius:999px;padding:7px 16px;font-size:11.5px;font-weight:800;transform:rotate(-2deg)">Qiimaha</span>
+      <h2 style="font-size:clamp(28px,3vw,40px);font-weight:800;letter-spacing:-1px;margin:14px 0 10px;color:#0F1B2D">Qiimaha Barnaamijka <span style="color:#16A34A">Kobciye</span></h2>
+      <p style="margin:0;font-size:14.5px;color:#7C8AA0;font-weight:500;text-wrap:pretty">Qiimuhu wuxuu ku xidhan yahay tirada ardayda firfircoon — bil kasta ayaad bixisaa, heshiis dheer lama rabo.</p>
+    </div>
+
+    <sc-if value="{{ showFreeBanner }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:560px;margin:0 auto 40px;background:linear-gradient(180deg,#13458F,#0A2E6B);color:#fff;border-radius:16px;padding:16px 22px;display:flex;align-items:center;gap:14px;box-shadow:0 14px 30px rgba(10,46,107,.25)">
+      <span style="font-size:24px">🎁</span>
+      <span><strong style="display:block;font-size:15px;font-weight:800">1 Bil Bilaash Ah!</strong><small style="font-size:12.5px;color:rgba(255,255,255,.75);font-weight:600">Tijaabi dhammaan nidaamyada — lacag la'aan, xaddid la'aan.</small></span>
+    </div>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:28px;align-items:stretch">
+      <!-- small schools -->
+      <div style="position:relative;background:#fff;border:1px solid #EBEFF6;border-radius:22px;padding:140px 30px 30px;box-shadow:0 16px 40px rgba(11,37,73,.08)">
+        <div style="position:absolute;top:36px;left:50%;transform:translateX(-50%) rotate(45deg);width:104px;height:104px;border-radius:22px;background:#0F1B2D;display:grid;place-items:center;box-shadow:0 16px 28px rgba(0,0,0,.22)">
+          <span style="transform:rotate(-45deg);text-align:center;line-height:1.1"><strong style="display:block;color:#4ADE80;font-size:22px;font-weight:800">$0.07</strong><small style="color:#C9D3E4;font-size:10.5px;font-weight:600">arday/bishii</small></span>
+        </div>
+        <h3 style="margin:0 0 6px;font-size:22px;font-weight:800;text-align:center;color:#0F1B2D">Dugsiyada Yar-Yar</h3>
+        <p style="margin:0 0 14px;text-align:center;font-size:13px;font-weight:800;color:#2F6BF0">👥 Ilaa 500 Arday</p>
+        <div style="background:#E4F6EC;border:1px solid #C8F2D8;border-radius:12px;padding:12px 14px;text-align:center;font-size:12.5px;font-weight:700;color:#16884C;margin-bottom:20px">🎁 500 arday × $0.07 = $35/bishii</div>
+        <h4 style="margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:.08em;color:#7C8AA0">NIDAAMYADA AAD KA DHEX HELAYSO:</h4>
+        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Nidaamka Xaadirinta</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Nidaamka Imtixaannaadka</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Warbixinaha Ardayga</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Ururinta Fee-ga</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Nidaamka Xisaabaadka</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Akoonka Ardayga &amp; Waalidka</li>
+        </ul>
+      </div>
+      <!-- large schools -->
+      <div style="position:relative;background:#fff;border:2.5px solid #0A2E6B;border-radius:22px;padding:140px 30px 30px;box-shadow:0 20px 48px rgba(10,46,107,.14)">
+        <span style="position:absolute;top:-14px;right:26px;background:#CFAD5E;color:#fff;border-radius:999px;padding:7px 15px;font-size:11px;font-weight:800;box-shadow:0 6px 14px rgba(154,122,46,.3)">★ UGU CAANSAN</span>
+        <div style="position:absolute;top:36px;left:50%;transform:translateX(-50%) rotate(45deg);width:104px;height:104px;border-radius:22px;background:#0A2E6B;display:grid;place-items:center;box-shadow:0 16px 28px rgba(10,46,107,.35)">
+          <span style="transform:rotate(-45deg);text-align:center;line-height:1.1"><strong style="display:block;color:#4ADE80;font-size:22px;font-weight:800">$0.10</strong><small style="color:#C9D3E4;font-size:10.5px;font-weight:600">arday/bishii</small></span>
+        </div>
+        <h3 style="margin:0 0 6px;font-size:22px;font-weight:800;text-align:center;color:#0F1B2D">Dugsiyada Waaweyn</h3>
+        <p style="margin:0 0 14px;text-align:center;font-size:13px;font-weight:800;color:#2F6BF0">👥 Arday Xaddidlaan</p>
+        <div style="background:#E4F6EC;border:1px solid #C8F2D8;border-radius:12px;padding:12px 14px;text-align:center;font-size:12.5px;font-weight:700;color:#16884C;margin-bottom:20px">🎁 500 arday × $0.10 = $50/bishii</div>
+        <h4 style="margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:.08em;color:#7C8AA0">NIDAAMYADA AAD KA DHEX HELAYSO:</h4>
+        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px">
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Dhammaan qorshaha Yar-Yar</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>AI Advisor</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Faracyada Dugsiga (3)</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Multi-school &amp; Warbixinno</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>Taageero gaar ah</li>
+          <li style="display:flex;gap:9px;font-size:13.5px;font-weight:600;color:#3A4A60"><span style="color:#16A34A;font-weight:800">✓</span>API access</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq" data-screen-label="FAQ" style="padding:80px 24px;background:#F4F7FC">
+  <div style="max-width:1080px;margin:0 auto;display:grid;grid-template-columns:minmax(260px,.8fr) 1.2fr;gap:50px;align-items:start">
+    <div>
+      <span style="display:inline-block;background:#CFAD5E;color:#fff;border-radius:999px;padding:7px 16px;font-size:11.5px;font-weight:800;transform:rotate(-2deg)">FAQ</span>
+      <h2 style="font-size:clamp(26px,2.8vw,36px);font-weight:800;letter-spacing:-1px;margin:14px 0 12px;color:#0F1B2D;text-wrap:balance">Su'aalaha Badanaa La Weydiiyo</h2>
+      <p style="margin:0;font-size:14px;line-height:1.65;color:#7C8AA0;font-weight:500;text-wrap:pretty">Su'aal kale ma qabtaa? Nagala soo xidhiidh WhatsApp — waan kaga jawaabaynaa sida ugu dhakhsaha badan.</p>
+      <a href="https://wa.me/252637373367" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;margin-top:18px;background:#16A34A;color:#fff;text-decoration:none;border-radius:11px;padding:12px 20px;font-weight:800;font-size:13.5px">WhatsApp nagala hadal</a>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:14px;overflow:hidden">
+        <div onClick="{{ toggleFaq0 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;cursor:pointer;font-weight:700;font-size:14.5px;color:#0F1B2D">Sideen ku bilaabaa Kobciye?<span style="color:#CFAD5E;font-weight:800;font-size:18px">{{ faqSym0 }}</span></div>
+        <sc-if value="{{ faq0 }}" hint-placeholder-val="{{ true }}"><div style="padding:0 20px 18px;font-size:13.5px;line-height:1.65;color:#7C8AA0;font-weight:500">Guji "Diiwaan geli Dugsigaaga", buuxi macluumaadka dugsigaaga, kadibna waxaad helaysaa 1 bil oo bilaash ah si aad u tijaabiso dhammaan nidaamyada.</div></sc-if>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:14px;overflow:hidden">
+        <div onClick="{{ toggleFaq1 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;cursor:pointer;font-weight:700;font-size:14.5px;color:#0F1B2D">Immisa ayuu qiimuhu yahay?<span style="color:#CFAD5E;font-weight:800;font-size:18px">{{ faqSym1 }}</span></div>
+        <sc-if value="{{ faq1 }}" hint-placeholder-val="{{ false }}"><div style="padding:0 20px 18px;font-size:13.5px;line-height:1.65;color:#7C8AA0;font-weight:500">Dugsiyada yar-yar waa $0.07 arday kasta bishii, dugsiyada waaweyn waa $0.10. Waxaad bixisaa oo keliya ardayda firfircoon — arday baxay lacag laguma qaado.</div></sc-if>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:14px;overflow:hidden">
+        <div onClick="{{ toggleFaq2 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;cursor:pointer;font-weight:700;font-size:14.5px;color:#0F1B2D">Bil bilaash ah ma jirtaa?<span style="color:#CFAD5E;font-weight:800;font-size:18px">{{ faqSym2 }}</span></div>
+        <sc-if value="{{ faq2 }}" hint-placeholder-val="{{ false }}"><div style="padding:0 20px 18px;font-size:13.5px;line-height:1.65;color:#7C8AA0;font-weight:500">Haa — bishii ugu horreysay waa bilaash buuxa, xaddid la'aan. Kadib ayaad go'aansataa inaad sii waddo.</div></sc-if>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:14px;overflow:hidden">
+        <div onClick="{{ toggleFaq3 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;cursor:pointer;font-weight:700;font-size:14.5px;color:#0F1B2D">Xogta ardaydu ma ammaan baa?<span style="color:#CFAD5E;font-weight:800;font-size:18px">{{ faqSym3 }}</span></div>
+        <sc-if value="{{ faq3 }}" hint-placeholder-val="{{ false }}"><div style="padding:0 20px 18px;font-size:13.5px;line-height:1.65;color:#7C8AA0;font-weight:500">Haa. Dugsi kasta xogtiisu waa gooni, doorna (macalin, waalid, arday...) wuxuu arkaa oo keliya wixii loo oggol yahay.</div></sc-if>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:14px;overflow:hidden">
+        <div onClick="{{ toggleFaq4 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;cursor:pointer;font-weight:700;font-size:14.5px;color:#0F1B2D">Ma u baahanahay computer?<span style="color:#CFAD5E;font-weight:800;font-size:18px">{{ faqSym4 }}</span></div>
+        <sc-if value="{{ faq4 }}" hint-placeholder-val="{{ false }}"><div style="padding:0 20px 18px;font-size:13.5px;line-height:1.65;color:#7C8AA0;font-weight:500">Maya — Kobciye wuxuu ku shaqeeyaa mobile-kaaga gacanta (iOS &amp; Android) iyo computer-ka labadaba. Wax walba meel kasta ayaad ka maamuli kartaa.</div></sc-if>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:14px;overflow:hidden">
+        <div onClick="{{ toggleFaq5 }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;cursor:pointer;font-weight:700;font-size:14.5px;color:#0F1B2D">Ma joojin karaa markaan rabo?<span style="color:#CFAD5E;font-weight:800;font-size:18px">{{ faqSym5 }}</span></div>
+        <sc-if value="{{ faq5 }}" hint-placeholder-val="{{ false }}"><div style="padding:0 20px 18px;font-size:13.5px;line-height:1.65;color:#7C8AA0;font-weight:500">Haa — heshiis dheer ma jiro. Bil kasta ayaad bixisaa, goor kastana waad joojin kartaa.</div></sc-if>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ XIRIIR (contact) ============ -->
+<section id="xiriir" data-screen-label="Xiriir" style="padding:90px 24px 80px">
+  <div style="max-width:1080px;margin:0 auto">
+    <div style="text-align:center;max-width:600px;margin:0 auto 40px">
+      <span style="display:inline-block;background:#16A34A;color:#fff;border-radius:999px;padding:7px 16px;font-size:11.5px;font-weight:800;transform:rotate(2deg)">Nala Soo Xidhiidh</span>
+      <h2 style="font-size:clamp(28px,3vw,40px);font-weight:800;letter-spacing:-1px;margin:14px 0 10px;color:#0F1B2D">Nala Soo <span style="color:#16A34A">Xidhiidh</span></h2>
+      <p style="margin:0;font-size:14.5px;color:#7C8AA0;font-weight:500">Su'aalo ma qabtaa ama caawimo ma u baahan tahay? Kobciye team-ku wuu diyaar yahay.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px">
+      <a onClick="{{ contactWhatsApp }}" style="text-decoration:none;background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05);cursor:pointer" style-hover="box-shadow:0 14px 32px rgba(11,37,73,.1)">
+        <span style="width:60px;height:60px;border-radius:50%;background:#E4F6EC;display:grid;place-items:center;font-size:26px;margin-bottom:14px">💬</span>
+        <strong style="font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#7C8AA0">WHATSAPP</strong>
+        <p style="margin:6px 0 0;font-size:14.5px;font-weight:800;color:#0F1B2D">+252 63 7373367</p>
+      </a>
+      <a href="tel:+2527373367" style="text-decoration:none;background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05)" style-hover="box-shadow:0 14px 32px rgba(11,37,73,.1)">
+        <span style="width:60px;height:60px;border-radius:50%;background:#EAF1FE;display:grid;place-items:center;font-size:26px;margin-bottom:14px">📞</span>
+        <strong style="font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#7C8AA0">TELEFOON</strong>
+        <p style="margin:6px 0 0;font-size:14.5px;font-weight:800;color:#0F1B2D">+252 7373367</p>
+      </a>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05)">
+        <span style="width:60px;height:60px;border-radius:50%;background:#FBF1D9;display:grid;place-items:center;font-size:26px;margin-bottom:14px">📍</span>
+        <strong style="font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#7C8AA0">GOOBTA</strong>
+        <p style="margin:6px 0 0;font-size:14.5px;font-weight:800;color:#0F1B2D">Gabiley, Somaliland</p>
+      </div>
+      <div style="background:#fff;border:1px solid #EBEFF6;border-radius:18px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 8px 20px rgba(11,37,73,.05)">
+        <span style="width:60px;height:60px;border-radius:50%;background:#FCEBEC;display:grid;place-items:center;font-size:26px;margin-bottom:14px">👤</span>
+        <strong style="font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#7C8AA0">AASAASAHA</strong>
+        <p style="margin:6px 0 0;font-size:14.5px;font-weight:800;color:#0F1B2D">Ismail Abdirahman Ahmed</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section data-screen-label="CTA" style="padding:0 24px 90px">
+  <div style="max-width:1080px;margin:0 auto;background:linear-gradient(120deg,#0A2E6B 0%,#13458F 100%);border-radius:26px;padding:clamp(36px,5vw,60px);display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap;position:relative;overflow:hidden">
+    <div aria-hidden="true" style="position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(207,173,94,.18)"></div>
+    <div aria-hidden="true" style="position:absolute;right:90px;bottom:-60px;width:130px;height:130px;border-radius:50%;background:rgba(22,163,74,.22)"></div>
+    <div style="max-width:520px">
+      <h2 style="margin:0 0 10px;font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.8px;color:#fff;text-wrap:balance">Diyaar ma u tahay inaad dugsigaaga casriyayso?</h2>
+      <p style="margin:0;font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.75);font-weight:500">Bilow maanta — bishii ugu horreysay waa bilaash buuxa.</p>
+    </div>
+    <button onClick="{{ openLoginModal }}" style="position:relative;border:0;background:#CFAD5E;color:#0F1B2D;padding:17px 30px;border-radius:13px;font-weight:800;font-size:15.5px;cursor:pointer;font-family:inherit;box-shadow:0 12px 26px rgba(0,0,0,.25)" style-hover="background:#DDBB6C">Gal akoonkaga →</button>
+  </div>
+</section>
+
+<!-- ============ WHATSAPP FLOAT ============ -->
+<a onClick="{{ contactWhatsApp }}" style="position:fixed;right:24px;bottom:24px;z-index:50;width:56px;height:56px;border-radius:50%;background:#25D366;display:grid;place-items:center;box-shadow:0 6px 20px rgba(37,211,102,.4);cursor:pointer;text-decoration:none" style-hover="transform:scale(1.08)">
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c-.001 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+</a>
+
+<!-- ============ FOOTER ============ -->
+<footer data-screen-label="Footer" style="background:linear-gradient(180deg,#0B3572,#071D3A);color:#fff;padding:64px 24px 0">
+  <div style="max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:40px;padding-bottom:44px">
+    <div>
+      <img src="assets/kobciye-logo-white.png" alt="Kobciye — Management System" style="height:42px;width:auto;display:block">
+      <p style="margin:16px 0 0;font-size:13.5px;line-height:1.65;color:rgba(255,255,255,.65);font-weight:500;max-width:280px;text-wrap:pretty">Cloud-Based School Management System — dugsigaaga si casri ah u maamul, meel kasta iyo goor kasta. <strong style="display:block;margin-top:12px;font-size:13.5px">Fahiyeyaha: Ismail Abdirahmaan Ahmed</strong></p>
+    </div>
+    <div>
+      <h4 style="margin:0 0 16px;font-size:13px;font-weight:800;letter-spacing:.06em;color:#CFAD5E">NIDAAMYADA</h4>
+      <nav style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;font-weight:600">
+        <a href="#features" style="color:rgba(255,255,255,.75);text-decoration:none" style-hover="color:#fff">Xaadiriska</a>
+        <a href="#features" style="color:rgba(255,255,255,.75);text-decoration:none" style-hover="color:#fff">Imtixaannaadka</a>
+        <a href="#features" style="color:rgba(255,255,255,.75);text-decoration:none" style-hover="color:#fff">Maaliyadda</a>
+        <a href="#features" style="color:rgba(255,255,255,.75);text-decoration:none" style-hover="color:#fff">AI Advisor</a>
+      </nav>
+    </div>
+    <div>
+      <h4 style="margin:0 0 16px;font-size:13px;font-weight:800;letter-spacing:.06em;color:#CFAD5E">IMTIXAANNADA</h4>
+      <nav style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;font-weight:600">
+        <a href="#imtixaannada" style="color:rgba(255,255,255,.75);text-decoration:none" style-hover="color:#fff">Natiijooyinka</a>
+        <a href="#imtixaannada" style="color:rgba(255,255,255,.75);text-decoration:none" style-hover="color:#fff">Lacagaha</a>
+        <a href="#imtixaannada" style="color:rgba(255,255,255,.75);text-decoration:none" style-hover="color:#fff">Rasiidyada</a>
+        <a href="#imtixaannada" style="color:rgba(255,255,255,.75);text-decoration:none" style-hover="color:#fff">Warbixinnada</a>
+      </nav>
+    </div>
+    <div>
+      <h4 style="margin:0 0 16px;font-size:13px;font-weight:800;letter-spacing:.06em;color:#CFAD5E">XIRIIRKA</h4>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;font-weight:600;color:rgba(255,255,255,.75)">
+        <span>📍 Gabiley, Somaliland</span>
+        <a onClick="{{ contactWhatsApp }}" style="color:rgba(255,255,255,.75);text-decoration:none;cursor:pointer" style-hover="color:#fff">💬 +252 63 7373367</a>
+        <a href="tel:+2527373367" style="color:rgba(255,255,255,.75);text-decoration:none" style-hover="color:#fff">📞 +252 7373367</a>
+      </div>
+    </div>
+  </div>
+  <div style="border-top:1px solid rgba(255,255,255,.12)">
+    <div style="max-width:1180px;margin:0 auto;padding:20px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12.5px;color:rgba(255,255,255,.5);font-weight:500">
+      <span>© 2026 Kobciye. Dhammaan xuquuqda way ilaalisan yihiin.</span>
+      <span>Waxaa aasaasay Ismail Abdirahman Ahmed · Gabiley</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ REGISTER MODAL (WhatsApp enquiry — unchanged) ============ -->
+<sc-if value="{{ registerModalOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeAllModals }}" style="position:fixed;inset:0;background:rgba(5,18,40,.52);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s ease">
+    <div onClick="{{ stopClick }}" style="width:min(440px,100%);background:#fff;border-radius:22px;padding:30px;position:relative;box-shadow:0 30px 90px rgba(0,0,0,.3);animation:modalIn .3s ease">
+      <button onClick="{{ closeAllModals }}" aria-label="Xidh" style="position:absolute;right:14px;top:12px;border:0;background:#EDF2F7;border-radius:50%;width:34px;height:34px;font-size:18px;cursor:pointer;color:#3A4A60">×</button>
+
+      <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+        <div style="text-align:center;padding:20px 0">
+          <span style="display:inline-grid;place-items:center;width:66px;height:66px;border-radius:50%;background:#E4F6EC;font-size:30px;margin-bottom:16px">✅</span>
+          <h3 style="margin:0 0 8px;font-size:20px;font-weight:800;color:#0F1B2D">WhatsApp waa la furay!</h3>
+          <p style="margin:0;font-size:14px;line-height:1.6;color:#7C8AA0;font-weight:500">Codsigaaga WhatsApp ayuu u furmay. Fadlan taabo Send si Kobciye uu kuu soo gaaro.</p>
+          <button onClick="{{ closeAllModals }}" style="margin-top:20px;border:0;background:#0A2E6B;color:#fff;border-radius:12px;padding:13px 26px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">Waa hagaag</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showRegisterForm }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <h3 style="margin:0 0 4px;font-size:21px;font-weight:800;color:#0F1B2D">Diiwaan geli Dugsigaaga</h3>
+          <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#7C8AA0;font-weight:500">Diiwaangelinta rasmiga ah waxaa sameeya Kobciye Super Admin. Buuxi xogtan, kadib WhatsApp ayay noogu soo diyaaraysaa.</p>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input placeholder="Magaca Dugsiga *" value="{{ enqSchool }}" onChange="{{ setEnqSchool }}" style="width:100%;box-sizing:border-box;border:1.5px solid #EBEFF6;border-radius:12px;padding:14px;font-size:14px;font-family:inherit;outline:none" style-focus="border-color:#0A2E6B">
+            <input placeholder="Magaalada / Goobta *" value="{{ enqLocation }}" onChange="{{ setEnqLocation }}" style="width:100%;box-sizing:border-box;border:1.5px solid #EBEFF6;border-radius:12px;padding:14px;font-size:14px;font-family:inherit;outline:none" style-focus="border-color:#0A2E6B">
+            <input placeholder="Qofka La Xiriirayo (magaca buuxa) *" value="{{ enqContact }}" onChange="{{ setEnqContact }}" style="width:100%;box-sizing:border-box;border:1.5px solid #EBEFF6;border-radius:12px;padding:14px;font-size:14px;font-family:inherit;outline:none" style-focus="border-color:#0A2E6B">
+            <input placeholder="Telefoonka *" type="tel" value="{{ enqPhone }}" onChange="{{ setEnqPhone }}" style="width:100%;box-sizing:border-box;border:1.5px solid #EBEFF6;border-radius:12px;padding:14px;font-size:14px;font-family:inherit;outline:none" style-focus="border-color:#0A2E6B">
+            <input placeholder="Email (ikhtiyaari)" type="email" value="{{ enqEmail }}" onChange="{{ setEnqEmail }}" style="width:100%;box-sizing:border-box;border:1.5px solid #EBEFF6;border-radius:12px;padding:14px;font-size:14px;font-family:inherit;outline:none" style-focus="border-color:#0A2E6B">
+            <input placeholder="Tirada qiyaasta ardayda (ikhtiyaari)" type="number" value="{{ enqStudents }}" onChange="{{ setEnqStudents }}" style="width:100%;box-sizing:border-box;border:1.5px solid #EBEFF6;border-radius:12px;padding:14px;font-size:14px;font-family:inherit;outline:none" style-focus="border-color:#0A2E6B">
+            <textarea placeholder="Faahfaahin dheeraad ah (ikhtiyaari)" value="{{ enqNotes }}" onChange="{{ setEnqNotes }}" rows="2" style="width:100%;box-sizing:border-box;border:1.5px solid #EBEFF6;border-radius:12px;padding:14px;font-size:14px;font-family:inherit;outline:none;resize:vertical"></textarea>
+          </div>
+          <sc-if value="{{ enqErr }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:10px 0 0;font-size:12.5px;color:#E5484D;font-weight:700">{{ enqErr }}</p>
+          </sc-if>
+          <button onClick="{{ submitEnquiry }}" style="width:100%;border:0;background:#16A34A;color:#fff;border-radius:12px;padding:15px;margin-top:14px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;box-shadow:0 10px 20px rgba(22,163,74,.25);display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#15954C">💬 U dir WhatsApp</button>
+          <p style="margin:14px 0 0;text-align:center;font-size:13px;color:#7C8AA0;font-weight:600">Horey akoon u leedahay? <a onClick="{{ showTeacherLogin }}" style="color:#0A2E6B;font-weight:800;cursor:pointer">Login</a></p>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ LOGIN MODAL — Teacher/Staff ============ -->
+<sc-if value="{{ loginTeacherOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeAllModals }}" style="position:fixed;inset:0;background:rgba(5,18,40,.52);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s ease">
+    <div onClick="{{ stopClick }}" style="width:min(440px,100%);background:#fff;border-radius:18px;overflow:hidden;position:relative;box-shadow:0 30px 90px rgba(0,0,0,.3);animation:modalIn .3s ease">
+      <!-- dark header bar -->
+      <div style="background:#0A2E6B;padding:18px 22px;display:flex;align-items:center;justify-content:space-between">
+        <h3 style="margin:0;font-size:17px;font-weight:800;color:#fff">Gal Akoonkaaga</h3>
+        <button onClick="{{ closeAllModals }}" aria-label="Xidh" style="border:0;background:#F28C5A;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;color:#fff;display:grid;place-items:center;line-height:1">✕</button>
+      </div>
+      <!-- body -->
+      <div style="padding:24px 26px 28px;background:linear-gradient(180deg,#F0F4FA 0%,#fff 100%)">
+        <label style="display:block;font-size:13px;font-weight:700;color:#0F1B2D;margin-bottom:7px">G-Mail</label>
+        <input placeholder="Tusaale@gmail.com" value="{{ loginEmail }}" onChange="{{ setLoginEmail }}" type="email" autocomplete="email" style="width:100%;box-sizing:border-box;border:1.5px solid #DDDFE6;border-radius:10px;padding:14px 14px;font-size:14.5px;font-family:inherit;outline:none;background:#fff" style-focus="border-color:#0A2E6B">
+
+        <label style="display:block;font-size:13px;font-weight:700;color:#0F1B2D;margin-bottom:7px;margin-top:16px">Furaha Sirta</label>
+        <input placeholder="••••••••••••••" value="{{ loginPw }}" onChange="{{ setLoginPw }}" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;border:1.5px solid #DDDFE6;border-radius:10px;padding:14px 14px;font-size:14.5px;font-family:inherit;outline:none;background:#fff" style-focus="border-color:#0A2E6B">
+
+        <div style="text-align:right;margin-top:8px">
+          <a onClick="{{ showForgotPw }}" style="font-size:13px;font-weight:700;color:#2F6BF0;cursor:pointer;text-decoration:none" style-hover="text-decoration:underline">Ma illowday Password-ka?</a>
+        </div>
+
+        <sc-if value="{{ loginErr }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:10px 0 0;font-size:12.5px;color:#E5484D;font-weight:700">{{ loginErr }}</p>
+        </sc-if>
+
+        <button onClick="{{ submitTeacherLogin }}" style="width:100%;border:0;background:#0A2E6B;color:#fff;border-radius:12px;padding:15px;margin-top:20px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 24px rgba(10,46,107,.25)" style-hover="background:#13458F">→ GAL</button>
+
+        <div style="border-top:1px solid #EBEFF6;margin-top:20px;padding-top:16px">
+          <button onClick="{{ showStudentLogin }}" style="width:100%;border:1.5px solid #EBEFF6;background:#fff;color:#0F1B2D;border-radius:12px;padding:14px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="border-color:#0A2E6B;background:#F8FAFE">🎓 Waxan Ahay Arday/Waalid</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ LOGIN MODAL — Forgot Password ============ -->
+<sc-if value="{{ forgotPwOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeAllModals }}" style="position:fixed;inset:0;background:rgba(5,18,40,.52);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s ease">
+    <div onClick="{{ stopClick }}" style="width:min(440px,100%);background:#fff;border-radius:18px;overflow:hidden;position:relative;box-shadow:0 30px 90px rgba(0,0,0,.3);animation:modalIn .3s ease">
+      <div style="padding:30px 26px 28px;text-align:center">
+        <button onClick="{{ showTeacherLogin }}" aria-label="Dib u noqo" style="position:absolute;left:16px;top:16px;border:0;background:#EDF2F7;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;color:#3A4A60;display:grid;place-items:center">←</button>
+        <h3 style="margin:0 0 8px;font-size:20px;font-weight:800;color:#F28C5A">Iimaaykaaga Gali</h3>
+        <p style="margin:0 0 20px;font-size:13.5px;line-height:1.6;color:#7C8AA0;font-weight:500;max-width:360px;display:inline-block">Fadlan geli ciwaanka iimaylka aad ku diwaangashanayd waxaanu kuu soo diri doona lifaaqa (link) aad ku badasho furaha sirta ah.</p>
+
+        <div style="text-align:left">
+          <label style="display:block;font-size:13px;font-weight:700;color:#0F1B2D;margin-bottom:7px">Email</label>
+          <input placeholder="Tusaale@gmail.com" value="{{ forgotEmail }}" onChange="{{ setForgotEmail }}" type="email" style="width:100%;box-sizing:border-box;border:1.5px solid #DDDFE6;border-radius:10px;padding:14px;font-size:14.5px;font-family:inherit;outline:none;background:#fff" style-focus="border-color:#0A2E6B">
+        </div>
+
+        <sc-if value="{{ forgotMsg }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:12px 0 0;font-size:12.5px;font-weight:700;color:{{ forgotMsgColor }}">{{ forgotMsg }}</p>
+        </sc-if>
+
+        <button onClick="{{ submitForgotPw }}" style="width:100%;border:0;background:#0A2E6B;color:#fff;border-radius:12px;padding:15px;margin-top:18px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;box-shadow:0 10px 24px rgba(10,46,107,.25)" style-hover="background:#13458F">DIR</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ LOGIN MODAL — Student / Parent ============ -->
+<sc-if value="{{ studentLoginOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeAllModals }}" style="position:fixed;inset:0;background:rgba(5,18,40,.52);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s ease">
+    <div onClick="{{ stopClick }}" style="width:min(440px,100%);background:#fff;border-radius:18px;overflow:hidden;position:relative;box-shadow:0 30px 90px rgba(0,0,0,.3);animation:modalIn .3s ease">
+      <!-- dark header bar -->
+      <div style="background:#0A2E6B;padding:18px 22px;display:flex;align-items:center;justify-content:space-between">
+        <h3 style="margin:0;font-size:17px;font-weight:800;color:#fff">Gal Akoonkaaga</h3>
+        <button onClick="{{ closeAllModals }}" aria-label="Xidh" style="border:0;background:#F28C5A;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;color:#fff;display:grid;place-items:center;line-height:1">✕</button>
+      </div>
+      <!-- tabs -->
+      <div style="display:flex;gap:0;padding:16px 26px 0">
+        <button onClick="{{ selectArday }}" style="{{ ardayTabStyle }}">🎓 ARDAY</button>
+        <button onClick="{{ selectWaalid }}" style="{{ waalidTabStyle }}">👨‍👩‍👧 WAALID</button>
+      </div>
+      <!-- body -->
+      <div style="padding:20px 26px 28px">
+        <label style="display:block;font-size:13px;font-weight:700;color:#0F1B2D;margin-bottom:7px">School Code</label>
+        <input placeholder="School Code" value="{{ stuSchoolCode }}" onChange="{{ setStuSchoolCode }}" style="width:100%;box-sizing:border-box;border:1.5px solid #DDDFE6;border-radius:10px;padding:14px;font-size:14.5px;font-family:inherit;outline:none;background:#fff" style-focus="border-color:#0A2E6B">
+
+        <label style="display:block;font-size:13px;font-weight:700;color:#0F1B2D;margin-bottom:7px;margin-top:16px">Diiwaan ID</label>
+        <input placeholder="123456" value="{{ stuDiwaanId }}" onChange="{{ setStuDiwaanId }}" style="width:100%;box-sizing:border-box;border:1.5px solid #DDDFE6;border-radius:10px;padding:14px;font-size:14.5px;font-family:inherit;outline:none;background:#fff" style-focus="border-color:#0A2E6B">
+
+        <label style="display:block;font-size:13px;font-weight:700;color:#0F1B2D;margin-bottom:7px;margin-top:16px">Furaha Sirta</label>
+        <input placeholder="••••" value="{{ stuPw }}" onChange="{{ setStuPw }}" type="password" style="width:100%;box-sizing:border-box;border:1.5px solid #DDDFE6;border-radius:10px;padding:14px;font-size:14.5px;font-family:inherit;outline:none;background:#fff" style-focus="border-color:#0A2E6B">
+
+        <sc-if value="{{ stuMsg }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:12px 0 0;font-size:12.5px;font-weight:700;color:#9A7A2E">{{ stuMsg }}</p>
+        </sc-if>
+
+        <button onClick="{{ submitStudentLogin }}" style="width:100%;border:0;background:#0A2E6B;color:#fff;border-radius:12px;padding:15px;margin-top:20px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;box-shadow:0 10px 24px rgba(10,46,107,.25)" style-hover="background:#13458F">GAL</button>
+
+        <div style="border-top:1px solid #EBEFF6;margin-top:18px;padding-top:14px;text-align:center">
+          <a onClick="{{ showTeacherLogin }}" style="font-size:13px;font-weight:700;color:#0A2E6B;cursor:pointer;text-decoration:none" style-hover="text-decoration:underline">← Macallin / Maamulaha Login</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showFreeBanner&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Qiimaha&quot;},&quot;showStats&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hero&quot;}}">
+class Component extends DCLogic {
+  state = {
+    modal: null, sent: false, faq: 0,
+    tab: 'exams',
+    enq: { school: '', location: '', contact: '', phone: '', email: '', students: '', notes: '' },
+    enqErr: '',
+    // login modals
+    loginEmail: '', loginPw: '', loginErr: '',
+    forgotEmail: '', forgotMsg: '', forgotMsgColor: '#16A34A',
+    stuTab: 'arday', stuSchoolCode: '', stuDiwaanId: '', stuPw: '', stuMsg: '',
+  };
+
+  renderVals() {
+    const { modal, sent, faq, tab, enq, enqErr,
+            loginEmail, loginPw, loginErr,
+            forgotEmail, forgotMsg, forgotMsgColor,
+            stuTab, stuSchoolCode, stuDiwaanId, stuPw, stuMsg } = this.state;
+
+    const WA = String((typeof window !== 'undefined' && window.KOBCIYE_LANDING_WHATSAPP_NUMBER) || '252637373367').replace(/[^0-9]/g, '');
+    const APP_LOGIN_URL = (typeof window !== 'undefined' && window.KOBCIYE_APP_LOGIN_URL) || '#';
+    const na = (s) => (String(s || '').trim() || 'Lama gelin');
+
+    const pillBase = {
+      border: '1.5px solid #E2E8F2', background: '#fff', color: '#3A4A60',
+      padding: '12px 26px', borderRadius: '999px', fontWeight: 800,
+      fontSize: '13.5px', cursor: 'pointer', fontFamily: 'inherit',
+    };
+    const pillActive = {
+      ...pillBase, border: '1.5px solid #0A2E6B', background: '#0A2E6B',
+      color: '#fff', boxShadow: '0 8px 18px rgba(10,46,107,.25)',
+    };
+
+    // student/parent tab styles
+    const stuTabBase = {
+      flex: 1, border: '1.5px solid #DDDFE6', background: '#fff', color: '#3A4A60',
+      padding: '12px 16px', borderRadius: '12px', fontWeight: 800,
+      fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+    };
+    const stuTabActive = {
+      ...stuTabBase, border: '1.5px solid #0A2E6B', background: '#0A2E6B',
+      color: '#fff', boxShadow: '0 4px 12px rgba(10,46,107,.2)',
+    };
+
+    const vals = {
+      showStats: this.props.showStats ?? true,
+      showFreeBanner: this.props.showFreeBanner ?? true,
+
+      viewExams: tab === 'exams',
+      viewPayments: tab === 'payments',
+      examsTabStyle: tab === 'exams' ? pillActive : pillBase,
+      paymentsTabStyle: tab === 'payments' ? pillActive : pillBase,
+      showExamsTab: () => this.setState({ tab: 'exams' }),
+      showPaymentsTab: () => this.setState({ tab: 'payments' }),
+
+      contactWhatsApp: () => { window.open('https://wa.me/' + WA, '_blank'); },
+
+      // ---- register enquiry (WhatsApp) ----
+      enqSchool: enq.school, enqLocation: enq.location, enqContact: enq.contact,
+      enqPhone: enq.phone, enqEmail: enq.email, enqStudents: enq.students, enqNotes: enq.notes,
+      enqErr,
+      setEnqSchool: (e) => this.setState((s) => ({ enq: { ...s.enq, school: e.target.value } })),
+      setEnqLocation: (e) => this.setState((s) => ({ enq: { ...s.enq, location: e.target.value } })),
+      setEnqContact: (e) => this.setState((s) => ({ enq: { ...s.enq, contact: e.target.value } })),
+      setEnqPhone: (e) => this.setState((s) => ({ enq: { ...s.enq, phone: e.target.value } })),
+      setEnqEmail: (e) => this.setState((s) => ({ enq: { ...s.enq, email: e.target.value } })),
+      setEnqStudents: (e) => this.setState((s) => ({ enq: { ...s.enq, students: e.target.value } })),
+      setEnqNotes: (e) => this.setState((s) => ({ enq: { ...s.enq, notes: e.target.value } })),
+      submitEnquiry: () => {
+        const q = this.state.enq;
+        if (!q.school.trim() || !q.location.trim() || !q.contact.trim() || !q.phone.trim()) {
+          this.setState({ enqErr: 'Fadlan buuxi: Magaca Dugsiga, Magaalada, Qofka La Xiriirayo iyo Telefoonka.' });
+          return;
+        }
+        const msg =
+          'Salaan Kobciye,\n\n' +
+          'Waxaan rabaa inaan dugsigayga ku diiwaangeliyo Kobciye.\n\n' +
+          'Magaca Dugsiga: ' + q.school.trim() + '\n' +
+          'Magaalada/Goobta: ' + q.location.trim() + '\n' +
+          'Qofka La Xiriirayo: ' + q.contact.trim() + '\n' +
+          'Telefoonka: ' + q.phone.trim() + '\n' +
+          'Email: ' + na(q.email) + '\n' +
+          'Tirada Qiyaasta Ardayda: ' + na(q.students) + '\n' +
+          'Faahfaahin Dheeraad ah: ' + na(q.notes) + '\n\n' +
+          'Fadlan nala soo xiriira si aan u dhammaystirno diiwaangelinta.';
+        window.open('https://wa.me/' + WA + '?text=' + encodeURIComponent(msg), '_blank');
+        this.setState({ enqErr: '', sent: true });
+      },
+
+      // ---- modal visibility ----
+      registerModalOpen: modal === 'register',
+      showRegisterForm: modal === 'register' && !sent,
+      sent: modal === 'register' && sent,
+      loginTeacherOpen: modal === 'loginTeacher',
+      forgotPwOpen: modal === 'forgotPw',
+      studentLoginOpen: modal === 'studentLogin',
+
+      // ---- modal openers ----
+      openRegister: () => this.setState({ modal: 'register', sent: false, enqErr: '' }),
+      openLoginModal: () => this.setState({ modal: 'loginTeacher', loginErr: '' }),
+      showTeacherLogin: () => this.setState({ modal: 'loginTeacher', loginErr: '' }),
+      showForgotPw: () => this.setState({ modal: 'forgotPw', forgotMsg: '', forgotEmail: '' }),
+      showStudentLogin: () => this.setState({ modal: 'studentLogin', stuMsg: '', stuTab: 'arday' }),
+
+      closeAllModals: () => this.setState({ modal: null, sent: false }),
+      stopClick: (e) => e.stopPropagation(),
+
+      // ---- teacher login form ----
+      loginEmail, loginPw, loginErr,
+      setLoginEmail: (e) => this.setState({ loginEmail: e.target.value }),
+      setLoginPw: (e) => this.setState({ loginPw: e.target.value }),
+      submitTeacherLogin: () => {
+        const em = this.state.loginEmail.trim();
+        const pw = this.state.loginPw;
+        if (!em || !pw) {
+          this.setState({ loginErr: 'Fadlan geli email iyo furaha sirta.' });
+          return;
+        }
+        if (APP_LOGIN_URL && APP_LOGIN_URL !== '#') {
+          window.location.href = APP_LOGIN_URL;
+        } else {
+          this.setState({ loginErr: 'App-ka wali lama deploy gareen. Fadlan la xiriir maamulaha.' });
+        }
+      },
+
+      // ---- forgot password ----
+      forgotEmail, forgotMsg, forgotMsgColor,
+      setForgotEmail: (e) => this.setState({ forgotEmail: e.target.value }),
+      submitForgotPw: () => {
+        const em = this.state.forgotEmail.trim();
+        if (!em) {
+          this.setState({ forgotMsg: 'Fadlan geli email-kaaga.', forgotMsgColor: '#E5484D' });
+          return;
+        }
+        if (APP_LOGIN_URL && APP_LOGIN_URL !== '#') {
+          window.location.href = APP_LOGIN_URL;
+        } else {
+          this.setState({ forgotMsg: 'Lifaaqa password-ka waa la diray! Eeg email-kaaga.', forgotMsgColor: '#16A34A' });
+        }
+      },
+
+      // ---- student/parent login ----
+      stuTab, stuSchoolCode, stuDiwaanId, stuPw, stuMsg,
+      ardayTabStyle: stuTab === 'arday' ? stuTabActive : stuTabBase,
+      waalidTabStyle: stuTab === 'waalid' ? stuTabActive : stuTabBase,
+      selectArday: () => this.setState({ stuTab: 'arday', stuMsg: '' }),
+      selectWaalid: () => this.setState({ stuTab: 'waalid', stuMsg: '' }),
+      setStuSchoolCode: (e) => this.setState({ stuSchoolCode: e.target.value }),
+      setStuDiwaanId: (e) => this.setState({ stuDiwaanId: e.target.value }),
+      setStuPw: (e) => this.setState({ stuPw: e.target.value }),
+      submitStudentLogin: () => {
+        this.setState({ stuMsg: 'Galitaanka ' + (this.state.stuTab === 'arday' ? 'ardayda' : 'waalidka') + ' waa dhawaan (Coming Soon). Hadda isticmaal Macallin/Maamulaha login.' });
+      },
+    };
+
+    for (let i = 0; i < 6; i++) {
+      vals['faq' + i] = faq === i;
+      vals['faqSym' + i] = faq === i ? '−' : '+';
+      vals['toggleFaq' + i] = () => this.setState((s) => ({ faq: s.faq === i ? null : i }));
+    }
+    return vals;
+  }
+}
+</script>
+</body>
+</html>
