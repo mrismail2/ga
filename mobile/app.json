@@ -25,6 +25,7 @@
       "package": "com.kobciye.mobile"
     },
     "web": {
+      "name": "Kobciye School Management",
       "favicon": "./assets/favicon.png"
     }
   }

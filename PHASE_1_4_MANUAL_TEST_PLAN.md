@@ -66,5 +66,5 @@ and rollback are proven in `supabase/tests/phase4_operational_roles.test.js`
 ## 6. Expo web export
 
 `cd mobile && npx expo export --platform web` → **Expect:** exit 0, `dist/`
-with `index.html` (title “Kobciye”), JS bundle and assets. *(Already ran —
+with `index.html` (title “Kobciye School Management”), JS bundle and assets. *(Already ran —
 PASS.)*

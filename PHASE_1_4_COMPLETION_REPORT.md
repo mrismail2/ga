@@ -93,7 +93,7 @@ git add -A && git commit && git push -u origin claude/kobciye-sms-continuation-9
 | Existing mobile test suite | PASS (all scripts, exit 0) |
 | Foundation audit | PASS |
 | Babel/import-graph validation of all 19 edited files | PASS |
-| Expo web export (`dist/index.html`, title "Kobciye") | PASS |
+| Expo web export (`dist/index.html`, title "Kobciye School Management") | PASS |
 | Source-only ZIP built and verified | PASS (see §ZIP below) |
 
 ## Unresolved issues
