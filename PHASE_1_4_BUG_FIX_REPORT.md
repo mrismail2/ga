@@ -3,7 +3,51 @@
 Date: 2026-07-23 · Branch: `claude/kobciye-sms-continuation-9jw64v`
 Baseline: ZIP `kobciye_phase4_corrected_audited` (commit `4ed2689`)
 
-## FINAL CORRECTION PASS — independent-audit defects (this update)
+## FINAL SECURITY CORRECTION PASS — 4 remaining audit defects (this update)
+
+The audit report file named in this correction request
+(`KOBCIYE_FINAL_CORRECTED_INDEPENDENT_AUDIT_20260723.md`) was **not
+supplied** anywhere reachable this session — verified absent from the
+workspace and from the newly uploaded ZIP (which was byte-identical to this
+session's own prior delivery). The request's own 4-item defect list was
+used directly. Full defect-by-defect root cause/fix/verification:
+`KOBCIYE_FINAL_CORRECTED_INDEPENDENT_AUDIT_20260723.md`.
+
+| # | Problem found | Fix | Files |
+| --- | --- | --- | --- |
+| 1 | Landing-page UI regressed — the approved phone/dashboard mockup hero was replaced with a paperwork-photo hero (commit `c8fa309`) | reverted (`git revert --no-commit c8fa309`, clean, zero conflicts); `git diff` against the last approved commit is now empty | `mobile/src/screens/landing/KobciyeLanding.js` |
+| 2 | Legacy direct-message RLS never checked that sender/recipient/message all shared one school — a forged cross-school `recipient_id` or `school_id` was not rejected at the DB layer | trigger + INSERT/SELECT policies now verify sender/recipient share a school and the message's `school_id` matches both | migration `20260723000002` |
+| 3 | Any teacher could read every other teacher's lesson plans; a teacher could create a plan for a class/subject not assigned to them | SELECT policy scoped to `teacher_profile_id = my_uid()`; guard trigger now checks `teacher_assignments` for a matching (class, subject) pair | migration `20260723000002`, `lessonPlans.js`, `LessonPrepModal.js`, `LessonsScreen.js` |
+| 4 | ClassDetail Live Mode offered all 5 tabs, including 4 (Xaadiris/Natiijada/Lacagta/Kiisaska) still backed by the disconnected Phase 1/2 demo store | `LIVE_TABS = ['Ardayda']` restricts Live Mode to the one tab with real canonical wiring; demo mode unaffected | `ClassDetailScreen.js` |
+
+### Verification of this pass's fixes
+
+- `supabase/tests/final_security_corrections.test.js` — 19 PASS (new suite,
+  real disposable Postgres): 7 direct-message assertions, 12 lesson-plan
+  assertions.
+- All 8 pre-existing DB suites re-run with the new migration applied —
+  313 total assertions, 0 failures, exit 0 each.
+- `mobile/scripts/phase1-4-final-security.test.js` — 16 PASS (new static
+  suite): landing restoration, lesson-plan dropdown wiring, ClassDetail
+  tab suppression, re-confirmed stable-classId routing.
+- `npm run audit:foundation` caught the new `assignedClasses` prop name
+  colliding with a pre-existing forbidden-legacy-token check; renamed to
+  `teacherClassOpts`/`teacherSubjectOpts` — re-ran clean.
+- Full existing mobile suite re-run (`test:phase4-runtime`,
+  `test:phase1-4-audit-fixes`, `test:phase1-4-requirements`) — every one
+  PASS, zero regressions.
+- `npx expo export --platform web --max-workers 1` — success; title
+  exactly `Kobciye School Management`; landing-page approved mockup
+  present in the bundle, paperwork-photo strings absent.
+
+### Not fixed / out of scope (honest)
+
+- Live-browser verification of any of these fixes: **BLOCKED — credentials
+  not supplied.**
+- `npm run test:stabilization` still does not exist in this project
+  (re-checked both package.json files) — reported as such, not fabricated.
+
+## PRIOR CORRECTION PASS — independent-audit defects
 
 The audit report file named in the correction request
 (`KOBCIYE_PHASE1_4_INDEPENDENT_AUDIT_20260723.md`) was **not actually

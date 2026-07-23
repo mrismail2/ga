@@ -6,13 +6,150 @@ Baseline: uploaded ZIP `d27936da-kobciye_phase4_corrected_audited.zip`,
 imported at commit `4ed2689` on top of the pre-existing static-site commit
 `5222269` (nothing overwritten; no destructive git operation used).
 
-This report covers **two passes**: the original Phase 1–4 implementation
-pass, and this session's **FINAL PHASE 1–4 CORRECTION AND VERIFICATION**
-pass responding to the independent-audit defect list. The correction pass
-is recorded first since it is the current state of the repository.
+This report covers **three passes**: the original Phase 1–4 implementation
+pass, the first independent-audit correction pass, and this session's
+**FINAL SECURITY CORRECTION PASS** responding to the 4 remaining defects.
+The newest pass is recorded first since it is the current state of the
+repository.
 
 ==================================================
-# FINAL CORRECTION PASS (this session)
+# FINAL SECURITY CORRECTION PASS (this session)
+==================================================
+
+## Source of the correction request
+
+The task asked this session to read
+`KOBCIYE_FINAL_CORRECTED_INDEPENDENT_AUDIT_20260723.md`. **That file does
+not exist** anywhere reachable — verified absent from the workspace before
+any work began, and the newly uploaded ZIP
+(`bd3a073f-kobciye_phase1_4_final_corrected_20260723.zip`) was confirmed
+byte-identical to this session's own prior delivery (`diff -rq`), not a new
+document. The correction request's own 4-item defect list was used
+directly as the audit findings — see
+`KOBCIYE_FINAL_CORRECTED_INDEPENDENT_AUDIT_20260723.md` (this session's
+honest write-up, defect-by-defect, with root cause / fix / files /
+verification for each).
+
+## Preserved from prior passes (not rewritten)
+
+The canonical two-way sync design, atomic Admissions RPC, teacher/student
+RLS scoping, enrollment-history preservation, stable-classId routing, and
+all demo-removal work from the prior correction pass were **not
+rewritten** — only re-verified where this pass's changes (the `messages`/
+`lesson_plans` policy tightening) touched shared infrastructure. All still
+pass unmodified (see PASS/FAIL table below). The (separately approved)
+logo swap (`5b275a8`, `5a80b2e`) and corrected browser title (`84d4c5c`)
+were preserved exactly — confirmed still present after the landing-page
+revert.
+
+## Exact files changed in this pass
+
+New (4):
+```
+supabase/migrations/20260723000002_final_security_corrections.sql
+supabase/tests/final_security_corrections.test.js
+mobile/scripts/phase1-4-final-security.test.js
++ KOBCIYE_FINAL_CORRECTED_INDEPENDENT_AUDIT_20260723.md (this session's honest audit write-up)
+```
+
+Modified (6):
+```
+mobile/package.json
+mobile/src/components/LessonPrepModal.js
+mobile/src/screens/ClassDetailScreen.js
+mobile/src/screens/LessonsScreen.js
+mobile/src/services/lessonPlans.js
+supabase/tests/package.json
+```
+
+Reverted (1, via `git revert`, committed as `b3eecf1`):
+```
+mobile/src/screens/landing/KobciyeLanding.js   (reverts commit c8fa309)
+```
+
+(+ the 6 reports updated: this file, PHASE_1_4_INTEGRATION_AUDIT.md,
+PHASE_1_4_BUG_FIX_REPORT.md, SUPABASE_MIGRATION_VERIFICATION.md,
+MANUAL_ROLE_TEST_REPORT.md,
+KOBCIYE_FINAL_CORRECTED_INDEPENDENT_AUDIT_20260723.md (new))
+
+## Migration created
+
+`supabase/migrations/20260723000002_final_security_corrections.sql` —
+purely additive on top of `20260723000001`. No table dropped, no column
+dropped, no user row deleted, no already-applied migration file edited
+(all behavior changes to existing functions use `create or replace
+function`). Full contents: see `SUPABASE_MIGRATION_VERIFICATION.md`.
+
+**This migration has NOT been applied to any remote/production Supabase
+project.** Verified only against local disposable Postgres (pglite).
+
+## Exact commands executed (this pass)
+
+```
+# Supabase
+cd supabase/tests && npm ci                       # PASS
+npm test                                           # security.test.js — PASS
+npm run test:phase4-db-rls                         # PASS (includes both new suites)
+npm run test:phase4-operational                    # PASS
+node final_security_corrections.test.js            # PASS (new, 19 assertions)
+
+# Mobile
+cd mobile && npm ci                                # PASS
+npm run audit:foundation                           # PASS (after renaming assignedClasses → teacherClassOpts to clear a forbidden-token collision)
+npm run test:phase4-runtime                         # PASS
+npm run test:phase1-4-audit-fixes                  # PASS (prior pass, re-run)
+npm run test:phase1-4-requirements                 # PASS (prior pass, re-run)
+node scripts/phase1-4-final-security.test.js       # PASS (new, 16 assertions)
+npx expo export --platform web --max-workers 1     # PASS
+```
+
+`npm run test:stabilization` was requested but **does not exist** in this
+project (re-checked `mobile/package.json`, `supabase/tests/package.json`,
+and every script file — no such script anywhere, same finding as the prior
+pass). Reported honestly as N/A rather than fabricated or silently skipped.
+
+## PASS / FAIL / BLOCKED — this pass's items
+
+| # | Defect area | Result |
+| --- | --- | --- |
+| 1 | Landing-page UI restored to approved baseline (file-level identical diff) | **PASS** |
+| 2 | Cross-school direct messages blocked at DB/RLS level (insert + read) | **PASS** (7 new DB assertions) |
+| 3 | Lesson-plan read restricted to own plan; create restricted to assigned class+subject | **PASS** (12 new DB assertions) |
+| 4 | ClassDetail Live Mode restricted to Ardayda only (Phase 5 tabs suppressed) | **PASS** (6 static assertions) |
+| — | Conversation-based messaging unaffected | **PASS** (re-verified) |
+| — | School admin full-school lesson-plan access unaffected | **PASS** (re-verified) |
+| — | Prior-pass teacher/student RLS, enrollment history, stable classId routing | **PASS** (re-run, zero regressions) |
+| — | Live browser testing (any role, any flow) | **BLOCKED — credentials not supplied** |
+| — | Expo web export, title exact match | **PASS** |
+| — | Source-only ZIP built and verified | **PASS** |
+
+## Unresolved issues
+
+1. Live role/browser testing requires real credentials — remains BLOCKED,
+   unchanged from every prior pass.
+2. `npm run test:stabilization` does not exist in this project — reported
+   as not-applicable rather than fabricated.
+
+## Confirmations
+
+- **Phase 5 was NOT started** this pass — no timetable, attendance
+  workflow, assignments, or any new later-phase feature was implemented;
+  the ClassDetail change *removes* Live Mode access to 4 already-present
+  Phase-5-style tabs, it adds nothing.
+- **The approved landing-page UI is restored exactly** — `git diff
+  5a80b2e HEAD -- mobile/src/screens/landing/KobciyeLanding.js` (and every
+  other landing-related file in the tree) produces zero output.
+- **No other UI redesign was performed.** Every other change this pass is
+  functional/security-only: RLS policies, a guard trigger, a prop rename
+  to satisfy an unrelated legacy-token audit check, a tab-array constant,
+  and a data-sourcing change for two existing form pickers (same visual
+  style, real data instead of a hardcoded list).
+- No remote Supabase database was deployed, migrated, or reset.
+- No secret, service-role key, or real `.env` value exists in the repo,
+  migration, or ZIP.
+
+==================================================
+# PRIOR CORRECTION PASS (previous session pass, preserved)
 ==================================================
 
 ## Source of the correction request
@@ -256,7 +393,8 @@ area was touched again.)
 ## Source-only ZIP
 
 Original pass: `kobciye_phase1_4_source_20260723.zip`.
-**This correction pass supersedes it with**
-`kobciye_phase1_4_final_corrected_20260723.zip` — see
+Prior correction pass: `kobciye_phase1_4_final_corrected_20260723.zip`.
+**This pass supersedes both with**
+`kobciye_phase1_4_final_security_corrected_20260723.zip` — see
 `SUPABASE_MIGRATION_VERIFICATION.md` and the final chat summary for the
 verified contents listing.

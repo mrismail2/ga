@@ -47,10 +47,14 @@ export async function listLessonPlans(schoolId) {
 }
 
 /* teacher (or admin) drafts a plan — the modal's extra fields persist in
-   `detail` so drafts survive refresh exactly as entered */
+   `detail` so drafts survive refresh exactly as entered. classId/subjectId
+   are the REAL canonical ids (when the caller has them, i.e. the teacher
+   picked from their own assignments) — the database guard rejects a
+   class/subject that isn't actually assigned to this teacher, so a
+   forged id can never be saved regardless of what the client sends. */
 export async function createLessonPlan(schoolId, profileId, teacherName, v = {}) {
   requireClient();
-  const { title, subject, cls, ...detail } = v || {};
+  const { title, subject, cls, classId, subjectId, ...detail } = v || {};
   delete detail.id; // screen-generated preview id — the DB id is canonical
   const { data, error } = await supabase.from('lesson_plans').insert({
     school_id: schoolId,
@@ -59,12 +63,40 @@ export async function createLessonPlan(schoolId, profileId, teacherName, v = {})
     title: String(title || '').trim(),
     subject: String(subject || '').trim() || null,
     class_label: String(cls || '').trim() || null,
+    class_id: classId || null,
+    subject_id: subjectId || null,
     status: 'draft',
     detail,
   }).select().single();
   if (error) throw error;
   notifyCanonicalChange('lesson_plans');
   return lessonRowToView(data);
+}
+
+/* the signed-in teacher's own assignments — used to build REAL class/
+   subject pickers (never a hardcoded/demo list) in Live Mode. */
+export async function myTeacherAssignments(schoolId, profileId) {
+  requireClient();
+  const { data: teacherRows, error: terr } = await supabase.from('teachers')
+    .select('id').eq('school_id', schoolId).eq('profile_id', profileId).limit(1);
+  if (terr) throw terr;
+  const teacherId = teacherRows && teacherRows[0] && teacherRows[0].id;
+  if (!teacherId) return { classes: [], subjects: [] };
+  const { data, error } = await supabase.from('teacher_assignments')
+    .select('class_id, subject_id').eq('school_id', schoolId).eq('teacher_id', teacherId).eq('is_active', true);
+  if (error) throw error;
+  const rows = data || [];
+  const classIds = [...new Set(rows.map((r) => r.class_id).filter(Boolean))];
+  const subjectIds = [...new Set(rows.map((r) => r.subject_id).filter(Boolean))];
+  const [classesRes, subjectsRes] = await Promise.all([
+    classIds.length ? supabase.from('classes').select('id, name').in('id', classIds) : { data: [] },
+    subjectIds.length ? supabase.from('subjects').select('id, name').in('id', subjectIds) : { data: [] },
+  ]);
+  return {
+    classes: (classesRes.data || []).map((c) => ({ value: c.id, label: c.name })),
+    subjects: (subjectsRes.data || []).map((s) => ({ value: s.id, label: s.name })),
+    pairs: rows, // exact (class_id, subject_id) assignment pairs, for validation
+  };
 }
 
 /* draft → pending (teacher) · pending → approved/rejected (admin only —

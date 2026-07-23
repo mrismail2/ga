@@ -22,13 +22,27 @@ function Field({ label, value, onChangeText, placeholder, multiline }) {
 
 /* Lesson preparation — a full plan with a cover photo/attachment and the
    important teaching details (topic, objectives, materials, duration,
-   week, homework, notes). Frontend prototype; image via PhotoContext. */
-export default function LessonPrepModal({ visible, onClose, onSave }) {
+   week, homework, notes). Frontend prototype; image via PhotoContext.
+
+   LIVE mode passes `teacherClassOpts`/`teacherSubjectOpts` (the teacher's own
+   teacher_assignments, real canonical ids — see LessonsScreen) — when
+   given, the SAME segmented-picker visual style sources its options from
+   them instead of the demo CLASS_OPTS/free-text subject field, and the
+   picked class_id/subject_id are included in onSave. A teacher with zero
+   assignments yet, or DEMO mode, falls back to the existing behaviour
+   unchanged (the database itself is the real guard either way — an
+   unassigned class/subject can never be saved regardless of what the UI
+   offers). */
+export default function LessonPrepModal({ visible, onClose, onSave, teacherClassOpts, teacherSubjectOpts }) {
   const { c } = useTheme();
   const { photos, pickPhoto } = usePhotos();
+  const liveClassOpts = teacherClassOpts && teacherClassOpts.length ? teacherClassOpts : null;
+  const liveSubjectOpts = teacherSubjectOpts && teacherSubjectOpts.length ? teacherSubjectOpts : null;
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
-  const [cls, setCls] = useState('Form 5A');
+  const [subjectId, setSubjectId] = useState(liveSubjectOpts ? liveSubjectOpts[0].value : null);
+  const [cls, setCls] = useState(liveClassOpts ? liveClassOpts[0].label : 'Form 5A');
+  const [classId, setClassId] = useState(liveClassOpts ? liveClassOpts[0].value : null);
   const [topic, setTopic] = useState('');
   const [objectives, setObjectives] = useState('');
   const [materials, setMaterials] = useState('');
@@ -39,11 +53,18 @@ export default function LessonPrepModal({ visible, onClose, onSave }) {
   const [id] = useState(() => 'lesson_' + Math.floor(1000 + Math.random() * 9000));
 
   const cover = photos[id];
-  const reset = () => { setTitle(''); setSubject(''); setCls('Form 5A'); setTopic(''); setObjectives(''); setMaterials(''); setDuration(''); setWeek(''); setHomework(''); setNotes(''); };
+  const reset = () => {
+    setTitle(''); setSubject(''); setTopic(''); setObjectives(''); setMaterials(''); setDuration(''); setWeek(''); setHomework(''); setNotes('');
+    setCls(liveClassOpts ? liveClassOpts[0].label : 'Form 5A'); setClassId(liveClassOpts ? liveClassOpts[0].value : null);
+    setSubjectId(liveSubjectOpts ? liveSubjectOpts[0].value : null);
+  };
+  const pickClass = (o) => { setCls(o.label); setClassId(o.value); };
+  const pickSubject = (o) => { setSubject(o.label); setSubjectId(o.value); };
 
   const save = () => {
     if (!title.trim()) return;
-    onSave({ id, title: title.trim(), subject: subject.trim() || 'Maadda', cls, topic, objectives, materials, duration, week, homework, notes });
+    const subjectName = liveSubjectOpts ? (liveSubjectOpts.find((o) => o.value === subjectId) || {}).label : (subject.trim() || 'Maadda');
+    onSave({ id, title: title.trim(), subject: subjectName || 'Maadda', subjectId, cls, classId, topic, objectives, materials, duration, week, homework, notes });
     reset();
     onClose();
   };
@@ -76,13 +97,27 @@ export default function LessonPrepModal({ visible, onClose, onSave }) {
             </TouchableOpacity>
 
             <Field label="CINWAANKA CASHARKA" value={title} onChangeText={setTitle} placeholder="tusaale: Jajab & Boqolkiiba" />
-            <Field label="MAADDADA" value={subject} onChangeText={setSubject} placeholder="tusaale: Xisaab" />
+
+            {liveSubjectOpts ? (
+              <View style={{ marginBottom: 14 }}>
+                <Text style={[styles.fLabel, { color: c.muted }]}>MAADDADA</Text>
+                <View style={styles.seg}>
+                  {liveSubjectOpts.map((o) => (
+                    <TouchableOpacity key={o.value} onPress={() => pickSubject(o)} style={[styles.segBtn, { borderColor: c.line, backgroundColor: subjectId === o.value ? c.blue : 'transparent' }]}>
+                      <Text style={[styles.segTxt, { color: subjectId === o.value ? '#fff' : c.ink2 }]}>{o.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <Field label="MAADDADA" value={subject} onChangeText={setSubject} placeholder="tusaale: Xisaab" />
+            )}
 
             <Text style={[styles.fLabel, { color: c.muted }]}>FASALKA</Text>
             <View style={styles.seg}>
-              {CLASS_OPTS.map((o) => (
-                <TouchableOpacity key={o} onPress={() => setCls(o)} style={[styles.segBtn, { borderColor: c.line, backgroundColor: cls === o ? c.blue : 'transparent' }]}>
-                  <Text style={[styles.segTxt, { color: cls === o ? '#fff' : c.ink2 }]}>{o}</Text>
+              {(liveClassOpts || CLASS_OPTS.map((o) => ({ value: o, label: o }))).map((o) => (
+                <TouchableOpacity key={o.value} onPress={() => (liveClassOpts ? pickClass(o) : setCls(o.value))} style={[styles.segBtn, { borderColor: c.line, backgroundColor: cls === o.label ? c.blue : 'transparent' }]}>
+                  <Text style={[styles.segTxt, { color: cls === o.label ? '#fff' : c.ink2 }]}>{o.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>

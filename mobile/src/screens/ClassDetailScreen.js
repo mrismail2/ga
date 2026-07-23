@@ -103,7 +103,14 @@ export default function ClassDetailScreen({ route, navigation }) {
   // client-side guard (canAccessClassDetail/getClassDetailModeForProfile).
   const allowed = isLive ? (liveRoleMayAttempt && !!cls) : (cls ? canAccessClassDetail(profile, cls) : false);
   const mode = isLive ? (allowed ? 'full' : 'denied') : (cls ? getClassDetailModeForProfile(profile, cls) : 'denied');
-  const allowedTabs = isLive ? (allowed ? TABS : []) : (cls ? getAllowedClassTabs(profile, cls) : []);
+  // LIVE: only Ardayda has real Phase 1-4 canonical wiring (the active-
+  // enrollment roster). Xaadiris/Natiijada/Lacagta/Kiisaska still read the
+  // Phase 1/2 demo/AsyncStorage store (empty in Live Mode) — later-phase
+  // modules that must not be offered to an authenticated Live Mode user.
+  // Reuses the SAME existing mechanism the tab bar already has for
+  // hiding a tab (simply omitting it from this array) — no new UI.
+  const LIVE_TABS = ['Ardayda'];
+  const allowedTabs = isLive ? (allowed ? LIVE_TABS : []) : (cls ? getAllowedClassTabs(profile, cls) : []);
   const readOnly = mode === 'readonly';
   // a genuinely-missing class vs an unauthorized one get distinct copy
   const liveDenialKind = isLive && !allowed && !liveStillLoading

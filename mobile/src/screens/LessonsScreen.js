@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 import ScreenHeader from '../components/ScreenHeader';
 import Avatar from '../components/Avatar';
 import Badge from '../components/Badge';
@@ -11,6 +12,7 @@ import LessonPrepModal from '../components/LessonPrepModal';
 import LessonDetailModal from '../components/LessonDetailModal';
 import { LESSON_STATUS } from '../data/datasets';
 import { useLessons } from '../context/LessonsContext';
+import { myTeacherAssignments } from '../services/lessonPlans';
 import { shadow } from '../theme/colors';
 
 const STATUS_COLOR = (c) => ({ approved: c.green, pending: c.gold700, draft: c.blue, rejected: c.rose });
@@ -22,6 +24,7 @@ const STATUS_COLOR = (c) => ({ approved: c.green, pending: c.gold700, draft: c.b
 export default function LessonsScreen({ navigation }) {
   const { c } = useTheme();
   const { role, profile } = useRole();
+  const { isLive, profile: liveProfile } = useAuth();
   const { lessons, reviewCode, setLessonStatus, addLesson: addLessonCtx } = useLessons();
   const [showAdd, setShowAdd] = useState(false);
   const [detail, setDetail] = useState(null);
@@ -31,6 +34,20 @@ export default function LessonsScreen({ navigation }) {
   const canApprove = role === 'superadmin' || role === 'schooladmin';
   const isTeacher = role === 'teacher';
   const sColor = STATUS_COLOR(c);
+
+  // LIVE: Class/Subject pickers in the prep modal use this teacher's OWN
+  // teacher_assignments — never a hardcoded/demo list (the database itself
+  // still refuses an unassigned class/subject regardless of what a client
+  // ever sends, but the UI should only ever OFFER real, permitted options).
+  const [myAssignments, setMyAssignments] = useState({ classes: [], subjects: [] });
+  useEffect(() => {
+    let alive = true;
+    if (!isLive || !isTeacher || !liveProfile) { setMyAssignments({ classes: [], subjects: [] }); return undefined; }
+    myTeacherAssignments(liveProfile.school_id, liveProfile.id)
+      .then((a) => { if (alive) setMyAssignments(a); })
+      .catch(() => { if (alive) setMyAssignments({ classes: [], subjects: [] }); });
+    return () => { alive = false; };
+  }, [isLive, isTeacher, liveProfile]);
 
   const counts = useMemo(() => ({
     pending: lessons.filter((l) => l.status === 'pending').length,
@@ -180,7 +197,13 @@ export default function LessonsScreen({ navigation }) {
         <Icon name="plus" size={26} color="#fff" strokeWidth={2.2} />
       </TouchableOpacity>
 
-      <LessonPrepModal visible={showAdd} onClose={() => setShowAdd(false)} onSave={addLesson} />
+      <LessonPrepModal
+        visible={showAdd}
+        onClose={() => setShowAdd(false)}
+        onSave={addLesson}
+        teacherClassOpts={isLive ? myAssignments.classes : null}
+        teacherSubjectOpts={isLive ? myAssignments.subjects : null}
+      />
       <LessonDetailModal visible={!!detail} lesson={detail} onClose={() => setDetail(null)} />
     </SafeAreaView>
   );

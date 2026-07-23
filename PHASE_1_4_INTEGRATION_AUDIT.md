@@ -155,3 +155,55 @@ All of §3–7's OTHER claims (canonical sync design, two-way sync, Admissions
 UI, Sign Out, demo removal) were re-verified against the corrected RLS/count
 infrastructure and still hold — see `PHASE_1_4_COMPLETION_REPORT.md`'s
 correction-pass PASS/FAIL table for the complete, current list.
+
+## 9. FINAL SECURITY CORRECTION PASS — 4 remaining defects (this update)
+
+A follow-up correction request asked this session to read
+`KOBCIYE_FINAL_CORRECTED_INDEPENDENT_AUDIT_20260723.md`. **That file was
+not supplied** — verified absent from the workspace, and the newly
+uploaded ZIP was confirmed byte-identical to this session's own prior
+delivery (not a new document). The request's own 4-item defect list was
+used as the audit findings instead; full defect-by-defect detail lives in
+`KOBCIYE_FINAL_CORRECTED_INDEPENDENT_AUDIT_20260723.md` (written this
+session).
+
+What this pass's audit actually found, on inspection of the code described
+in §8 above and the intervening "paperwork photo" landing-page change made
+earlier in this session (outside any correction-pass request):
+
+1. §7's "no screen was redesigned" claim from the prior pass was still true
+   for everything the prior pass touched, but a **later, separate** request
+   in this same session replaced the landing page's approved phone/dashboard
+   mockup hero with a paperwork-photo hero (commit `c8fa309`) — a landing-page
+   UI change that this correction pass's own preservation rule requires be
+   rolled back to the immediately-previous approved state. Fixed: clean
+   `git revert` of that single commit; `git diff` against the pre-change
+   commit is now empty (byte-identical), proving no unrelated UI drift.
+2. The direct-message RLS underneath §6's "membership-only access" claim
+   was correct for **conversation**-based messaging but the separate legacy
+   direct-message path (`conversation_id IS NULL`) never verified sender and
+   recipient shared a school — a real school-boundary gap, not present in
+   the conversation path. Fixed: trigger + INSERT/SELECT policies now
+   enforce same-school sender/recipient/message on that path specifically;
+   the conversation path is untouched and re-verified unaffected.
+3. §8 item 6's "lesson_plans schema completions" claim was correct for
+   schema shape, but the **access-control** layer underneath it was too
+   broad: any teacher could read every other teacher's plans, and the
+   create/update guard checked same-school class/subject references but not
+   actual teacher-to-class/subject assignment. Fixed: SELECT policy scoped
+   to the plan's own teacher (admin's full-school access unchanged); guard
+   trigger now requires a matching `teacher_assignments` row for a non-admin
+   author, with the pre-existing class/subject-less draft path left
+   untouched.
+4. §2's "no screen redesigned" claim also covered ClassDetail, but the
+   Live Mode tab set there still offered 4 tabs
+   (Xaadiris/Natiijada/Lacagta/Kiisaska) backed by the disconnected Phase
+   1/2 demo store, alongside the one tab (Ardayda) with real canonical
+   wiring — functionally a Phase-5-style surface exposed pre-Phase-5. Fixed:
+   a Live-Mode-only `LIVE_TABS = ['Ardayda']` restricts the tab bar using
+   the exact array-membership mechanism it already had; no tab-bar
+   component or visual style changed; demo mode is unaffected.
+
+All of §1–8's OTHER claims were re-verified against this pass's tightened
+RLS and are unaffected — see `PHASE_1_4_COMPLETION_REPORT.md`'s current
+PASS/FAIL table.

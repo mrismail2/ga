@@ -49,7 +49,26 @@ All live-browser walkthroughs from PHASE_1_4_MANUAL_TEST_PLAN.md:
   marked `transferred`/`ended_on`; exactly one new `active` row exists
   after a transfer; an identical resubmission is a no-op —
   `supabase/tests/phase1_4_audit_fixes.test.js`, 11 assertions, PASS.
+- **New this pass (final security correction)** — cross-school direct
+  messages: same-school message accepted, cross-school message rejected,
+  forged sender/school_id rejected, cross-school read blocked while the
+  legitimate recipient can still read, conversation-based messaging
+  unaffected — `supabase/tests/final_security_corrections.test.js`, 7
+  assertions, real Postgres, PASS.
+- **New this pass (final security correction)** — lesson-plan
+  authorization: a teacher can create a plan for an assigned class+subject
+  but not an unassigned one, can read their own plans but not another
+  teacher's, a school admin still reads every plan in their own school,
+  accountant/parent/student each read zero plans, cross-school
+  teacher/admin access stays blocked —
+  `supabase/tests/final_security_corrections.test.js`, 12 assertions, PASS.
+- **New this pass (final security correction)** — ClassDetail Live Mode
+  tab restriction and landing-page restoration: static-source assertions
+  confirm the Live Mode tab set is `['Ardayda']` only, the approved
+  landing-page mockup is back, and the paperwork-photo replacement is gone
+  — `mobile/scripts/phase1-4-final-security.test.js`, 16 assertions, PASS.
 
 These automated results are NOT claimed as live-browser testing. Live
-role/browser verification (this pass's Teacher RLS fix included) remains
-**BLOCKED — credentials not supplied**, unchanged from the prior report.
+role/browser verification (this pass's direct-message and lesson-plan
+fixes included) remains **BLOCKED — credentials not supplied**, unchanged
+from every prior report.
