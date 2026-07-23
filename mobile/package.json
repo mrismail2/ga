@@ -17,7 +17,8 @@
     "test:auth-invite-bundle": "npm run test:auth-routing && npm run test:auth-race && npm run test:invite-callback && npm run test:university-registration",
     "test:phase3-audit": "node scripts/phase3-audit.test.js",
     "test:phase4-ui": "node scripts/phase4-management.test.js",
-    "test:phase4-runtime": "node scripts/phase4-runtime.behavior.test.js && node scripts/phase4-ui-components.test.js"
+    "test:phase4-runtime": "node scripts/phase4-runtime.behavior.test.js && node scripts/phase4-ui-components.test.js",
+    "test:phase1-4-requirements": "node scripts/phase1-4-requirements.test.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
