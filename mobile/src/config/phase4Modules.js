@@ -163,11 +163,25 @@ export const SCHOOL_MODULES = [
   {
     key: 'admissions', table: 'admissions', icon: 'mail',
     title: 'Diiwaangelinta (Admissions)', single: 'Codsi',
+    // saving with status 'enrolled' runs the atomic admission (student +
+    // enrollment + admission + parent + guardian link in ONE transaction)
+    enrollAtomic: true,
     fields: [
       { key: 'applicant_name', label: 'MAGACA CODSADAHA', required: true, placeholder: 'Magaca ardayga cusub' },
-      { key: 'guardian_name', label: 'MAGACA WAALIDKA', placeholder: 'ikhtiyaari' },
-      { key: 'guardian_phone', label: 'TELEFOONKA WAALIDKA', phone: true, placeholder: '+252 …' },
       { key: 'desired_class_id', label: 'FASALKA', stageLabelKey: 'classFieldLabel', fk: { table: 'classes', labelKey: 'name' } },
+      // guardian linking (Phase 1–4 foundation): pick an existing same-school
+      // guardian OR enter a new one below — `virtual` fields feed the atomic
+      // admission RPC and are never written to the admissions table itself
+      { key: 'parent_id', label: 'WAALID JIRA (XULO HADDII UU JIRO)', virtual: true, fk: { table: 'parents', labelKey: 'full_name' } },
+      { key: 'guardian_name', label: 'MAGACA WAALIDKA (CUSUB)', placeholder: 'ikhtiyaari' },
+      { key: 'guardian_phone', label: 'TELEFOONKA WAALIDKA', phone: true, placeholder: '+252 …' },
+      { key: 'guardian_email', label: 'EMAIL WAALIDKA (IKHTIYAARI)', virtual: true, placeholder: 'waalid@email.com' },
+      { key: 'relationship', label: 'XIRIIRKA ARDAYGA', virtual: true, options: [
+        { value: 'father', label: 'Aabbe' },
+        { value: 'mother', label: 'Hooyo' },
+        { value: 'guardian', label: 'Mas\'uul' },
+        { value: 'other', label: 'Kale' },
+      ] },
       { key: 'status', label: 'XAALADDA', options: [
         { value: 'draft', label: 'Qabyo (Draft)' },
         { value: 'pending', label: 'Sugaya' },

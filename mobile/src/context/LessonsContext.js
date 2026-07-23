@@ -7,12 +7,19 @@
      • the code-gated Ministry review portal (Wasaarad views approved plans
        and leaves feedback the teacher then sees).
 
-   Frontend-only: the "ministry" is not a logged-in account — it reaches a
-   read-only portal with the school's review code (REVIEW_CODE) and every
-   APPROVED lesson is automatically visible there.
+   DEMO mode (unchanged): the seeded prototype lessons, in-memory only.
+
+   LIVE mode: ONLY canonical lesson_plans rows from Supabase — the demo
+   LESSONS seed is never used. A new school shows the approved empty
+   state; drafts persist after refresh; teachers submit their own plans
+   and only a school admin can approve/reject (enforced by the database,
+   not just this UI). The Lesson Plan UI itself is untouched.
    ============================================================ */
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { LESSONS, LESSON_DETAILS } from '../data/datasets';
+import { useAuth } from './AuthContext';
+import { listLessonPlans, createLessonPlan, setLessonPlanStatus } from '../services/lessonPlans';
+import { onCanonicalChange } from '../services/canonicalStore';
 
 // the school's ministry-review access code (shared with the Wasaarad)
 export const REVIEW_CODE = 'WAS-HID-2026';
@@ -28,22 +35,55 @@ function seedLessons() {
 const LessonsContext = createContext(null);
 
 export function LessonsProvider({ children }) {
-  const [lessons, setLessons] = useState(seedLessons);
+  const { isLive, profile } = useAuth();
+  const [demoLessons, setDemoLessons] = useState(seedLessons);
+  const [liveLessons, setLiveLessons] = useState([]);
+
+  const schoolId = isLive && profile ? profile.school_id : null;
+
+  // LIVE: load canonical lesson_plans; reload on any canonical change so an
+  // approval made anywhere shows everywhere; refresh-proof by re-reading.
+  const reloadLive = useCallback(async () => {
+    if (!schoolId) { setLiveLessons([]); return; }
+    try { setLiveLessons(await listLessonPlans(schoolId)); }
+    catch (e) { setLiveLessons([]); }
+  }, [schoolId]);
+
+  useEffect(() => { reloadLive(); }, [reloadLive]);
+  useEffect(() => {
+    if (!schoolId) return undefined;
+    return onCanonicalChange((table) => { if (table === 'lesson_plans') reloadLive(); });
+  }, [schoolId, reloadLive]);
 
   const setLessonStatus = useCallback((id, status) => {
-    setLessons((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)));
-  }, []);
+    if (schoolId) {
+      // optimistic update, then persist canonically (rolls back via reload on error)
+      setLiveLessons((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)));
+      setLessonPlanStatus(id, status).catch(() => reloadLive());
+      return;
+    }
+    setDemoLessons((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)));
+  }, [schoolId, reloadLive]);
 
   const addLesson = useCallback((v, teacher) => {
-    setLessons((ls) => [{ ...v, status: 'draft', teacher: teacher || 'Macalin', submitted_at: 'Hadda', ministry_feedback: [] }, ...ls]);
-  }, []);
+    if (schoolId) {
+      createLessonPlan(schoolId, profile ? profile.id : null, teacher, v)
+        .then((row) => setLiveLessons((ls) => [row, ...ls]))
+        .catch(() => reloadLive());
+      return;
+    }
+    setDemoLessons((ls) => [{ ...v, status: 'draft', teacher: teacher || 'Macalin', submitted_at: 'Hadda', ministry_feedback: [] }, ...ls]);
+  }, [schoolId, profile, reloadLive]);
 
   // ministry leaves a complaint / advice on a lesson → teacher & admin see it
+  // (demo-only portal feature — untouched in Live Mode)
   const addMinistryFeedback = useCallback((id, entry) => {
-    setLessons((ls) => ls.map((l) => (l.id === id
+    setDemoLessons((ls) => ls.map((l) => (l.id === id
       ? { ...l, ministry_feedback: [...(l.ministry_feedback || []), { id: 'fb_' + (l.ministry_feedback || []).length + '_' + id, by: 'Wasaaradda Waxbarashada', ...entry }] }
       : l)));
   }, []);
+
+  const lessons = schoolId ? liveLessons : demoLessons;
 
   return (
     <LessonsContext.Provider value={{ lessons, reviewCode: REVIEW_CODE, setLessonStatus, addLesson, addMinistryFeedback }}>

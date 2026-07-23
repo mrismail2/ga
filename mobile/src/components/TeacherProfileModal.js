@@ -17,22 +17,25 @@ function InfoCell({ label, children }) {
 }
 
 /* Full teacher detail with editable photo — opens when a teacher row is
-   tapped. Fields are derived deterministically so every teacher is
-   complete (like the web teacher cards). */
-export default function TeacherProfileModal({ visible, teacher, onClose, onDelete }) {
+   tapped. DEMO: fields are derived deterministically so every teacher is
+   complete (like the web teacher cards). LIVE: pass the canonical row as
+   `live` — only its REAL fields show ('—' when empty), nothing is ever
+   fabricated for a real teacher. */
+export default function TeacherProfileModal({ visible, teacher, onClose, onDelete, live }) {
   const { c } = useTheme();
   const { role } = useRole();
-  const canDelete = role === 'superadmin' || role === 'schooladmin';
+  const canDelete = (role === 'superadmin' || role === 'schooladmin') && !!onDelete;
 
   if (!teacher) return null;
   const [name, subject, classes, exp, color] = teacher;
-  const code = 'TCH-' + name.replace(/\s/g, '').slice(0, 6).toUpperCase();
   const s = name.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0);
-  const phone = '+252 63 ' + (3000000 + (s % 6999999));
-  const email = name.toLowerCase().split(' ')[0] + '@hidaayada.edu';
-  const city = ['Gabiley', 'Hargeysa', 'Burco'][s % 3];
+  // LIVE: canonical values only. DEMO: the deterministic preview values.
+  const code = live ? String(live.id || '').slice(0, 8).toUpperCase() : 'TCH-' + name.replace(/\s/g, '').slice(0, 6).toUpperCase();
+  const phone = live ? (live.phone || '—') : '+252 63 ' + (3000000 + (s % 6999999));
+  const email = live ? (live.email || '—') : name.toLowerCase().split(' ')[0] + '@hidaayada.edu';
+  const city = live ? '—' : ['Gabiley', 'Hargeysa', 'Burco'][s % 3];
 
-  const call = () => Linking.openURL('tel:' + phone.replace(/\s/g, ''));
+  const call = () => { if (phone && phone !== '—') Linking.openURL('tel:' + phone.replace(/\s/g, '')); };
 
   const handleDelete = () => {
     Alert.alert(

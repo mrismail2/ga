@@ -17,6 +17,7 @@ import { useAppData } from '../../context/AppDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useViewMode } from '../../context/ViewModeContext';
 import { listSchools, getSchoolCounts } from '../../services/supabase';
+import { onCanonicalChange } from '../../services/canonicalStore';
 import { getParentChildren, getClassById } from '../../data/identity';
 import {
   getIncidentsForStudent, filterIncidentsForProfile, filterPaymentsForProfile, selectResultsForProfile,
@@ -160,15 +161,19 @@ export function SchoolAdminDash({ navigation }) {
   const goManage = () => navigation && navigation.navigate('Management');
 
   // LIVE: real per-school counts (all zero for a brand-new school → empty
-  // states, never demo records). Each count is a live Supabase head query.
+  // states, never demo records). Each count is a live Supabase head query,
+  // re-read whenever ANY screen persists through the canonical repository
+  // so the dashboard tiles always reflect the same canonical records.
   const [counts, setCounts] = useState({ students: 0, classes: 0, teachers: 0, payments: 0, loaded: false });
   useEffect(() => {
     let alive = true;
     if (!isLive || !profile.school_id) return undefined;
-    getSchoolCounts(profile.school_id)
+    const refresh = () => getSchoolCounts(profile.school_id)
       .then((x) => { if (alive) setCounts({ ...x, loaded: true }); })
       .catch(() => { if (alive) setCounts((p) => ({ ...p, loaded: true })); });
-    return () => { alive = false; };
+    refresh();
+    const unsub = onCanonicalChange(() => refresh());
+    return () => { alive = false; unsub(); };
   }, [isLive, profile.school_id]);
 
   if (isLive || profile.live) {

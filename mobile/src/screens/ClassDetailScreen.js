@@ -15,7 +15,9 @@ import { SEVERITY, INC_STATUS } from '../data/datasets';
 import { saveClassAttendance, getClassMarksMap, getStudentAttendance } from '../services/attendanceStorage';
 import { getRollOrder, saveRollOrder, applyRollOrder } from '../services/rollOrderStorage';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { deactivateStudent } from '../services/appDataRepository';
+import useCanonicalRows from '../hooks/useCanonicalRows';
 import { selectStudentsByClass, filterStudentsForProfile, getIncidentsByClass } from '../utils/dataSelectors';
 import {
   canPerformAction, classId, canEditPayment,
@@ -70,17 +72,28 @@ export default function ClassDetailScreen({ route, navigation }) {
   const [selected, setSelected] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   // this class's canonical identifiers (multi-school safe — never default to
-  // school_001 and never key off the display name).
+  // school_001 and never key off the display name). LIVE class cards carry
+  // the canonical Supabase class uuid at cls[8].
+  const { isLive } = useAuth();
+  const liveClassId = cls[8] || null;
   const clsSchoolId = cls[7] || 'school_001';
-  const clsClassId = classId(name, clsSchoolId);
+  const clsClassId = liveClassId || classId(name, clsSchoolId);
+  // LIVE: the roster is the canonical `students` rows of this class — the
+  // SAME rows Admissions/Maamulka Dugsiga write (change-bus refreshed).
+  const liveStudents = useCanonicalRows('students', clsSchoolId, { enabled: isLive && !!liveClassId, watch: ['admissions'] });
   // read-only roles (parent/student) only ever see their own child / self —
   // never the class-wide roster. The roster is the ONE central store filtered
   // by school_id + class_id; added students already live there and persist.
   const roster = useMemo(() => {
+    if (isLive && liveClassId) {
+      return liveStudents.rows
+        .filter((s) => s.class_id === liveClassId && s.status === 'active')
+        .map((s) => ({ ...s, student_internal_id: s.id, name: s.full_name, att: null, className: name }));
+    }
     const full = selectStudentsByClass(appData.students, clsSchoolId, clsClassId)
       .map((s) => ({ ...s, name: s.full_name || s.name, className: name }));
     return readOnly ? filterStudentsForProfile(profile, full) : full;
-  }, [appData.students, clsSchoolId, clsClassId, readOnly, profile, name]);
+  }, [isLive, liveClassId, liveStudents.rows, appData.students, clsSchoolId, clsClassId, readOnly, profile, name]);
   const [att2, setAtt2] = useState({});      // code -> { status, reason }
   const [attSaved, setAttSaved] = useState(false);
   const [month, setMonth] = useState(5);     // 0-indexed, Juun

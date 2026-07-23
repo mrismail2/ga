@@ -13,7 +13,7 @@ import { FEE_LABELS } from '../data/mock';
 export default function StudentRow({ student, index, onPress, onRoll }) {
   const { c } = useTheme();
   const fee = FEE_LABELS[student.fee] || FEE_LABELS.full;
-  const attTone = student.att >= 90 ? c.green : student.att >= 80 ? c.gold700 : c.rose;
+  const attTone = student.att == null ? c.line : student.att >= 90 ? c.green : student.att >= 80 ? c.gold700 : c.rose;
 
   return (
     <TouchableOpacity
@@ -36,8 +36,8 @@ export default function StudentRow({ student, index, onPress, onRoll }) {
       </View>
       <View style={styles.right}>
         <Badge label={fee.label} tone={fee.tone} />
-        <Text style={[styles.att, { color: student.att >= 90 ? c.green : student.att >= 80 ? c.gold700 : c.rose }]}>
-          {student.att}%
+        <Text style={[styles.att, { color: student.att == null ? c.muted : student.att >= 90 ? c.green : student.att >= 80 ? c.gold700 : c.rose }]}>
+          {student.att == null ? '—' : `${student.att}%`}
         </Text>
       </View>
       <View style={{ marginLeft: 6 }}>

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Modal, View, Text, Image, StyleSheet, ScrollView, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 import Avatar from '../components/Avatar';
 import Icon from '../components/Icon';
 import ScreenHeader from '../components/ScreenHeader';
@@ -10,6 +11,7 @@ import { shadow } from '../theme/colors';
 import { MESSAGES } from '../data/datasets';
 import { filterMessagesForProfile, hasPermission } from '../data/access';
 import { pickStudentImageFromGallery } from '../services/studentPhotoStorage';
+import { listMyConversations, listConversationMessages, sendConversationMessage, markConversationRead } from '../services/messaging';
 
 const firstName = (s) => String(s || '').replace(/\(.*\)/, '').trim().split(' ')[0];
 
@@ -25,10 +27,19 @@ function seedThread(msg) {
 
 /* Teacher ↔ Student messaging only. Parent and Accountant never reach this
    screen (not in their nav). Admin / Super Admin see a moderation summary —
-   message bodies are hidden by default. */
+   message bodies are hidden by default.
+
+   DEMO mode: the Phase 1/2 seeded preview threads, unchanged.
+
+   LIVE mode: ONLY the canonical conversations / conversation_members /
+   messages rows (services/messaging.js) — the demo MESSAGES array is never
+   used. An empty school shows “Weli wada-hadal ma jiro.”; unread state
+   comes from last_read_at; text messages persist after refresh; voice and
+   photo attachments are DISABLED (never simulated) in Live Mode. */
 export default function MessagesScreen({ navigation }) {
   const { c } = useTheme();
   const { profile } = useRole();
+  const { isLive, profile: liveProfile } = useAuth();
   const [open, setOpen] = useState(null);
   const [thread, setThread] = useState([]);
   const [draft, setDraft] = useState('');
@@ -37,9 +48,22 @@ export default function MessagesScreen({ navigation }) {
   const [recSecs, setRecSecs] = useState(0);
   const recTimer = useRef(null);
 
+  // LIVE canonical conversations (empty school → zero, honestly)
+  const profileId = isLive && liveProfile ? liveProfile.id : null;
+  const liveSchoolId = isLive && liveProfile ? liveProfile.school_id : null;
+  const [liveConvs, setLiveConvs] = useState([]);
+  const reloadConvs = useCallback(async () => {
+    if (!profileId) { setLiveConvs([]); return; }
+    try { setLiveConvs(await listMyConversations(profileId)); }
+    catch (e) { setLiveConvs([]); }
+  }, [profileId]);
+  useEffect(() => { reloadConvs(); }, [reloadConvs]);
+
   const moderator = profile.scope === 'platform' || profile.scope === 'school';
-  const canSend = hasPermission(profile, 'messages.send') || profile.scope === 'self';
-  const all = filterMessagesForProfile(profile, MESSAGES);
+  const canSend = isLive ? true : (hasPermission(profile, 'messages.send') || profile.scope === 'self');
+  // photo / voice must never SIMULATE success — live mode disables them
+  const canAttach = canSend && !isLive;
+  const all = isLive ? liveConvs : filterMessagesForProfile(profile, MESSAGES);
   const list = all.filter((m) => m.from.toLowerCase().includes(q.toLowerCase()));
   const unread = all.filter((m) => m.unread).length;
 
@@ -50,23 +74,47 @@ export default function MessagesScreen({ navigation }) {
   }, [recording]);
   const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
-  const openThread = (msg) => { if (moderator) return; setOpen(msg); setThread(seedThread(msg)); setDraft(''); setRecording(false); setRecSecs(0); };
-  const send = () => {
-    if (!draft.trim() || !canSend) return;
-    setThread((t) => [...t, { me: true, text: draft.trim(), time: 'Hadda' }]);
+  const openThread = async (msg) => {
+    if (moderator && !isLive) return;
+    setOpen(msg); setDraft(''); setRecording(false); setRecSecs(0);
+    if (isLive) {
+      setThread([]);
+      try {
+        const msgs = await listConversationMessages(msg.id, profileId);
+        setThread(msgs);
+        await markConversationRead(msg.id, profileId);
+        reloadConvs(); // clears the unread ring from the canonical state
+      } catch (e) { setThread([]); }
+      return;
+    }
+    setThread(seedThread(msg));
+  };
+  const send = async () => {
+    const text = draft.trim();
+    if (!text || !canSend) return;
+    if (isLive && open) {
+      setDraft('');
+      try {
+        await sendConversationMessage(open.id, liveSchoolId, profileId, text);
+        setThread((t) => [...t, { me: true, text, time: 'Hadda' }]);
+        reloadConvs();
+      } catch (e) { /* the honest state: nothing appended on failure */ }
+      return;
+    }
+    setThread((t) => [...t, { me: true, text, time: 'Hadda' }]);
     setDraft('');
   };
-  // attach a photo (gallery) — shows as an image bubble
+  // attach a photo (gallery) — demo preview only, never simulated live
   const attachImage = async () => {
-    if (!canSend) return;
+    if (!canAttach) return;
     const res = await pickStudentImageFromGallery();
     if (res && res.uri) setThread((t) => [...t, { me: true, image: res.uri, time: 'Hadda' }]);
   };
-  // voice note: tap to start, tap again to send (duration = elapsed)
-  const startRec = () => { if (!canSend) return; setRecSecs(0); setRecording(true); };
+  // voice note: tap to start, tap again to send (demo preview only)
+  const startRec = () => { if (!canAttach) return; setRecSecs(0); setRecording(true); };
   const stopRec = (sendIt) => {
     setRecording(false);
-    if (sendIt) setThread((t) => [...t, { me: true, voice: true, dur: fmt(recSecs || 1), time: 'Hadda' }]);
+    if (sendIt && canAttach) setThread((t) => [...t, { me: true, voice: true, dur: fmt(recSecs || 1), time: 'Hadda' }]);
     setRecSecs(0);
   };
 
@@ -131,14 +179,14 @@ export default function MessagesScreen({ navigation }) {
           keyExtractor={(m) => m.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 16 }}
-          ListEmptyComponent={<Text style={[styles.empty, { color: c.muted }]}>🪶 Fariin ma jirto</Text>}
+          ListEmptyComponent={<Text style={[styles.empty, { color: c.muted }]}>{isLive ? 'Weli wada-hadal ma jiro.' : '🪶 Fariin ma jirto'}</Text>}
           renderItem={({ item }) => {
             const isStudent = item.role === 'student';
             return (
               <TouchableOpacity
                 style={[styles.card, { backgroundColor: c.surface, borderColor: item.unread && !moderator ? c.blue : c.line }, shadow.sm]}
-                activeOpacity={moderator ? 1 : 0.7}
-                onPress={moderator ? undefined : () => openThread(item)}
+                activeOpacity={moderator && !isLive ? 1 : 0.7}
+                onPress={moderator && !isLive ? undefined : () => openThread(item)}
               >
                 <Avatar name={item.from} code={item.avatar} size={48} />
                 <View style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
@@ -253,8 +301,8 @@ export default function MessagesScreen({ navigation }) {
                   </View>
                 ) : (
                   <View style={[styles.composer, { backgroundColor: c.surface, borderTopColor: c.line }]}>
-                    <TouchableOpacity style={[styles.cBtn, { backgroundColor: c.blueSoft }]} onPress={attachImage} disabled={!canSend}>
-                      <Icon name="camera" size={18} color={canSend ? c.navy : c.muted2} strokeWidth={2} />
+                    <TouchableOpacity style={[styles.cBtn, { backgroundColor: c.blueSoft }]} onPress={attachImage} disabled={!canAttach}>
+                      <Icon name="camera" size={18} color={canAttach ? c.navy : c.muted2} strokeWidth={2} />
                     </TouchableOpacity>
                     <TextInput value={draft} onChangeText={setDraft} editable={canSend} placeholder={canSend ? 'Qor fariin…' : 'Fariin ma diri kartid'} placeholderTextColor={c.muted2}
                       style={[styles.input, { backgroundColor: c.bg, borderColor: c.line, color: c.ink }]} />
@@ -263,7 +311,7 @@ export default function MessagesScreen({ navigation }) {
                         <Icon name="send" size={18} color="#fff" strokeWidth={2} />
                       </TouchableOpacity>
                     ) : (
-                      <TouchableOpacity style={[styles.sendBtn, { backgroundColor: canSend ? c.navy : c.muted2 }]} onPress={startRec} disabled={!canSend}>
+                      <TouchableOpacity style={[styles.sendBtn, { backgroundColor: canAttach ? c.navy : c.muted2 }]} onPress={startRec} disabled={!canAttach}>
                         <Icon name="mic" size={18} color="#fff" strokeWidth={2} />
                       </TouchableOpacity>
                     )}

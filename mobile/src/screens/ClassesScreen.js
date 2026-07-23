@@ -1,22 +1,27 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 import { radius, shadow } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import Icon from '../components/Icon';
 import AddClassModal from '../components/AddClassModal';
 import { CLASSES, SCHOOL2_CLASSES } from '../data/mock';
 import { filterClassesForProfile, canPerformAction } from '../data/access';
+import useCanonicalRows from '../hooks/useCanonicalRows';
 
 /* every class across schools — the filter narrows to what the role may see */
 const ALL_CLASSES = [...CLASSES, ...SCHOOL2_CLASSES];
 
+/* stable palette for live cards (cosmetic only — never stored) */
+const LIVE_COLORS = ['#5B5BD6', '#16A34A', '#CFAD5E', '#2F6BF0', '#0891B2', '#7C3AED', '#E5484D', '#B45309'];
+
 function ClassCard({ cls, onPress }) {
   const { c } = useTheme();
   const [name, grade, teacher, students, cap, color, att] = cls;
-  const fill = Math.round((students / cap) * 100);
+  const fill = cap > 0 ? Math.round((students / cap) * 100) : 0;
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: c.surface, borderColor: c.line }, shadow.sm]}
@@ -38,7 +43,7 @@ function ClassCard({ cls, onPress }) {
           <Text style={[styles.kpiLbl, { color: c.muted }]}>Buuxa</Text>
         </View>
         <View>
-          <Text style={[styles.kpiVal, { color: c.green }]}>{att}%</Text>
+          <Text style={[styles.kpiVal, { color: c.green }]}>{att == null ? '—' : `${att}%`}</Text>
           <Text style={[styles.kpiLbl, { color: c.muted }]}>Xaadir</Text>
         </View>
       </View>
@@ -46,24 +51,58 @@ function ClassCard({ cls, onPress }) {
   );
 }
 
+/* Fasallada.
+
+   DEMO mode: the Phase 1/2 mock grid, unchanged.
+
+   LIVE mode: the SAME canonical `classes` rows Maamulka Dugsiga manages
+   (services/phase4.js) — a class created in either place appears in both
+   immediately (canonical change bus) and persists after refresh, because
+   both read the same Supabase table. The School Admin can create a class
+   right here with the existing + button / AddClassModal; the modal saves
+   through the canonical repository, so both creation paths produce ONE
+   canonical record format. Student counts come from the canonical
+   students rows; attendance has no live source yet so it shows '—',
+   never a fake number. */
 export default function ClassesScreen({ navigation }) {
   const { c } = useTheme();
   const { profile } = useRole();
+  const { isLive, roleKey } = useAuth();
   const [q, setQ] = useState('');
   // role + school isolation: teacher sees only assigned classes, admins only
   // their school, Super Admin all. Filter the actual data, not just the UI.
   const [classes, setClasses] = useState(() => filterClassesForProfile(profile, ALL_CLASSES));
   const [showAdd, setShowAdd] = useState(false);
-  // only Super Admin / School Admin may create a class
-  const canCreate = canPerformAction(profile, 'classes.create');
-  const list = classes.filter((cl) => cl[0].toLowerCase().includes(q.toLowerCase()));
+
+  // LIVE: canonical classes + students (for real per-class counts). RLS keeps
+  // other schools out; the change bus re-reads after ANY canonical mutation.
+  const schoolId = profile.school_id;
+  const live = useCanonicalRows('classes', schoolId, { enabled: isLive });
+  const liveStudents = useCanonicalRows('students', schoolId, { enabled: isLive });
+
+  const liveCards = useMemo(() => {
+    if (!isLive) return [];
+    const activeRows = live.rows.filter((r) => r.status !== 'archived');
+    return activeRows.map((r, i) => {
+      const count = liveStudents.rows.filter((s) => s.class_id === r.id && s.status === 'active').length;
+      // demo card layout + [7]=school_id, [8]=canonical class id
+      return [r.name, r.code || '', r.code || 'Fasal', count, r.capacity || 0, LIVE_COLORS[i % LIVE_COLORS.length], null, r.school_id, r.id];
+    });
+  }, [isLive, live.rows, liveStudents.rows]);
+
+  const source = isLive ? liveCards : classes;
+  const list = source.filter((cl) => cl[0].toLowerCase().includes(q.toLowerCase()));
+
+  // only Super Admin / School Admin may create a class; in LIVE mode the
+  // authenticated DATABASE role decides (School Admin of this school).
+  const canCreate = isLive ? (roleKey === 'schooladmin' && !!schoolId) : canPerformAction(profile, 'classes.create');
 
   const addClass = (cls) => setClasses([cls, ...classes]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
       <View style={styles.content}>
-        <ScreenHeader title="Fasallada" subtitle={`${classes.length} fasal`} />
+        <ScreenHeader title="Fasallada" subtitle={`${source.length} fasal`} />
         <View style={[styles.search, { backgroundColor: c.surface, borderColor: c.line }]}>
           <Icon name="search" size={18} color={c.muted} />
           <TextInput
@@ -74,17 +113,29 @@ export default function ClassesScreen({ navigation }) {
             style={[styles.searchInput, { color: c.ink }]}
           />
         </View>
-        <FlatList
-          data={list}
-          keyExtractor={(item) => item[0]}
-          numColumns={2}
-          columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ gap: 12, paddingBottom: 90 }}
-          renderItem={({ item }) => (
-            <ClassCard cls={item} onPress={(cls) => navigation.navigate('ClassDetail', { cls })} />
-          )}
-          showsVerticalScrollIndicator={false}
-        />
+        {isLive && live.loading ? (
+          <View style={styles.liveState}><ActivityIndicator color={c.blue} /></View>
+        ) : isLive && live.error ? (
+          <View style={styles.liveState}>
+            <Text style={[styles.liveErr, { color: c.rose }]}>{live.error}</Text>
+            <TouchableOpacity onPress={live.reload}><Text style={{ color: c.blue, fontWeight: '700', marginTop: 8 }}>Isku day mar kale</Text></TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={list}
+            keyExtractor={(item) => String(item[8] || item[0])}
+            numColumns={2}
+            columnWrapperStyle={{ gap: 12 }}
+            contentContainerStyle={{ gap: 12, paddingBottom: 90 }}
+            ListEmptyComponent={isLive ? (
+              <Text style={[styles.empty, { color: c.muted }]}>Weli fasal lama abuurin. Riix + si aad ugu darto fasalka ugu horreeya.</Text>
+            ) : null}
+            renderItem={({ item }) => (
+              <ClassCard cls={item} onPress={(cls) => navigation.navigate('ClassDetail', { cls })} />
+            )}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
       </View>
 
       {/* Add Class is hidden for Teacher / Accountant / Parent / Student */}
@@ -94,7 +145,7 @@ export default function ClassesScreen({ navigation }) {
         </TouchableOpacity>
       ) : null}
 
-      {canCreate ? <AddClassModal visible={showAdd} onClose={() => setShowAdd(false)} onAdd={addClass} /> : null}
+      {canCreate ? <AddClassModal visible={showAdd} onClose={() => setShowAdd(false)} onAdd={addClass} onSaved={live.reload} /> : null}
     </SafeAreaView>
   );
 }
@@ -113,4 +164,7 @@ const styles = StyleSheet.create({
   kpis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
   kpiVal: { fontSize: 15, fontWeight: '800' },
   kpiLbl: { fontSize: 10.5, fontWeight: '600', marginTop: 1 },
+  liveState: { alignItems: 'center', padding: 28 },
+  liveErr: { fontSize: 13, fontWeight: '700', textAlign: 'center', lineHeight: 19 },
+  empty: { fontSize: 13, fontWeight: '600', textAlign: 'center', padding: 30 },
 });

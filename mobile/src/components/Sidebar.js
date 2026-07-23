@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 import { NAV_META } from '../data/roles';
 import useStageTerminology from '../hooks/useStageTerminology';
 import Icon from './Icon';
@@ -14,6 +15,7 @@ const { canRoleNavigate, activateNavigationItem } = require('../domain/navigatio
 export default function Sidebar({ active, onNavigate }) {
   const { c } = useTheme();
   const { profile } = useRole();
+  const { isLive, demoActive, signOut } = useAuth();
   const stageTerms = useStageTerminology();
   const items = profile.nav.filter((k) => NAV_META[k] && canRoleNavigate(profile.key, k));
   // stage-aware wording (Fasallada vs Formamka) — config/schoolStages.js
@@ -46,13 +48,27 @@ export default function Sidebar({ active, onNavigate }) {
         })}
       </ScrollView>
 
-      {/* profile footer */}
+      {/* profile footer — with the web Sign Out action. signOut() is the
+          REAL authentication termination (AuthContext → Supabase signOut +
+          full auth/profile/role state clear); App.js then routes back to
+          the Landing/Login gate and every protected screen unmounts, so a
+          refresh or browser-back can never reopen protected data. */}
       <View style={[styles.foot, { borderTopColor: c.line }]}>
         <Avatar name={profile.name} code={profile.key} size={38} editable />
         <View style={{ flex: 1, marginLeft: 10, minWidth: 0 }}>
           <Text style={[styles.fName, { color: c.ink }]} numberOfLines={1}>{profile.name}</Text>
           <Text style={[styles.fRole, { color: c.muted }]} numberOfLines={1}>{profile.labelSo}</Text>
         </View>
+        {(isLive || demoActive) ? (
+          <TouchableOpacity
+            onPress={signOut}
+            hitSlop={10}
+            style={[styles.signOutBtn, { borderColor: c.line }]}
+            accessibilityLabel={isLive ? 'Ka bax (Sign out)' : 'Ka bax Demo'}
+          >
+            <Icon name="back" size={16} color={c.rose} strokeWidth={2.2} />
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );
@@ -74,4 +90,5 @@ const styles = StyleSheet.create({
   foot: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, paddingTop: 14, marginTop: 6 },
   fName: { fontSize: 13.5, fontWeight: '700' },
   fRole: { fontSize: 11.5, marginTop: 1 },
+  signOutBtn: { width: 32, height: 32, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
 });

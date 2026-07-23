@@ -14,7 +14,8 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal,
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import Icon from './Icon';
-import { p4List, p4Create, p4Update, p4Validate, p4FriendlyError } from '../services/phase4';
+import { p4List, p4Create, p4Update, p4Validate, p4FriendlyError, p4AdmitStudentAtomic } from '../services/phase4';
+import { onCanonicalChange } from '../services/canonicalStore';
 
 export default function P4ModuleView({ module, titleOverride }) {
   const { c } = useTheme();
@@ -44,6 +45,13 @@ export default function P4ModuleView({ module, titleOverride }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // two-way sync: a record persisted from ANY screen (e.g. a class created
+  // from the Fasallada main-menu modal) re-reads the same canonical rows here
+  useEffect(() => {
+    if (!canUse) return undefined;
+    return onCanonicalChange((table) => { if (table === module.table) load(); });
+  }, [canUse, module.table, load]);
+
   const openForm = async (row) => {
     setEditing(row || null);
     setFormErr(null);
@@ -68,17 +76,37 @@ export default function P4ModuleView({ module, titleOverride }) {
     setFormErr(null);
     const err = p4Validate(module.fields, values);
     if (err) { setFormErr(err); return; }
+    // `virtual` fields (guardian selection/relationship on Admissions) feed
+    // the atomic RPC only — they are never columns of the module's table
     const payload = {};
+    const extra = {};
     module.fields.forEach((f) => {
       let v = (values[f.key] || '').trim();
       if (f.upper) v = v.toUpperCase();
-      if (v === '') { payload[f.key] = null; return; }
-      payload[f.key] = f.number ? Number(v) : v;
+      const target = f.virtual ? extra : payload;
+      target[f.key] = v === '' ? null : (f.number ? Number(v) : v);
     });
     setSaving(true);
     try {
-      if (editing) await p4Update(module.table, editing.id, payload);
-      else await p4Create(module.table, { ...payload, school_id: schoolId });
+      if (module.enrollAtomic && payload.status === 'enrolled') {
+        // ONE transaction: student + enrollment + admission + parent +
+        // guardian link — all created/updated together or not at all
+        await p4AdmitStudentAtomic(schoolId, {
+          applicantName: payload.applicant_name,
+          classId: payload.desired_class_id,
+          admissionId: editing ? editing.id : null,
+          studentId: editing ? editing.student_id : null,
+          parentId: extra.parent_id,
+          guardianName: payload.guardian_name,
+          guardianPhone: payload.guardian_phone,
+          guardianEmail: extra.guardian_email,
+          relationship: extra.relationship,
+        });
+      } else if (editing) {
+        await p4Update(module.table, editing.id, payload);
+      } else {
+        await p4Create(module.table, { ...payload, school_id: schoolId });
+      }
       setFormOpen(false);
       await load();
     } catch (e) { setFormErr(p4FriendlyError(e)); }

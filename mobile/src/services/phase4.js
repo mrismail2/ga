@@ -10,6 +10,7 @@
    query, never widen it.
    ============================================================ */
 import { supabase, isSupabaseConfigured } from './supabase';
+import { notifyCanonicalChange } from './canonicalStore';
 
 /* Allow-list: table -> default ordering. p4* functions refuse any table
    not in this map, so a screen bug can never touch other tables. */
@@ -60,8 +61,14 @@ export function p4FriendlyError(error) {
   if (/row-level security|violates row-level/i.test(msg)) {
     return 'Ma lihid oggolaansho aad diiwaankan ku sameyso.';
   }
-  if (/belongs to another/i.test(msg)) {
+  if (/already linked/i.test(msg)) {
+    return 'Waalidkan horey ayuu ugu xirnaa ardaygan.';
+  }
+  if (/belongs to another/i.test(msg) || /another school/i.test(msg)) {
     return 'Diiwaanka aad dooratay wuxuu ka tirsan yahay dugsi/jaamacad kale.';
+  }
+  if (/only a school admin/i.test(msg)) {
+    return 'Kaliya Maamulaha Dugsiga ayaa fal-kan samayn kara.';
   }
   return msg || 'Waa la fashilmay. Isku day mar kale.';
 }
@@ -81,6 +88,7 @@ export async function p4Create(table, row) {
   if (!row || !row.school_id) throw new Error('school_id waa qasab (required).');
   const { data, error } = await supabase.from(table).insert(row).select().single();
   if (error) throw error;
+  notifyCanonicalChange(table); // every subscribed screen re-reads the SAME canonical rows
   return data;
 }
 
@@ -90,6 +98,7 @@ export async function p4Update(table, id, patch) {
   const { school_id, id: _id, created_at, ...safe } = patch || {};
   const { data, error } = await supabase.from(table).update(safe).eq('id', id).select().single();
   if (error) throw error;
+  notifyCanonicalChange(table);
   return data;
 }
 
@@ -106,6 +115,100 @@ export async function p4Counts(schoolId, tables) {
     } catch (e) { out[t] = 0; }
   }));
   return out;
+}
+
+/* The school's ACTIVE academic year (status='active', latest start first).
+   null when none has been created yet — callers save with a null year and
+   the class remains valid; the admin can attach the year later. */
+export async function p4ActiveAcademicYear(schoolId) {
+  requireTable('academic_years');
+  const { data, error } = await supabase.from('academic_years')
+    .select('*').eq('school_id', schoolId).eq('status', 'active')
+    .order('starts_on', { ascending: false, nullsFirst: false }).limit(1);
+  if (error) throw error;
+  return (data && data[0]) || null;
+}
+
+/* Canonical class creation — the ONE record format BOTH creation paths
+   (Maamulka Dugsiga and the Fasallada main-menu screen) produce:
+     • verifies the caller is a School Admin of this school (RLS re-checks)
+     • uses profile.school_id, the active academic year and the selected
+       school level (matched to an existing school_sections row)
+     • blocks inappropriate duplicates (same name, case-insensitive) with
+       a friendly message before the DB unique constraint fires
+     • the stable class id is the DB-generated uuid
+   Every subscribed screen reloads via notifyCanonicalChange('classes'). */
+export async function p4CreateClassCanonical({ profile, roleKey, name, capacity, levelType }) {
+  const schoolId = profile ? profile.school_id : null;
+  if (!schoolId || (roleKey !== 'schooladmin' && roleKey !== 'superadmin')) {
+    const e = new Error('Kaliya Maamulaha Dugsiga ayaa abuuri kara fasal.');
+    e.code = 'guardian_access_denied';
+    throw e;
+  }
+  const clean = String(name || '').trim();
+  if (!clean) throw new Error('Magaca fasalka waa qasab (required).');
+
+  const [existing, year, sections] = await Promise.all([
+    p4List('classes', schoolId),
+    p4ActiveAcademicYear(schoolId).catch(() => null),
+    p4List('school_sections', schoolId, { activeOnly: true }).catch(() => []),
+  ]);
+  if (existing.some((r) => (r.name || '').trim().toLowerCase() === clean.toLowerCase())) {
+    const e = new Error('Fasal magacan wata ayaa horey u jiray. Beddel magaca.');
+    e.code = '23505';
+    throw e;
+  }
+  const section = levelType ? sections.find((s) => s.level_type === levelType) || null : null;
+  const capNum = Number(capacity);
+  return p4Create('classes', {
+    school_id: schoolId,
+    name: clean,
+    capacity: Number.isFinite(capNum) && capNum > 0 ? capNum : 0,
+    school_section_id: section ? section.id : null,
+    academic_year_id: year ? year.id : null,
+    display_order: existing.length + 1,
+  });
+}
+
+/* Atomic admission — student + enrollment + admission + (optional) parent +
+   guardian link in ONE database transaction (admit_student_atomic RPC).
+   Any failure rolls the whole operation back: no partial student, ever. */
+export async function p4AdmitStudentAtomic(schoolId, {
+  applicantName, gender = null, dateOfBirth = null, admissionNumber = null,
+  classId = null, streamId = null, academicYearId = null,
+  admissionId = null, studentId = null,
+  parentId = null, guardianName = null, guardianPhone = null,
+  guardianEmail = null, relationship = null, isPrimary = true,
+} = {}) {
+  requireTable('admissions');
+  // enrolment defaults to the ACTIVE academic year when none is chosen
+  let yearId = academicYearId;
+  if (!yearId) {
+    try { const y = await p4ActiveAcademicYear(schoolId); yearId = y ? y.id : null; }
+    catch (e) { yearId = null; }
+  }
+  const { data, error } = await supabase.rpc('admit_student_atomic', {
+    p_school: schoolId,
+    p_applicant_name: applicantName,
+    p_gender: gender || null,
+    p_date_of_birth: dateOfBirth || null,
+    p_admission_number: admissionNumber || null,
+    p_class_id: classId || null,
+    p_stream_id: streamId || null,
+    p_academic_year_id: yearId || null,
+    p_admission_id: admissionId || null,
+    p_student_id: studentId || null,
+    p_parent_id: parentId || null,
+    p_guardian_name: guardianName || null,
+    p_guardian_phone: guardianPhone || null,
+    p_guardian_email: guardianEmail || null,
+    p_relationship: relationship || null,
+    p_is_primary: isPrimary !== false,
+  });
+  if (error) throw error;
+  // one atomic write touched all of these canonical tables
+  ['students', 'admissions', 'parents', 'student_parents'].forEach(notifyCanonicalChange);
+  return data;
 }
 
 /* Client-side validation shared by the CRUD forms (the DB re-validates all
