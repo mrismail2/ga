@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -11,14 +11,12 @@ import LoadingDots from '../../components/LoadingDots';
    link opens the set-password screen. To avoid leaking which emails exist, the
    confirmation is shown regardless of whether the address has an account.
 
-   Wide-screen layout matches LoginScreen's two-panel treatment (navy brand
-   panel + a width-capped, centered form column) so the form no longer
-   stretches full-bleed across a desktop window. Narrow/mobile layout is
-   unchanged. */
+   A single compact card, centered on the page — the same rounded-card
+   visual language (proportions, radius, shadow) as the landing page's own
+   LoginModal card, so this screen reads as one consistent, professional
+   auth surface instead of a full-bleed stretched form. */
 export default function ForgotPasswordScreen({ goLogin }) {
   const { c } = useTheme();
-  const { width } = useWindowDimensions();
-  const wide = width >= 900;
   const { requestPasswordReset, configured } = useAuth();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -42,35 +40,22 @@ export default function ForgotPasswordScreen({ goLogin }) {
     }
   };
 
-  const Brand = (
-    <View style={[styles.brandPanel, { backgroundColor: c.navy }, wide ? styles.brandPanelWide : styles.brandPanelNarrow]}>
-      <Logo size={40} variant="white" />
-      <Text style={styles.brandHeadline}>Dib u soo cel <Text style={{ color: c.gold }}>akoonkaaga</Text></Text>
-      {wide ? (
-        <Text style={styles.brandSub}>
-          Geli email-kaaga oo ku diiwaan gashan Kobciye — waxaan kuu soo diri doonaa link aad ku dejinayso furaha sirta cusub.
-        </Text>
-      ) : null}
-    </View>
-  );
-
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={wide ? styles.contentWide : styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {Brand}
-
-          <View style={[styles.formCol, wide && styles.formColWide]}>
-            <TouchableOpacity onPress={goLogin} hitSlop={10} style={[styles.back, { backgroundColor: c.surface, borderColor: c.line }]}>
-              <Icon name="back" size={18} color={c.ink} />
-              <Text style={[styles.backTxt, { color: c.ink }]}>Ku noqo Soo-gal</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.kav}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={[styles.card, { backgroundColor: c.surface }]}>
+            <TouchableOpacity onPress={goLogin} style={[styles.back, { backgroundColor: c.bg, borderColor: c.line }]} activeOpacity={0.85} hitSlop={8}>
+              <Icon name="back" size={16} color={c.ink} />
             </TouchableOpacity>
+
+            <View style={styles.logoWrap}><Logo size={34} /></View>
 
             <Text style={[styles.title, { color: c.ink }]}>Dib u deji furaha sirta</Text>
             <Text style={[styles.subtitle, { color: c.muted }]}>Geli email-kaaga waxaana lagu soo diri doonaa link dib-u-dejin.</Text>
 
             {!sent ? (
-              <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.line }]}>
+              <>
                 <Text style={[styles.label, { color: c.muted }]}>EMAIL</Text>
                 <View style={[styles.field, { backgroundColor: c.bg, borderColor: c.line }]}>
                   <Icon name="mail" size={17} color={c.muted2} />
@@ -86,9 +71,9 @@ export default function ForgotPasswordScreen({ goLogin }) {
                     </>
                   )}
                 </TouchableOpacity>
-              </View>
+              </>
             ) : (
-              <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.line, alignItems: 'center' }]}>
+              <View style={{ alignItems: 'center' }}>
                 <View style={[styles.okCircle, { backgroundColor: c.greenSoft }]}>
                   <Icon name="check" size={26} color={c.green} strokeWidth={2.5} />
                 </View>
@@ -98,6 +83,10 @@ export default function ForgotPasswordScreen({ goLogin }) {
                 </Text>
               </View>
             )}
+
+            <TouchableOpacity onPress={goLogin} style={{ alignSelf: 'center', marginTop: 20 }}>
+              <Text style={[styles.link, { color: c.blue }]}>← Ku noqo Soo-gal</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -107,26 +96,23 @@ export default function ForgotPasswordScreen({ goLogin }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { padding: 0, paddingBottom: 40 },
-  contentWide: { flexDirection: 'row', minHeight: '100%' },
-  brandPanel: { alignItems: 'center' },
-  brandPanelNarrow: { paddingTop: 40, paddingBottom: 32, paddingHorizontal: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  brandPanelWide: { flex: 1, justifyContent: 'center', paddingHorizontal: 48, minHeight: 640 },
-  brandHeadline: { color: '#fff', fontSize: 26, fontWeight: '800', textAlign: 'center', marginTop: 20, lineHeight: 34, maxWidth: 380 },
-  brandSub: { color: 'rgba(255,255,255,.75)', fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 14, lineHeight: 21, maxWidth: 360 },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', height: 38, borderRadius: 11, borderWidth: 1, paddingHorizontal: 12, marginBottom: 18 },
-  backTxt: { fontSize: 12.5, fontWeight: '700' },
-  formCol: { padding: 22, paddingTop: 28 },
-  formColWide: { flex: 1, maxWidth: 420, justifyContent: 'center', alignSelf: 'center', width: '100%' },
-  title: { fontSize: 21, fontWeight: '800' },
-  subtitle: { fontSize: 13, fontWeight: '600', marginTop: 6, marginBottom: 18, lineHeight: 19 },
-  card: { borderRadius: 18, borderWidth: 1, padding: 18 },
+  kav: { flex: 1 },
+  scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 18 },
+  card: {
+    width: '100%', maxWidth: 400, borderRadius: 28, paddingHorizontal: 26, paddingTop: 26, paddingBottom: 24,
+    ...(Platform.OS === 'web' ? { boxShadow: '0 24px 70px rgba(6,14,38,0.18)' } : { elevation: 8 }),
+  },
+  back: { position: 'absolute', top: 14, left: 14, zIndex: 20, width: 32, height: 32, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  logoWrap: { alignSelf: 'center', marginBottom: 14 },
+  title: { fontSize: 22, fontWeight: '800', textAlign: 'center', letterSpacing: -0.3 },
+  subtitle: { fontSize: 13, fontWeight: '600', textAlign: 'center', marginTop: 5, marginBottom: 20, lineHeight: 19 },
   label: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4, marginBottom: 7 },
-  field: { flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, height: 48 },
+  field: { flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 13, height: 50 },
   input: { flex: 1, fontSize: 14.5 },
-  err: { fontSize: 12.5, fontWeight: '700', marginTop: 12 },
-  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 14, marginTop: 18 },
-  btnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  err: { fontSize: 12.5, fontWeight: '700', marginTop: 12, textAlign: 'center' },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, borderRadius: 14, marginTop: 24 },
+  btnTxt: { color: '#fff', fontSize: 15.5, fontWeight: '800' },
+  link: { fontSize: 13.5, fontWeight: '700' },
   okCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   okTitle: { fontSize: 17, fontWeight: '800' },
   okSub: { fontSize: 13, fontWeight: '600', marginTop: 6, textAlign: 'center', lineHeight: 19 },

@@ -1,26 +1,25 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 
+const MARK_WHITE = require('../../assets/kobciye-mark-white.png');
+
+/* Startup splash — full-bleed brand navy with the Kobciye "K" mark
+   centered, popping in and then breathing (a gentle scale pulse) while
+   the app boots. Replaces the earlier bouncing-dots loader. */
 export default function LoadingScreen({ onDone }) {
-  const dot1Y = useRef(new Animated.Value(0)).current;
-  const dot2Y = useRef(new Animated.Value(0)).current;
-  const dot3Y = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.8)).current;
   const fade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    const bounce = (anim, delay) =>
+    const pulse = () =>
       Animated.loop(
         Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(anim, { toValue: -10, duration: 280, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.timing(anim, { toValue: 0, duration: 280, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          Animated.delay(400 - delay),
+          Animated.timing(scale, { toValue: 1.08, duration: 620, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 1, duration: 620, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
         ])
-      );
+      ).start();
 
-    bounce(dot1Y, 0).start();
-    bounce(dot2Y, 120).start();
-    bounce(dot3Y, 240).start();
+    Animated.spring(scale, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }).start(pulse);
 
     const t = setTimeout(() => {
       Animated.timing(fade, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => onDone && onDone());
@@ -31,11 +30,7 @@ export default function LoadingScreen({ onDone }) {
   return (
     <Animated.View style={[styles.root, { opacity: fade }]}>
       <View style={styles.wrap}>
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dot1Y }] }]} />
-        <View style={styles.row}>
-          <Animated.View style={[styles.dot, { transform: [{ translateY: dot2Y }] }]} />
-          <Animated.View style={[styles.dot, { transform: [{ translateY: dot3Y }] }]} />
-        </View>
+        <Animated.Image source={MARK_WHITE} style={[styles.mark, { transform: [{ scale }] }]} />
       </View>
     </Animated.View>
   );
@@ -46,13 +41,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    // Transparent wrapper: the loader blends with whatever screen is behind it
-    // instead of painting a solid colored block over the app.
-    backgroundColor: 'transparent',
+    backgroundColor: '#0A2E6B', // brand navy
     zIndex: 9999,
   },
-  wrap: { alignItems: 'center', gap: 5 },
-  row: { flexDirection: 'row', gap: 5 },
-  // brand navy so the dots stay visible on the (now transparent) light background
-  dot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#0A2E6B' },
+  wrap: { alignItems: 'center', justifyContent: 'center' },
+  mark: { width: 84, height: 84, resizeMode: 'contain' },
 });
