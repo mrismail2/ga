@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -62,6 +62,18 @@ function NavWrapper() {
   useEffect(() => {
     if (auth.status === 'signed_in' || auth.flow === 'set_password') setEntered(true);
   }, [auth.status, auth.flow]);
+
+  // a genuine Sign Out (signed_in -> signed_out) sends the user back to the
+  // marketing landing page rather than straight to the bare login form —
+  // this only fires on that specific transition, never on a fresh cold
+  // start (which is already signed_out with entered=false by default).
+  const prevAuthStatusRef = useRef(auth.status);
+  useEffect(() => {
+    if (prevAuthStatusRef.current === 'signed_in' && auth.status === 'signed_out') {
+      setEntered(false);
+    }
+    prevAuthStatusRef.current = auth.status;
+  }, [auth.status]);
 
   const navTheme = {
     ...DefaultTheme,
