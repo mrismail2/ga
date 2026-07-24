@@ -1,0 +1,19 @@
+node_modules/
+supabase/tests/node_modules/
+
+# Edge Function secrets — real values must never be committed
+supabase/functions/.env
+supabase/.env
+
+# Deno / Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# source-only deliverable ZIPs stay out of version control
+kobciye_phase1_4_source_*.zip
+kobciye_phase1_4_final_corrected_*.zip
+kobciye_phase1_4_final_security_corrected_*.zip
+kobciye_phase1_4_final_verified_*.zip
+kobciye_phase1_4_final_fully_verified_*.zip
+kobciye_phase1_4_latest_*.zip
+kobciye_phase1_4_phase4_corrected_*.zip
