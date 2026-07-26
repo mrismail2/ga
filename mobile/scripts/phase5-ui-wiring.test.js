@@ -167,6 +167,17 @@ ok('the University shell reveals real Results (no "not built" placeholder)',
   /CourseResultsScreen/.test(read('src/navigation/UniversityAppShell.js'))
   && !/item\.key !== 'results'/.test(read('src/navigation/UniversityAppShell.js')));
 
+/* ---------- 9f. school-switch clears in-progress selections (§5.5) ---------- */
+ok('Phase5ModuleView clears the open form + picked values when the school changes',
+  /}, \[schoolId\]\);/.test(moduleView) && /setFormOpen\(false\); setValues\(\{\}\)/.test(moduleView));
+
+/* ---------- 9g. reports offer more types + a real export (§12) ---------- */
+const reportsSrc = read('src/screens/phase5/ReportsLiveScreen.js');
+ok('reports include teacher-load and results families beyond enrol+fees',
+  /reportTeacherAssignments/.test(reportsSrc) && /reportResultsSummary/.test(reportsSrc));
+ok('reports export the live figures to CSV (real download, no fake data)',
+  /Soo dejiso CSV/.test(reportsSrc) && /text\/csv/.test(reportsSrc) && !/AsyncStorage/.test(reportsSrc));
+
 /* ---------- 10. correction pass: provisioning email + one-time credentials ---------- */
 const provSrc = read('src/screens/phase5/ProvisioningScreen.js');
 ok('provisioning lets the admin enter/correct an email before inviting', /inviteEmail/.test(provSrc) && /EMAIL_RE/.test(provSrc));

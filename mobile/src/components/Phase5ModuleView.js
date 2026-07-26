@@ -49,6 +49,13 @@ export default function Phase5ModuleView({ module, navigation }) {
   }, [schoolId, module]);
   useEffect(() => { load(); }, [load]);
 
+  /* §5.5 — when the active school changes (a Super Admin switching schools),
+     discard any in-progress create form and its picked values/messages so a
+     selection made for one school can never be submitted against another. */
+  useEffect(() => {
+    setFormOpen(false); setValues({}); setFkOptions({}); setFormErr(null); setSuccess('');
+  }, [schoolId]);
+
   const openForm = async () => {
     setFormErr(null); setSuccess('');
     const init = {};
