@@ -133,6 +133,17 @@ export async function attendanceSummary(schoolId, { classId = null, studentId = 
   requireSchool(schoolId);
   return rpc('attendance_summary', { p_school: schoolId, p_class: classId, p_student: studentId, p_from: from, p_to: to });
 }
+/* read-only attendance for the signed-in Student (own) or Parent (linked
+   children) — RLS on attendance_records scopes the rows; the session join
+   supplies the date/class/subject for display. No marking here. */
+export async function myAttendance(schoolId) {
+  requireClient(); requireSchool(schoolId);
+  const { data, error } = await supabase.from('attendance_records')
+    .select('id, status, student_id, session:attendance_sessions(session_date, class_id, subject_id)')
+    .eq('school_id', schoolId).order('created_at', { ascending: false }).limit(400);
+  if (error) throw error;
+  return data || [];
+}
 
 /* ---------------- notifications ---------------- */
 export async function listNotifications(limit = 100) {

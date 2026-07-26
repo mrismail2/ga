@@ -5,14 +5,16 @@
    records the invitation via create_account_invitation. Never creates a second
    domain record. */
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Pressable, TextInput } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import useActiveSchoolId from '../../hooks/useActiveSchoolId';
-import { ModuleScreenFrame, useAsyncData, SuccessNote, ErrorNote } from '../../components/Phase5Scaffold';
+import { ModuleScreenFrame, useAsyncData, SuccessNote, ErrorNote, SaveButton } from '../../components/Phase5Scaffold';
 import Icon from '../../components/Icon';
 import { p4List } from '../../services/phase4';
 import { listAccountInvitations, provisionAccount, revokeAccountInvitation, p5FriendlyError } from '../../services/phase5';
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const TABS = [
   { role: 'teacher', label: 'Macallimiin', table: 'teachers', nameKey: 'full_name', idKey: 'teacher_id' },
@@ -28,6 +30,13 @@ export default function ProvisioningScreen() {
   const [busy, setBusy] = useState(null);
   const [success, setSuccess] = useState('');
   const [err, setErr] = useState('');
+  // invite dialog: an authorised admin may enter/correct the email before sending
+  const [inviteRec, setInviteRec] = useState(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteErr, setInviteErr] = useState('');
+  const [inviteBusy, setInviteBusy] = useState(false);
+  // one-time credentials for a no-email student (shown ONCE, never re-fetchable)
+  const [credentials, setCredentials] = useState(null);
 
   const { data, loading, error, reload } = useAsyncData(
     async () => ({
@@ -42,15 +51,51 @@ export default function ProvisioningScreen() {
   const inviteFor = (recId) => invites.find((i) => i[tab.idKey] === recId && i.status === 'pending')
     || invites.find((i) => i[tab.idKey] === recId);
 
-  const doInvite = async (rec, action = 'invite') => {
+  // open the invite dialog (prefill the record's email so the admin can edit it)
+  const openInvite = (rec) => {
+    setInviteRec(rec); setInviteEmail(rec.email || ''); setInviteErr(''); setSuccess(''); setErr('');
+  };
+
+  const submitInvite = async (action = 'invite') => {
+    if (inviteBusy || !inviteRec) return;
+    const rec = inviteRec;
+    const emailTrim = inviteEmail.trim();
+    // teacher/parent MUST have a valid email; a student may be provisioned with
+    // no email (a generated login + one-time temp password is returned instead).
+    if (tab.role !== 'student' && !EMAIL_RE.test(emailTrim)) {
+      setInviteErr('Geli email sax ah.'); return;
+    }
+    if (tab.role === 'student' && emailTrim && !EMAIL_RE.test(emailTrim)) {
+      setInviteErr('Email-ku ma saxna. Ka tag faaruq haddii aan la haysan.'); return;
+    }
+    setInviteBusy(true); setInviteErr('');
+    try {
+      const res = await provisionAccount({
+        action, role: tab.role, school_id: schoolId,
+        [tab.idKey]: rec.id, email: emailTrim, name: rec[tab.nameKey] || '', phone: rec.phone || '',
+      });
+      setInviteRec(null);
+      if (res && res.credentials) {
+        setCredentials(res.credentials);       // show the one-time student credentials
+      } else {
+        setSuccess(action === 'resend' ? 'Casuumaad dib loo diray.' : 'Casuumaad la diray.');
+      }
+      await reload();
+    } catch (e) { setInviteErr(p5FriendlyError(e)); }
+    finally { setInviteBusy(false); }
+  };
+
+  // resend keeps the previously-recorded email (no dialog needed)
+  const doResend = async (rec) => {
     if (busy) return;
     setBusy(rec.id); setSuccess(''); setErr('');
     try {
-      await provisionAccount({
-        action, role: tab.role, school_id: schoolId,
+      const res = await provisionAccount({
+        action: 'resend', role: tab.role, school_id: schoolId,
         [tab.idKey]: rec.id, email: rec.email || '', name: rec[tab.nameKey] || '', phone: rec.phone || '',
       });
-      setSuccess(action === 'resend' ? 'Casuumaad dib loo diray.' : 'Casuumaad la diray.');
+      if (res && res.credentials) setCredentials(res.credentials);
+      else setSuccess('Casuumaad dib loo diray.');
       await reload();
     } catch (e) { setErr(p5FriendlyError(e)); }
     finally { setBusy(null); }
@@ -104,18 +149,72 @@ export default function ProvisioningScreen() {
                   <Text style={[styles.active, { color: c.green }]}>Firfircoon</Text>
                 ) : inv && inv.status === 'pending' ? (
                   <>
-                    <TouchableOpacity onPress={() => doInvite(rec, 'resend')} style={[styles.btn, { borderColor: c.line }]}><Text style={[styles.btnTxt, { color: c.blue }]}>Dib u dir</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={() => doResend(rec)} style={[styles.btn, { borderColor: c.line }]}><Text style={[styles.btnTxt, { color: c.blue }]}>Dib u dir</Text></TouchableOpacity>
                     <TouchableOpacity onPress={() => doRevoke(inv)} style={[styles.btn, { borderColor: c.line }]}><Text style={[styles.btnTxt, { color: c.rose }]}>Jooji</Text></TouchableOpacity>
                   </>
                 ) : (
-                  <TouchableOpacity onPress={() => doInvite(rec, 'invite')} style={[styles.btn, { backgroundColor: c.blue, borderColor: c.blue }]}><Text style={[styles.btnTxt, { color: '#fff' }]}>U dir Casuumaad</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => openInvite(rec)} style={[styles.btn, { backgroundColor: c.blue, borderColor: c.blue }]}><Text style={[styles.btnTxt, { color: '#fff' }]}>U dir Casuumaad</Text></TouchableOpacity>
                 )}
               </View>
             );
           })}
         </View>
       )}
+
+      {/* invite dialog — editable email (required for teacher/parent) */}
+      <Modal visible={!!inviteRec} transparent animationType="fade" onRequestClose={() => setInviteRec(null)}>
+        <Pressable style={styles.overlay} onPress={() => setInviteRec(null)}>
+          <Pressable style={[styles.sheet, { backgroundColor: c.surface }]} onPress={() => {}}>
+            <Text style={[styles.sheetTitle, { color: c.ink }]}>U dir Casuumaad · {inviteRec ? inviteRec[tab.nameKey] : ''}</Text>
+            <Text style={[styles.lbl, { color: c.muted }]}>
+              EMAIL {tab.role === 'student' ? '(IKHTIYAARI)' : '(QASAB)'}
+            </Text>
+            <TextInput value={inviteEmail} onChangeText={setInviteEmail} autoCapitalize="none" keyboardType="email-address"
+              placeholder="tusaale: qof@email.com" placeholderTextColor={c.muted2}
+              style={[styles.input, { backgroundColor: c.bg, borderColor: c.line2, color: c.ink }]} />
+            {tab.role === 'student' ? (
+              <Text style={[styles.hint, { color: c.muted }]}>
+                Haddii aan email la gelin, akoon gudaha ah ayaa la abuuri doonaa, furaha ku-meel-gaadhka ahna hal mar ayaa la tusi doonaa.
+              </Text>
+            ) : null}
+            <ErrorNote text={inviteErr} />
+            <SaveButton onPress={() => submitInvite('invite')} saving={inviteBusy} label="Dir" />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* one-time student credentials — shown once, never re-fetchable */}
+      <Modal visible={!!credentials} transparent animationType="fade" onRequestClose={() => setCredentials(null)}>
+        <Pressable style={styles.overlay} onPress={() => setCredentials(null)}>
+          <Pressable style={[styles.sheet, { backgroundColor: c.surface }]} onPress={() => {}}>
+            <Text style={[styles.sheetTitle, { color: c.ink }]}>Furaha ku-meel-gaadhka ah</Text>
+            <Text style={[styles.hint, { color: c.rose }]}>
+              Hal mar ayaa la tusayaa. Sii ardayga, ka dibna ma soo bandhigi doono mar kale.
+            </Text>
+            {credentials ? (
+              <View style={[styles.credBox, { backgroundColor: c.bg, borderColor: c.line }]}>
+                <CredRow c={c} label="School ID" value={credentials.school_code} />
+                <CredRow c={c} label="Student ID" value={credentials.student_id} />
+                <CredRow c={c} label="Furaha" value={credentials.temp_password} />
+              </View>
+            ) : null}
+            <Text style={[styles.hint, { color: c.muted }]}>Marka uu markii ugu horreysay galo, waa in uu furaha beddelaa.</Text>
+            <TouchableOpacity onPress={() => setCredentials(null)} style={[styles.doneBtn, { backgroundColor: c.blue }]}>
+              <Text style={styles.doneTxt}>Waan xasuustay</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ModuleScreenFrame>
+  );
+}
+
+function CredRow({ c, label, value }) {
+  return (
+    <View style={styles.credRow}>
+      <Text style={[styles.credLbl, { color: c.muted }]}>{label}</Text>
+      <Text style={[styles.credVal, { color: c.ink }]} selectable>{value || '—'}</Text>
+    </View>
   );
 }
 
@@ -130,6 +229,18 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 14 },
   name: { fontSize: 14, fontWeight: '700' },
   sub: { fontSize: 12, fontWeight: '600', marginTop: 1 },
+  overlay: { flex: 1, backgroundColor: 'rgba(10,27,45,.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  sheet: { width: '100%', maxWidth: 420, borderRadius: 20, padding: 20 },
+  sheetTitle: { fontSize: 16.5, fontWeight: '800', marginBottom: 14 },
+  lbl: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4, marginBottom: 7 },
+  input: { height: 46, borderWidth: 1, borderRadius: 12, paddingHorizontal: 13, fontSize: 14 },
+  hint: { fontSize: 12, fontWeight: '600', marginTop: 10, lineHeight: 17 },
+  credBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 12, gap: 10 },
+  credRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  credLbl: { fontSize: 12, fontWeight: '700' },
+  credVal: { fontSize: 14, fontWeight: '800' },
+  doneBtn: { height: 48, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  doneTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
   active: { fontSize: 12, fontWeight: '800' },
   btn: { borderWidth: 1, borderRadius: 9, paddingVertical: 6, paddingHorizontal: 10 },
   btnTxt: { fontSize: 11.5, fontWeight: '800' },

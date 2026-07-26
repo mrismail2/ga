@@ -125,17 +125,24 @@ Deno.serve(async (req: Request) => {
 
     const admin = adminClient();
     let authUserId: string | null = null;
+    // for a no-email student we hand the School Admin a ONE-TIME temp password
+    // (shown once, never stored in plaintext, first-login change forced).
+    let tempPassword: string | null = null;
 
     if (needsGeneratedLogin) {
       // secure, server-controlled login for a student with no email address.
       const login = `student+${target}@students.kobciye.local`;
       const existing = await findUserByEmail(admin, login, correlationId);
       if (existing) {
+        // reset to a fresh temp password so the admin always gets a usable one
+        tempPassword = randomPassword();
+        await admin.auth.admin.updateUserById(existing, { password: tempPassword });
         authUserId = existing;
       } else {
+        tempPassword = randomPassword();
         const { data, error } = await admin.auth.admin.createUser({
           email: login,
-          password: randomPassword(),
+          password: tempPassword,
           email_confirm: true,
           user_metadata: { full_name: name, provisioned: "student_no_email" },
         });
@@ -144,6 +151,11 @@ Deno.serve(async (req: Request) => {
           return fail(req, 502, "auth_error", "Lama abuuri karin akoonka. Isku day mar kale.", correlationId);
         }
         authUserId = data.user.id;
+      }
+      // force a first-login password change (service role has no JWT, so the
+      // profiles guard's SQL-editor bypass permits this direct flag write).
+      if (authUserId) {
+        await admin.from("profiles").update({ must_change_password: true }).eq("id", authUserId);
       }
     } else {
       // an email-based account: reuse an existing Auth user or invite a new one
@@ -183,11 +195,33 @@ Deno.serve(async (req: Request) => {
       return fail(req, status, cat, "Lama diiwaangelin karin casuumaadda.", correlationId);
     }
 
+    // For a no-email student, hand back the ONE-TIME credentials the School
+    // Admin reads out to the student: the public school code, the student id,
+    // and the temp password (shown once; never persisted in plaintext).
+    let credentials: Record<string, unknown> | null = null;
+    if (needsGeneratedLogin && tempPassword) {
+      let loginCode: string | null = null;
+      let studentPublicId: string | null = null;
+      try {
+        const { data: sc } = await admin.from("schools").select("login_code").eq("id", school).maybeSingle();
+        loginCode = sc?.login_code ?? null;
+        const { data: st } = await admin.from("students").select("student_id").eq("id", studentId).maybeSingle();
+        studentPublicId = st?.student_id ?? null;
+      } catch { /* non-fatal — the temp password is the essential part */ }
+      credentials = {
+        school_code: loginCode,
+        student_id: studentPublicId,
+        temp_password: tempPassword,
+        must_change_password: true,
+      };
+    }
+
     return json(req, 201, {
       ok: true,
       action,
       invitation_id: invId,
       delivery: needsGeneratedLogin ? "manual_credential" : "sent",
+      credentials,
     });
   } catch (e) {
     console.error(`[${correlationId}] provision-account:`, "unhandled");

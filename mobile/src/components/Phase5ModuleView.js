@@ -11,13 +11,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Pressable, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import useActiveSchoolId from '../hooks/useActiveSchoolId';
 import Icon from './Icon';
 import { p5FriendlyError } from '../services/phase5';
+const { canCreateModule, visibleRowActions } = require('../domain/phase5Access');
 
+/* Role-aware CRUD. A module declares who may create (`createRoles`, default
+   admins) and each row action declares its own `roles`. A role that may not
+   create sees NO "Ku dar" button and NO admin actions — the buttons are hidden
+   BEFORE render (not merely rejected by RLS), so Student/Parent/Teacher never
+   see controls they cannot use (§5). The decision lives in the pure,
+   unit-tested domain/phase5Access; RLS remains the real authority underneath. */
 export default function Phase5ModuleView({ module }) {
   const { c } = useTheme();
+  const { roleKey } = useAuth();
   const { schoolId } = useActiveSchoolId();
+  const canCreate = !!module.create && canCreateModule(roleKey, module.createRoles);
+  const visibleActions = visibleRowActions(roleKey, module.rowActions);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +98,7 @@ export default function Phase5ModuleView({ module }) {
     <View>
       <View style={styles.headRow}>
         <Text style={[styles.count, { color: c.muted }]}>{rows.length} diiwaan</Text>
-        {module.create ? (
+        {canCreate ? (
           <TouchableOpacity onPress={openForm} activeOpacity={0.85} style={[styles.addBtn, { backgroundColor: c.blue }]}>
             <Icon name="plus" size={15} color="#fff" strokeWidth={2.5} />
             <Text style={styles.addTxt}>Ku dar {module.single}</Text>
@@ -117,7 +128,7 @@ export default function Phase5ModuleView({ module }) {
                 <Text style={[styles.rowTitle, { color: c.ink }]} numberOfLines={1}>{module.listTitle(r)}</Text>
                 <Text style={[styles.rowSub, { color: c.muted }]} numberOfLines={1}>{module.listSub(r)}</Text>
               </View>
-              {(module.rowActions || []).map((a) => (
+              {visibleActions.map((a) => (
                 <TouchableOpacity key={a.label} onPress={() => a.run(r, { schoolId, reload: load, setSuccess, setLoadErr })}
                   style={[styles.actBtn, { borderColor: c.line }]}>
                   <Text style={[styles.actTxt, { color: c.blue }]}>{a.label}</Text>

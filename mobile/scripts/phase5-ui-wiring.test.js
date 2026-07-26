@@ -91,5 +91,42 @@ ok('the K-logo LoadingScreen is untouched by Phase 5', exists('src/screens/Loadi
 ok('the browser title remains the approved product name',
   /APP_TITLE = 'Kobciye School Management'/.test(read('src/utils/webTitle.js')));
 
+/* ---------- 8. correction pass: real Student/Parent login (no "coming soon") ---------- */
+const loginScreen = read('src/screens/auth/LoginScreen.js');
+ok('the Student/Parent login is REAL (no Dhawaan/Coming Soon mockup)',
+  !/Dhawaan \(Coming Soon\)|submitComingSoon|comingSoonMsg/.test(loginScreen));
+ok('the Student/Parent login calls the identifier-login flow',
+  /signInWithSchoolIdentifier/.test(loginScreen));
+ok('the Student/Parent login has a real password field + show/hide',
+  /idPw/.test(loginScreen) && /showIdPw/.test(loginScreen));
+ok('AuthContext exposes signInWithSchoolIdentifier', /signInWithSchoolIdentifier/.test(read('src/context/AuthContext.js')));
+ok('the identifier-login service installs a real session via setSession',
+  /signInWithIdentifier/.test(read('src/services/supabase.js')) && /setSession/.test(read('src/services/supabase.js')));
+ok('the identifier-login Edge Function exists',
+  fs.existsSync(path.join(root, '..', 'supabase/functions/identifier-login/index.ts')));
+
+/* ---------- 9. correction pass: role-aware Phase 5 controls ---------- */
+ok('Phase5ModuleView gates controls through the pure role rules',
+  /canCreateModule/.test(moduleView) && /visibleRowActions/.test(moduleView));
+ok('the role rules live in a pure, unit-tested domain module', exists('src/domain/phase5Access.js'));
+const assignSrc = read('src/screens/phase5/AssignmentsScreen.js');
+ok('assignments declares teacher-createable roles', /createRoles:\s*\['schooladmin', 'superadmin', 'teacher'\]/.test(assignSrc));
+const examSrc = read('src/screens/phase5/ExamsResultsScreen.js');
+ok('the Approve/Publish actions are admin-only', /label: 'Ansixi', roles: \['schooladmin', 'superadmin'\]/.test(examSrc));
+ok('attendance route is role-split (marking vs read-only)',
+  /canMarkAttendance/.test(read('src/screens/phase5/liveRoutes.js')));
+ok('a read-only student/parent attendance screen exists and never marks',
+  exists('src/screens/phase5/MyAttendanceScreen.js')
+  && !/saveAttendanceSession/.test(read('src/screens/phase5/MyAttendanceScreen.js')));
+
+/* ---------- 10. correction pass: provisioning email + one-time credentials ---------- */
+const provSrc = read('src/screens/phase5/ProvisioningScreen.js');
+ok('provisioning lets the admin enter/correct an email before inviting', /inviteEmail/.test(provSrc) && /EMAIL_RE/.test(provSrc));
+ok('provisioning shows one-time student credentials once', /credentials/.test(provSrc) && /temp_password|Furaha ku-meel/.test(provSrc));
+const edgeProv = fs.readFileSync(path.join(root, '..', 'supabase/functions/provision-account/index.ts'), 'utf8');
+ok('the Edge Function returns one-time credentials for a no-email student', /temp_password/.test(edgeProv) && /must_change_password/.test(edgeProv));
+ok('the Edge Function never stores the temp password in plaintext (returned once only)',
+  !/insert[\s\S]{0,80}temp_password/i.test(edgeProv));
+
 console.log(failures === 0 ? '\nphase5-ui-wiring: all assertions passed' : `\nphase5-ui-wiring: ${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);

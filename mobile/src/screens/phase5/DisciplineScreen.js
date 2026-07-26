@@ -10,6 +10,7 @@ import { listIncidents, createIncident, updateIncident } from '../../services/ph
 export default function DisciplineScreen() {
   const module = {
     single: 'Kiis', icon: 'incidents', emptyText: 'Weli kiis lama diiwaangelin.',
+    createRoles: ['schooladmin', 'superadmin', 'teacher'],
     list: (schoolId) => listIncidents(schoolId),
     create: (row) => createIncident(row),
     fields: [
@@ -28,6 +29,7 @@ export default function DisciplineScreen() {
     listSub: (r) => (r.severity || 'dhexe') + ' · ' + (r.status || 'open'),
     rowActions: [{
       label: 'Xir',
+      roles: ['schooladmin', 'superadmin', 'teacher'],
       run: async (r, ctx) => {
         if (r.status === 'resolved') { ctx.setSuccess('Horey ayaa loo xiray.'); return; }
         try { await updateIncident(r.id, { status: 'resolved' }); ctx.setSuccess('Kiiska waa la xiray.'); await ctx.reload(); }

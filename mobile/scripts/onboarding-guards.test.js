@@ -42,16 +42,16 @@ ok('LoginScreen shows the invite-only info text', /School registration is handle
 ok('LoginScreen has NO demo/preview entry point (no enterDemoMode)', !/enterDemoMode/.test(login));
 ok('LoginScreen has NO role picker (no ROLE_ORDER/roleChip)', !/ROLE_ORDER/.test(login) && !/roleChip/.test(login));
 
-// ---- 3b. Student/Parent login tabs are UI-only mockups (Phase 4 backend) ----
-// They must be clearly labelled and must never call the real sign-in path.
-ok('LoginScreen labels the Student/Parent methods as Coming Soon', /Dhawaan \(Coming Soon\)/.test(login));
-ok('LoginScreen\'s coming-soon submit never calls signIn/Supabase (mockup only, no backend)',
-  (() => {
-    const idx = login.indexOf('submitComingSoon');
-    if (idx === -1) return false;
-    const body = login.slice(idx, idx + 400);
-    return !/\bsignIn\(/.test(body) && !/supabase/i.test(body) && !/AsyncStorage/.test(body);
-  })());
+// ---- 3b. Student/Parent login tabs are now REAL (Phase 5) ----
+// They must NOT be "coming soon" mockups anymore, and must sign in through the
+// real identifier-login flow (School ID + Student ID + password), never a
+// local/fake auth path.
+ok('LoginScreen no longer labels Student/Parent as "Coming Soon"',
+  !/Dhawaan \(Coming Soon\)/.test(login) && !/submitComingSoon/.test(login));
+ok('LoginScreen signs Student/Parent in through the real identifier-login flow',
+  /signInWithSchoolIdentifier/.test(login));
+ok('LoginScreen student/parent login uses no local/fake auth',
+  !/AsyncStorage/.test(login) && !/localStorage/.test(login));
 
 // ---- 4. AuthFlow: never routes to RegisterSchoolScreen in live (configured) mode ----
 const flow = read(path.join(ROOT, 'src', 'screens', 'auth', 'AuthFlow.js'));

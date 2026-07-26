@@ -9,6 +9,7 @@
    ============================================================ */
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
+const { canMarkAttendance } = require('../../domain/phase5Access');
 
 import AttendanceDemo from '../AttendanceScreen';
 import ExamsDemo from '../ExamsScreen';
@@ -17,6 +18,7 @@ import IncidentsDemo from '../IncidentsScreen';
 import ReportsDemo from '../ReportsScreen';
 
 import AttendanceLiveScreen from './AttendanceLiveScreen';
+import MyAttendanceScreen from './MyAttendanceScreen';
 import ExamsResultsScreen from './ExamsResultsScreen';
 import FinanceLiveScreen from './FinanceLiveScreen';
 import DisciplineScreen from './DisciplineScreen';
@@ -30,7 +32,16 @@ function modeAware(LiveComp, DemoComp) {
   };
 }
 
-export const AttendanceRoute = modeAware(AttendanceLiveScreen, AttendanceDemo);
+// Attendance is role-split in Live Mode: Teacher/Admin get the marking screen,
+// Student/Parent get a read-only personal / linked-child view (§6). Demo mode
+// keeps the original prototype screen.
+export function AttendanceRoute(props) {
+  const { isLive, roleKey } = useAuth();
+  if (!isLive) return <AttendanceDemo {...props} />;
+  return canMarkAttendance(roleKey)
+    ? <AttendanceLiveScreen {...props} />
+    : <MyAttendanceScreen {...props} />;
+}
 export const ExamsRoute = modeAware(ExamsResultsScreen, ExamsDemo);
 export const FinanceRoute = modeAware(FinanceLiveScreen, FinanceDemo);
 export const IncidentsRoute = modeAware(DisciplineScreen, IncidentsDemo);

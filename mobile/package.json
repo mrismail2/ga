@@ -31,7 +31,8 @@
     "test:phase1-4-full-audit": "node scripts/phase1_4_full_runtime_integrity.test.js",
     "test:super-admin-dashboard-hotfix": "node scripts/super-admin-dashboard-hotfix.test.js",
     "test:loading-logo-k-only": "node scripts/loading-logo-k-only.test.js",
-    "test:phase5-ui": "node scripts/phase5-ui-wiring.test.js"
+    "test:phase5-ui": "node scripts/phase5-ui-wiring.test.js",
+    "test:phase5-role-access": "node scripts/phase5-role-access.test.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",

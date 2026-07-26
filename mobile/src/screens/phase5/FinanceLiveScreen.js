@@ -13,11 +13,14 @@ import Phase5ModuleView from '../../components/Phase5ModuleView';
 import Icon from '../../components/Icon';
 import { p4List } from '../../services/phase4';
 import { listFeeStructures, createFeeStructure, listInvoices, recordPayment, p5FriendlyError } from '../../services/phase5';
+const { canRecordPayment: canRecordPaymentRole } = require('../../domain/phase5Access');
 
 function InvoicesSection() {
   const { c } = useTheme();
-  const { isLive } = useAuth();
+  const { isLive, roleKey } = useAuth();
   const { schoolId } = useActiveSchoolId();
+  // only finance staff record payments; Student/Parent get a read-only view
+  const canRecordPayment = canRecordPaymentRole(roleKey);
   const { data, loading, error, reload } = useAsyncData(() => listInvoices(schoolId), [schoolId], { enabled: isLive && !!schoolId });
   const [pay, setPay] = useState(null); // invoice being paid
   const [amount, setAmount] = useState('');
@@ -64,11 +67,13 @@ function InvoicesSection() {
                 <Text style={[styles.rowTitle, { color: c.ink }]} numberOfLines={1}>{r.invoice_number}</Text>
                 <Text style={[styles.rowSub, { color: c.muted }]}>Hadhaaga: {r.balance} / {r.amount_due} · {r.status}</Text>
               </View>
-              {Number(r.balance) > 0 ? (
+              {Number(r.balance) <= 0 ? (
+                <Text style={[styles.paid, { color: c.green }]}>La bixiyay</Text>
+              ) : canRecordPayment ? (
                 <TouchableOpacity onPress={() => { setPay(r); setAmount(String(r.balance)); setErr(null); }} style={[styles.actBtn, { backgroundColor: c.blue }]}>
                   <Text style={styles.actTxt}>Bixi</Text>
                 </TouchableOpacity>
-              ) : <Text style={[styles.paid, { color: c.green }]}>La bixiyay</Text>}
+              ) : <Text style={[styles.paid, { color: c.muted }]}>Hadhaaga: {r.balance}</Text>}
             </View>
           ))}
         </View>
@@ -94,8 +99,13 @@ function InvoicesSection() {
 }
 
 export default function FinanceLiveScreen() {
+  const { roleKey } = useAuth();
+  // fee structures are a finance-staff concern; Student/Parent see only their
+  // own invoices (below), never the school's fee-structure catalog.
+  const isFinanceStaff = canRecordPaymentRole(roleKey);
   const structModule = {
     single: 'Qaab-lacageed', icon: 'finance', emptyText: 'Weli qaab-lacageed lama abuurin.',
+    createRoles: ['schooladmin', 'superadmin', 'accountant'],
     list: (schoolId) => listFeeStructures(schoolId),
     create: (row) => createFeeStructure(row),
     fields: [
@@ -108,7 +118,7 @@ export default function FinanceLiveScreen() {
   };
   return (
     <ModuleScreenFrame title="Lacagaha" subtitle="Qaababka lacagta iyo biilasha">
-      <Phase5ModuleView module={structModule} />
+      {isFinanceStaff ? <Phase5ModuleView module={structModule} /> : null}
       <InvoicesSection />
     </ModuleScreenFrame>
   );

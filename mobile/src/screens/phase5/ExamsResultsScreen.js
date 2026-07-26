@@ -28,9 +28,10 @@ export default function ExamsResultsScreen() {
     listTitle: (r) => r.title,
     listSub: (r) => (r.status || 'draft') + ' · ' + (r.full_marks || 100) + ' dhibcood',
     rowActions: [
-      { label: 'Gudbi', run: async (r, ctx) => { try { const n = await submitResults(ctx.schoolId, r.id); ctx.setSuccess(`La gudbiyay: ${n}.`); } catch (e) { ctx.setLoadErr('Lama gudbin karin.'); } } },
-      { label: 'Ansixi', run: async (r, ctx) => { try { const n = await approveResults(ctx.schoolId, r.id); ctx.setSuccess(`La ansixiyay: ${n}.`); } catch (e) { ctx.setLoadErr('Kaliya maamulaha ayaa ansixin kara.'); } } },
-      { label: 'Daabac', run: async (r, ctx) => { try { const n = await publishResults(ctx.schoolId, r.id); ctx.setSuccess(`La daabacay: ${n}. Ogeysiisyo waalid waa la diray.`); } catch (e) { ctx.setLoadErr('Kaliya maamulaha ayaa daabici kara.'); } } },
+      // teacher submits their entered results; only an admin approves + publishes
+      { label: 'Gudbi', roles: ['schooladmin', 'superadmin', 'teacher'], run: async (r, ctx) => { try { const n = await submitResults(ctx.schoolId, r.id); ctx.setSuccess(`La gudbiyay: ${n}.`); } catch (e) { ctx.setLoadErr('Lama gudbin karin.'); } } },
+      { label: 'Ansixi', roles: ['schooladmin', 'superadmin'], run: async (r, ctx) => { try { const n = await approveResults(ctx.schoolId, r.id); ctx.setSuccess(`La ansixiyay: ${n}.`); } catch (e) { ctx.setLoadErr('Kaliya maamulaha ayaa ansixin kara.'); } } },
+      { label: 'Daabac', roles: ['schooladmin', 'superadmin'], run: async (r, ctx) => { try { const n = await publishResults(ctx.schoolId, r.id); ctx.setSuccess(`La daabacay: ${n}. Ogeysiisyo waalid waa la diray.`); } catch (e) { ctx.setLoadErr('Kaliya maamulaha ayaa daabici kara.'); } } },
     ],
   };
   return (

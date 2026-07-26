@@ -10,6 +10,7 @@ import { listAssignments, createAssignment, updateAssignment } from '../../servi
 export default function AssignmentsScreen() {
   const module = {
     single: 'Shaqo-guri', icon: 'note', emptyText: 'Weli shaqo-guri lama diiwaangelin.',
+    createRoles: ['schooladmin', 'superadmin', 'teacher'],
     list: (schoolId) => listAssignments(schoolId),
     create: (row) => createAssignment(row),
     fields: [
@@ -25,6 +26,7 @@ export default function AssignmentsScreen() {
     listSub: (r) => (r.status || 'draft') + (r.due_on ? ' · ' + r.due_on : ''),
     rowActions: [{
       label: 'Daabac',
+      roles: ['schooladmin', 'superadmin', 'teacher'],
       run: async (r, ctx) => {
         if (r.status === 'published') { ctx.setSuccess('Horey ayaa loo daabacay.'); return; }
         try { await updateAssignment(r.id, { status: 'published' }); ctx.setSuccess('Waa la daabacay.'); await ctx.reload(); }
