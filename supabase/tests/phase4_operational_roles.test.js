@@ -150,7 +150,8 @@ const ok = (name, cond) => {
   const adm2 = (await db.query(`insert into admissions (school_id, applicant_name, status) values ('${schoolA}', 'Maxamed Xasan', 'pending') returning id`)).rows[0].id;
   r = await db.query(`select admit_student_atomic(
     p_school => '${schoolA}', p_applicant_name => 'Maxamed Xasan',
-    p_class_id => '${classA}', p_admission_id => '${adm2}',
+    p_class_id => '${classA}', p_academic_year_id => '${yearA}',
+    p_admission_id => '${adm2}',
     p_parent_id => '${out1.parent_id}', p_relationship => 'guardian') as out`);
   const out2 = r.rows[0].out;
   ok('2. existing admission upgrades to enrolled (same canonical row)', out2.admission_id === adm2);
@@ -161,12 +162,17 @@ const ok = (name, cond) => {
   // ============================================================
   // 3. duplicate guardian link is rejected
   // ============================================================
-  ok('3. linking the same guardian to the same student twice is rejected',
-    await throwsWith(() => db.query(`select admit_student_atomic(
-      p_school => '${schoolA}', p_applicant_name => 'Ayaan Warsame',
-      p_student_id => '${out1.student_id}',
-      p_parent_id => '${out1.parent_id}') as out`), /already linked/i));
+  /* Migration 20260725000001 deliberately made re-linking the SAME guardian to
+     the SAME student an IDEMPOTENT retry instead of an error, so a user who
+     re-presses Save is not shown a spurious failure. The invariant that still
+     matters — and is asserted here — is that no DUPLICATE link row appears. */
+  await db.query(`select admit_student_atomic(
+    p_school => '${schoolA}', p_applicant_name => 'Ayaan Warsame',
+    p_student_id => '${out1.student_id}',
+    p_class_id => '${classA}', p_academic_year_id => '${yearA}',
+    p_parent_id => '${out1.parent_id}') as out`);
   const links = await count(`select count(*) n from student_parents where student_id = '${out1.student_id}'`);
+  ok('3. re-linking the same guardian is idempotent, never a duplicate row', links === 1);
   ok('3b. the student still has exactly one guardian link', links === 1);
 
   // ============================================================
@@ -180,7 +186,8 @@ const ok = (name, cond) => {
   ok('4. cross-school guardian aborts the admission',
     await throwsWith(() => db.query(`select admit_student_atomic(
       p_school => '${schoolA}', p_applicant_name => 'Rollback Kid',
-      p_class_id => '${classA}', p_parent_id => '${parentB}') as out`), /another school/i));
+      p_class_id => '${classA}', p_academic_year_id => '${yearA}',
+      p_parent_id => '${parentB}') as out`), /another school/i));
   const studentsAfter = await count(`select count(*) n from students where school_id = '${schoolA}'`);
   const admissionsAfter = await count(`select count(*) n from admissions where school_id = '${schoolA}'`);
   ok('4b. NO partial student row was left behind', studentsAfter === studentsBefore);
@@ -191,13 +198,15 @@ const ok = (name, cond) => {
   // ============================================================
   ok('5. class from another school is rejected',
     await throwsWith(() => db.query(`select admit_student_atomic(
-      p_school => '${schoolA}', p_applicant_name => 'X', p_class_id => '${classB}') as out`), /another school/i));
+      p_school => '${schoolA}', p_applicant_name => 'X', p_class_id => '${classB}',
+      p_academic_year_id => '${yearA}') as out`), /another school/i));
   await asClient(b1);
   const admB = (await db.query(`insert into admissions (school_id, applicant_name, status) values ('${schoolB}', 'B Kid', 'pending') returning id`)).rows[0].id;
   await asClient(a1);
   ok('5b. admission from another school is rejected',
     await throwsWith(() => db.query(`select admit_student_atomic(
-      p_school => '${schoolA}', p_applicant_name => 'B Kid', p_admission_id => '${admB}') as out`), /another school/i));
+      p_school => '${schoolA}', p_applicant_name => 'B Kid', p_admission_id => '${admB}',
+      p_class_id => '${classA}', p_academic_year_id => '${yearA}') as out`), /another school/i));
 
   // ============================================================
   // 6. only a school admin may enrol

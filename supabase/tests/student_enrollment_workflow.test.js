@@ -119,9 +119,13 @@ const rejects = async (fn, pattern) => {
 
   /* ---- the failure path leaves NOTHING behind (real atomicity) ---- */
   const beforeStudents = Number((await db.query(`select count(*) n from students where school_id='${schoolA}'`)).rows[0].n);
+  /* A cross-school class is rejected. The academic year is supplied so the
+     stricter "active enrollment requires an academic year" guard (migration
+     20260724000003) cannot fire first and mask the cross-school check we are
+     actually asserting here. */
   ok('a class from another school is rejected with a real error', await rejects(
-    () => db.query(`select admit_student_atomic('${schoolA}','Cross School',null,null,null,'${classB}')`),
-    /belongs to another school/i));
+    () => db.query(`select admit_student_atomic('${schoolA}','Cross School',null,null,null,'${classB}',null,'${yearA}')`),
+    /class belongs to another school/i));
   ok('the rejected admission left NO partial student behind',
     Number((await db.query(`select count(*) n from students where school_id='${schoolA}'`)).rows[0].n) === beforeStudents);
   ok('an empty applicant name is rejected', await rejects(
@@ -176,9 +180,20 @@ const rejects = async (fn, pattern) => {
       `select count(*) n from student_enrollments where student_id=$1 and status='active'`,
       [noGuardian.student_id])).rows[0].n) === 1);
 
-  ok('a duplicate guardian link is rejected', await rejects(
-    () => db.query(`select admit_student_atomic('${schoolA}','Child One',null,null,null,null,null,null,
-      null,'${withGuardian.student_id}','${withGuardian.parent_id}')`), /already linked/i));
+  /* Re-linking the SAME guardian to the SAME student is an idempotent retry,
+     not an error (migration 20260725000001 changed this deliberately so a user
+     re-pressing Save cannot be shown a spurious failure). The invariant that
+     matters is that no DUPLICATE link row is ever created. */
+  const linksBeforeRetry = Number((await db.query(
+    `select count(*) n from student_parents where parent_id=$1 and student_id=$2`,
+    [withGuardian.parent_id, withGuardian.student_id])).rows[0].n);
+  await db.query(`select admit_student_atomic('${schoolA}','Child One',null,null,null,'${class1}',null,'${yearA}',
+    null,'${withGuardian.student_id}','${withGuardian.parent_id}')`);
+  ok('re-linking the same guardian is an idempotent retry, never a duplicate row',
+    Number((await db.query(
+      `select count(*) n from student_parents where parent_id=$1 and student_id=$2`,
+      [withGuardian.parent_id, withGuardian.student_id])).rows[0].n) === linksBeforeRetry
+    && linksBeforeRetry === 1);
 
   /* ---- E. cross-school isolation under real RLS ---- */
   await asClient(adminB);

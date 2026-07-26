@@ -41,7 +41,7 @@ const rejects = async (fn, pattern) => { try { await fn(); return false; } catch
   const school = (await db.query(`select create_school_as_super_admin('Integrity','integrity-school','Gabiley','${admin}','school','secondary') id`)).rows[0].id;
   await asClient(admin);
   const year1 = (await db.query(`insert into academic_years (school_id,name,status) values ($1,'2026/27','active') returning id`, [school])).rows[0].id;
-  const year2 = (await db.query(`insert into academic_years (school_id,name,status) values ($1,'2027/28','draft') returning id`, [school])).rows[0].id;
+  const year2 = (await db.query(`insert into academic_years (school_id,name,status) values ($1,'2027/28','archived') returning id`, [school])).rows[0].id;
   const class1 = (await db.query(`insert into classes (school_id,name,academic_year_id) values ($1,'Form 1A',$2) returning id`, [school, year1])).rows[0].id;
   const class2 = (await db.query(`insert into classes (school_id,name,academic_year_id) values ($1,'Form 2A',$2) returning id`, [school, year1])).rows[0].id;
   const stream1 = (await db.query(`insert into class_streams (school_id,class_id,name) values ($1,$2,'A') returning id`, [school, class1])).rows[0].id;
