@@ -397,6 +397,45 @@ export function acceptSchoolInvite(invitationId) {
   return invokeFunction('accept-school-invite', invitationId ? { invitation_id: invitationId } : {});
 }
 
+/* Student / Parent identifier login (public school code + student id + password).
+   The identifier-login Edge Function verifies the password server-side and
+   returns session tokens; we install them as a NORMAL Supabase session via
+   setSession, so RLS / refresh / Sign Out / password reset all work unchanged.
+   No service-role key is used here; no internal UUID or email is exposed. On
+   ANY failure a single generic error is thrown (no account enumeration). */
+export async function signInWithIdentifier({ kind, schoolCode, studentId, password }) {
+  const client = requireClient();
+  const GENERIC = 'Aqoonsi ama furaha sirta ah waa qalad. Fadlan hubi School ID, Student ID iyo furaha.';
+  let data;
+  try {
+    const res = await client.functions.invoke('identifier-login', {
+      body: { kind, school_code: schoolCode, student_id: studentId, password },
+      timeout: INVOKE_TIMEOUT_MS,
+    });
+    if (res.error) {
+      // a 429 lockout carries a specific, safe message; everything else is generic
+      const info = await classifyInvokeError(res.error);
+      const e = new Error(info.code === 'too_many_attempts'
+        ? 'Isku dayo badan. Fadlan sug daqiiqado kadibna isku day.'
+        : GENERIC);
+      e.code = info.code === 'too_many_attempts' ? 'too_many_attempts' : 'invalid_credentials';
+      throw e;
+    }
+    data = res.data;
+  } catch (e) {
+    if (e && e.code) throw e;
+    const err = new Error(GENERIC); err.code = 'invalid_credentials'; throw err;
+  }
+  if (!data || !data.ok || !data.access_token) {
+    const err = new Error(GENERIC); err.code = 'invalid_credentials'; throw err;
+  }
+  const { error: sErr } = await client.auth.setSession({
+    access_token: data.access_token, refresh_token: data.refresh_token,
+  });
+  if (sErr) { const err = new Error(GENERIC); err.code = 'invalid_credentials'; throw err; }
+  return { mustChangePassword: !!data.must_change_password };
+}
+
 /* super_admin: real school list (RLS returns all schools for super_admin). */
 export async function listSchools() {
   const { data, error } = await requireClient()

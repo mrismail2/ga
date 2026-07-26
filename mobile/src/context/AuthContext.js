@@ -41,7 +41,7 @@ import { Linking, Platform } from 'react-native';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import {
   supabase, isSupabaseConfigured, onAuthStateChange, restoreSession, getMyProfile,
-  signInWithEmail, signOut as sbSignOut, requestPasswordResetSecure,
+  signInWithEmail, signInWithIdentifier, signOut as sbSignOut, requestPasswordResetSecure,
   updatePassword as sbUpdatePassword, setSessionFromTokens, exchangeCodeForSession,
   verifyTokenHash, acceptSchoolInvite,
 } from '../services/supabase';
@@ -388,6 +388,16 @@ export function AuthProvider({ children }) {
     // onAuthStateChange handles session/profile/mode/status
   }, []);
 
+  // Student / Parent identifier login. setSession inside signInWithIdentifier
+  // fires onAuthStateChange, which loads the profile and routes exactly like a
+  // staff email login — a real, refresh-persistent Supabase session.
+  const signInWithSchoolIdentifier = useCallback(async ({ kind, schoolCode, studentId, password }) => {
+    setError(null);
+    demoRef.current = false;
+    setDemoActive(false);
+    return signInWithIdentifier({ kind, schoolCode, studentId, password });
+  }, []);
+
   const signOut = useCallback(async () => {
     profileRequestRef.current += 1;
     demoRef.current = false;
@@ -474,7 +484,7 @@ export function AuthProvider({ children }) {
     session, profile, roleKey, schoolName, profileStatus, profileError,
     configured: isSupabaseConfigured(),
     error,
-    signIn, signOut, requestPasswordReset, setNewPassword, acceptInvite,
+    signIn, signInWithSchoolIdentifier, signOut, requestPasswordReset, setNewPassword, acceptInvite,
     enterDemoMode, refreshProfile,
     isLive: mode === 'live' && status === 'signed_in',
   };

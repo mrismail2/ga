@@ -8,12 +8,13 @@ import Icon from '../../components/Icon';
 import LoadingDots from '../../components/LoadingDots';
 
 /* Login-method tabs (NOT the demo role-picker — that entry point is gone).
-   Only 'staff' is wired to real Supabase auth today. 'student' and 'parent'
-   are UI-complete mockups clearly marked "Dhawaan" (Coming Soon): submitting
-   them shows an info message and touches no backend — no Supabase call, no
-   AsyncStorage/localStorage write, no account/session created. Real ID-based
-   sign-in for students/parents is deferred to Phase 4 (see
-   PHASE_3_COMPLETION_REPORT.md). */
+   All three are wired to REAL Supabase auth:
+     • staff  → email + password (signInWithEmail)
+     • student→ School ID + Student ID + password  (identifier-login Edge Fn)
+     • parent → School ID + Child Student ID + password (identifier-login)
+   The student/parent path returns a normal Supabase session via setSession, so
+   refresh/Sign Out/RLS/password-reset all work identically. No mockups, no
+   "coming soon", no local auth. */
 const METHODS = [
   { key: 'staff', label: 'Dugsiga', icon: 'building' },
   { key: 'student', label: 'Arday', icon: 'students' },
@@ -31,7 +32,7 @@ export default function LoginScreen({ goForgot }) {
   const { c } = useTheme();
   const { width } = useWindowDimensions();
   const wide = width >= 900;
-  const { signIn, configured } = useAuth();
+  const { signIn, signInWithSchoolIdentifier, configured } = useAuth();
 
   const [method, setMethod] = useState('staff');
 
@@ -42,10 +43,11 @@ export default function LoginScreen({ goForgot }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
-  // student / parent (mockup-only) fields
+  // student / parent identifier-login fields
   const [schoolId, setSchoolId] = useState('');
   const [studentId, setStudentId] = useState('');
-  const [comingSoonMsg, setComingSoonMsg] = useState(null);
+  const [idPw, setIdPw] = useState('');
+  const [showIdPw, setShowIdPw] = useState(false);
 
   const login = async () => {
     if (busy) return;                       // prevent duplicate submits
@@ -62,16 +64,33 @@ export default function LoginScreen({ goForgot }) {
     }
   };
 
-  // UI-only: no auth call, no storage, no account. Just a clear "coming soon"
-  // notice so the mockup never pretends to sign anyone in.
-  const submitComingSoon = () => {
-    setComingSoonMsg('Galitaanka ID-ga waa dhawaan (Coming Soon). Hadda isticmaal tab-ka "Dugsiga".');
+  // REAL student/parent identifier login → normal Supabase session.
+  const loginByIdentifier = async () => {
+    if (busy) return;                       // prevent duplicate submits
+    setErr(null);
+    if (!configured) { setErr('Backend-ka Supabase lama habayn. La xiriir maamulaha Kobciye.'); return; }
+    if (!schoolId.trim() || !studentId.trim() || !idPw) {
+      setErr('Geli School ID, Student ID iyo furaha sirta.'); return;
+    }
+    setBusy(true);
+    try {
+      await signInWithSchoolIdentifier({
+        kind: method,                       // 'student' | 'parent'
+        schoolCode: schoolId.trim(),
+        studentId: studentId.trim(),
+        password: idPw,
+      });                                   // AuthContext routes on success
+    } catch (e) {
+      setErr(e && e.message ? e.message : 'Galitaanku wuu fashilmay. Hubi xogtaada.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const selectMethod = (k) => {
     setMethod(k);
     setErr(null);
-    setComingSoonMsg(null);
+    setIdPw(''); setShowIdPw(false);
   };
 
   const idPlaceholderStudent = { school: 'tusaale: SCH-0042', student: 'tusaale: HID-000142' };
@@ -170,17 +189,13 @@ export default function LoginScreen({ goForgot }) {
                 </>
               ) : (
                 <>
-                  <View style={[styles.soonBanner, { backgroundColor: c.goldSoft }]}>
-                    <Icon name="clock" size={14} color={c.gold700} />
-                    <Text style={[styles.soonTxt, { color: c.gold700 }]}>Dhawaan (Coming Soon)</Text>
-                  </View>
-
                   <Text style={[styles.label, { color: c.muted }]}>ID-GA DUGSIGA (SCHOOL ID)</Text>
                   <View style={[styles.field, { backgroundColor: c.bg, borderColor: c.line }]}>
                     <Icon name="building" size={17} color={c.muted2} />
                     <TextInput value={schoolId} onChangeText={setSchoolId}
                       placeholder={method === 'student' ? idPlaceholderStudent.school : idPlaceholderParent.school}
-                      placeholderTextColor={c.muted2} autoCapitalize="characters" style={[styles.input, { color: c.ink }]} />
+                      placeholderTextColor={c.muted2} autoCapitalize="characters" autoCorrect={false}
+                      style={[styles.input, { color: c.ink }]} />
                   </View>
 
                   <Text style={[styles.label, { color: c.muted }]}>
@@ -190,21 +205,42 @@ export default function LoginScreen({ goForgot }) {
                     <Icon name="students" size={17} color={c.muted2} />
                     <TextInput value={studentId} onChangeText={setStudentId}
                       placeholder={method === 'student' ? idPlaceholderStudent.student : idPlaceholderParent.student}
-                      placeholderTextColor={c.muted2} autoCapitalize="characters" style={[styles.input, { color: c.ink }]} />
+                      placeholderTextColor={c.muted2} autoCapitalize="characters" autoCorrect={false}
+                      style={[styles.input, { color: c.ink }]} />
                   </View>
 
-                  {comingSoonMsg ? <Text style={[styles.err, { color: c.gold700 }]}>{comingSoonMsg}</Text> : null}
+                  <Text style={[styles.label, { color: c.muted }]}>
+                    {method === 'student' ? 'FURAHA ARDAYGA' : 'FURAHA WAALIDKA'}
+                  </Text>
+                  <View style={[styles.field, { backgroundColor: c.bg, borderColor: c.line }]}>
+                    <Icon name="key" size={17} color={c.muted2} />
+                    <TextInput value={idPw} onChangeText={setIdPw} placeholder="••••••••" secureTextEntry={!showIdPw}
+                      placeholderTextColor={c.muted2} style={[styles.input, { color: c.ink }]} />
+                    <TouchableOpacity onPress={() => setShowIdPw((v) => !v)} hitSlop={8}>
+                      <Text style={[styles.showTxt, { color: c.blue }]}>{showIdPw ? 'Qari' : 'Tus'}</Text>
+                    </TouchableOpacity>
+                  </View>
 
-                  <TouchableOpacity style={[styles.loginBtn, { backgroundColor: c.navy }]}
-                    onPress={submitComingSoon} activeOpacity={0.9}>
-                    <Text style={styles.loginTxt}>Soo Gal</Text>
-                    <Icon name="chevronRight" size={18} color="#fff" />
+                  {err ? <Text style={[styles.err, { color: c.rose }]}>{err}</Text> : null}
+
+                  <TouchableOpacity style={[styles.loginBtn, { backgroundColor: c.navy, opacity: busy ? 0.7 : 1 }]}
+                    onPress={loginByIdentifier} activeOpacity={0.9} disabled={busy}>
+                    {busy ? <LoadingDots color="#fff" size={7} gap={5} /> : (
+                      <>
+                        <Text style={styles.loginTxt}>Soo Gal</Text>
+                        <Icon name="chevronRight" size={18} color="#fff" />
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={goForgot} style={{ alignSelf: 'center', marginTop: 14 }}>
+                    <Text style={[styles.link, { color: c.blue }]}>Ma illowday furaha sirta?</Text>
                   </TouchableOpacity>
 
                   <Text style={[styles.infoTxt, { color: c.muted }]}>
                     {method === 'student'
-                      ? 'Galitaanka ardayda ee ID-ga waa nidaam soo socda — wali lama shaqaysiin.'
-                      : 'Galitaanka waalidka ee ID-ga waa nidaam soo socda — wali lama shaqaysiin.'}
+                      ? 'Isticmaal School ID iyo Student ID-gaaga oo dugsigu ku siiyay.'
+                      : 'Isticmaal School ID iyo Student ID-ga ilmahaaga.'}
                   </Text>
                 </>
               )}
