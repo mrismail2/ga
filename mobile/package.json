@@ -26,7 +26,11 @@
     "test:super-admin-school-context": "node scripts/phase4-super-admin-school-context.test.js",
     "test:student-enrollment": "node scripts/phase4-student-enrollment.test.js",
     "test:correction-regression": "node scripts/phase4-correction-regression.test.js",
-    "test:phase4-corrections": "npm run test:super-admin-school-context && npm run test:student-enrollment && npm run test:correction-regression"
+    "test:phase4-corrections": "npm run test:super-admin-school-context && npm run test:student-enrollment && npm run test:correction-regression",
+    "test:phase4-followup": "node scripts/phase4-followup-corrections.test.js",
+    "test:phase1-4-full-audit": "node scripts/phase1_4_full_runtime_integrity.test.js",
+    "test:super-admin-dashboard-hotfix": "node scripts/super-admin-dashboard-hotfix.test.js",
+    "test:loading-logo-k-only": "node scripts/loading-logo-k-only.test.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",

@@ -103,7 +103,7 @@ export default function SettingsScreen({ navigation }) {
     { key: 'schoolProfile', icon: 'building', label: 'School Profile', sub: 'Magaca iyo magaalada oo Supabase ku kaydsan', disabled: auth.isLive && schoolPrefsStatus !== 'ready', action: () => openEditor('schoolProfile') },
     { key: 'idFormat', icon: 'students', label: 'Student ID Format', sub: 'Prefix-ka ardayda cusub', disabled: auth.isLive && schoolPrefsStatus !== 'ready', action: () => openEditor('idFormat') },
     ...SCHOOL_MANAGEMENT_DESTINATIONS.map((item) => ({ ...item, action: () => activateSettingsDestination(item, (nextRoute, params) => navigation.navigate(nextRoute, params)) })),
-    { key: 'permissions', icon: 'shield', label: 'User Roles & Permissions', sub: 'Ogolaanshaha isticmaalayaasha', action: () => navigation.navigate('Permissions') },
+    ...(!auth.isLive ? [{ key: 'permissions', icon: 'shield', label: 'User Roles & Permissions', sub: 'Ogolaanshaha isticmaalayaasha', action: () => navigation.navigate('Permissions') }] : []),
   ] : [];
 
   return (

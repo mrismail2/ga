@@ -10,7 +10,7 @@ import { FEE_LABELS } from '../data/mock';
 /* A tappable student card. Tapping anywhere opens the full profile.
    No email clutter — just name + ID + a clear "tap to view" hint.
    A slim left accent is tinted by attendance for an at-a-glance read. */
-export default function StudentRow({ student, index, onPress, onRoll }) {
+export default function StudentRow({ student, index, onPress, onRoll, liveMode = false }) {
   const { c } = useTheme();
   const fee = FEE_LABELS[student.fee] || FEE_LABELS.full;
   const attTone = student.att == null ? c.line : student.att >= 90 ? c.green : student.att >= 80 ? c.gold700 : c.rose;
@@ -34,12 +34,16 @@ export default function StudentRow({ student, index, onPress, onRoll }) {
         <Text style={[styles.name, { color: c.ink }]} numberOfLines={1}>{student.name}</Text>
         <Text style={[styles.hint, { color: c.muted }]}>{student.student_id}</Text>
       </View>
-      <View style={styles.right}>
-        <Badge label={fee.label} tone={fee.tone} />
-        <Text style={[styles.att, { color: student.att == null ? c.muted : student.att >= 90 ? c.green : student.att >= 80 ? c.gold700 : c.rose }]}>
-          {student.att == null ? '—' : `${student.att}%`}
-        </Text>
-      </View>
+      {liveMode ? (
+        <Text style={[styles.liveMeta, { color: c.muted }]} numberOfLines={1}>{student.className || 'Arday firfircoon'}</Text>
+      ) : (
+        <View style={styles.right}>
+          <Badge label={fee.label} tone={fee.tone} />
+          <Text style={[styles.att, { color: student.att == null ? c.muted : student.att >= 90 ? c.green : student.att >= 80 ? c.gold700 : c.rose }]}>
+            {student.att == null ? '—' : `${student.att}%`}
+          </Text>
+        </View>
+      )}
       <View style={{ marginLeft: 6 }}>
         <Icon name="chevronRight" size={18} color={c.muted2} />
       </View>
@@ -60,4 +64,5 @@ const styles = StyleSheet.create({
   hint: { fontSize: 11.5, fontWeight: '600', marginTop: 2 },
   right: { alignItems: 'flex-end', gap: 4 },
   att: { fontSize: 13, fontWeight: '700' },
+  liveMeta: { maxWidth: 120, fontSize: 12, fontWeight: '700' },
 });

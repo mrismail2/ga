@@ -5,12 +5,13 @@ import { radius, shadow } from '../theme/colors';
 import { usePhotos } from '../context/PhotoContext';
 import { useSchools } from '../context/SchoolContext';
 import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 import Icon from './Icon';
-import { CLASSES, classId } from '../data/mock';
 
 function initials(name) {
-  const words = name.replace(/^Dugsiga\s+/i, '').split(' ');
-  return (words[0][0] + (words[1] ? words[1][0] : (words[0][1] || ''))).toUpperCase();
+  const clean = String(name || 'Kobciye').replace(/^Dugsiga\s+/i, '').trim() || 'Kobciye';
+  const words = clean.split(/\s+/);
+  return (((words[0] && words[0][0]) || 'K') + (words[1] ? words[1][0] : ((words[0] && words[0][1]) || ''))).toUpperCase();
 }
 
 function Emblem({ school, size, photos }) {
@@ -31,11 +32,14 @@ export default function SchoolHero({ school: forced, typeLabel }) {
   const { c } = useTheme();
   const { photos, pickPhoto } = usePhotos();
   const { schools, active, setActive } = useSchools();
-  const { role, profile } = useRole();
+  const { role } = useRole();
+  const { isLive } = useAuth();
   const [open, setOpen] = useState(false);
 
   // Only the School Admin may upload/replace the school logo.
-  const canEditLogo = role === 'schooladmin';
+  // The prototype photo store is device-local. Do not present that as a real
+  // school-logo save in Live Mode until a canonical Supabase Storage flow exists.
+  const canEditLogo = role === 'schooladmin' && !isLive;
 
   // Super Admin passes a forced platform "school"; otherwise use the admin's active branch.
   const school = forced || active;
@@ -46,20 +50,17 @@ export default function SchoolHero({ school: forced, typeLabel }) {
   // AsyncStorage store, and real + demo school data must never mix.
   const isSwitchable = !forced && role === 'schooladmin' && !(school && school.live) && schools.length >= 1;
   const key = 'school_' + (school.id || school.name);
-  const logo = photos[key];
+  const logo = isLive ? (school.logoUrl || null) : photos[key];
 
   // the banner number is scoped to the role: a teacher sees their own
   // classes' students, a parent their children, a student nothing extra,
   // and an admin/accountant the whole school.
   const heroKpi = () => {
-    if (role === 'teacher') {
-      // count by CANONICAL assigned_class_ids (global class_id), never by name
-      const cls = profile.assigned_class_ids || [];
-      const total = CLASSES.filter((cl) => cls.indexOf(classId(cl)) !== -1).reduce((a, cl) => a + (cl[3] || 0), 0);
-      return { val: String(total), lbl: 'Ardaydayda' };
-    }
-    if (role === 'parent') return { val: String((profile.childNames || []).length), lbl: 'Caruur' };
-    if (role === 'student') return null; // their class already shows on a card
+    // Live role dashboards below the banner now load canonical Supabase counts.
+    // The hero must not mix in prototype class/child arrays or local fallbacks.
+    if (isLive) return null;
+    if (role === 'parent') return null;
+    if (role === 'student') return null;
     if (school.students != null) return { val: String(school.students), lbl: 'Arday' };
     return null;
   };
@@ -95,7 +96,7 @@ export default function SchoolHero({ school: forced, typeLabel }) {
             </View>
             {isSwitchable ? <Text style={styles.chev}>▾</Text> : null}
           </View>
-          <Text style={styles.meta} numberOfLines={1}>{(typeLabel || school.type)} · {school.city}</Text>
+          <Text style={styles.meta} numberOfLines={1}>{[typeLabel || school.type, school.city].filter(Boolean).join(' · ') || 'Kobciye'}</Text>
         </TouchableOpacity>
 
         {kpi ? (
@@ -106,29 +107,33 @@ export default function SchoolHero({ school: forced, typeLabel }) {
         ) : null}
       </View>
 
-      {/* branch switcher */}
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
-          <View style={[styles.sheet, { backgroundColor: c.surface }]}>
-            <Text style={[styles.sheetTitle, { color: c.ink }]}>Dugsiyada aad maamusho</Text>
-            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-              {schools.map((s) => {
-                const on = s.id === active.id;
-                return (
-                  <TouchableOpacity key={s.id} style={[styles.row, on && { backgroundColor: c.blueSoft }]} onPress={() => { setActive(s.id); setOpen(false); }} activeOpacity={0.7}>
-                    <Emblem school={s} size={40} photos={photos} />
-                    <View style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
-                      <Text style={[styles.rName, { color: c.ink }]} numberOfLines={1}>{s.name}</Text>
-                      <Text style={[styles.rSub, { color: c.muted }]} numberOfLines={1}>{s.type} · {s.city}</Text>
-                    </View>
-                    {on ? <Icon name="check" size={18} color={c.blue} strokeWidth={2.5} /> : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {/* branch switcher — render only when branch switching is actually available.
+          Super Admin uses a forced platform banner and may have no active school yet;
+          never dereference active.id in that state. */}
+      {isSwitchable ? (
+        <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+          <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
+            <View style={[styles.sheet, { backgroundColor: c.surface }]}>
+              <Text style={[styles.sheetTitle, { color: c.ink }]}>Dugsiyada aad maamusho</Text>
+              <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                {schools.map((s) => {
+                  const on = s.id === active?.id;
+                  return (
+                    <TouchableOpacity key={s.id} style={[styles.row, on && { backgroundColor: c.blueSoft }]} onPress={() => { setActive(s.id); setOpen(false); }} activeOpacity={0.7}>
+                      <Emblem school={s} size={40} photos={photos} />
+                      <View style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
+                        <Text style={[styles.rName, { color: c.ink }]} numberOfLines={1}>{s.name}</Text>
+                        <Text style={[styles.rSub, { color: c.muted }]} numberOfLines={1}>{s.type} · {s.city}</Text>
+                      </View>
+                      {on ? <Icon name="check" size={18} color={c.blue} strokeWidth={2.5} /> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      ) : null}
     </>
   );
 }

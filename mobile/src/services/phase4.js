@@ -64,12 +64,43 @@ function requireSchoolUuid(schoolId) {
   return schoolId.trim();
 }
 
+/* Every active enrollment created by the client must have a real class and
+   academic year. The database migration added in this pass independently
+   enforces the same invariant, so a forged/direct RPC call cannot create an
+   active enrollment with either value missing. */
+export function p4ValidateEnrollmentSelection({ classId, academicYearId, streamId = null } = {}) {
+  const cls = String(classId || '').trim();
+  const year = String(academicYearId || '').trim();
+  const stream = String(streamId || '').trim();
+  if (!cls) return 'Fadlan dooro fasalka.';
+  if (!isUuid(cls)) return 'Fadlan dooro fasalka saxda ah.';
+  if (!year) return 'Fadlan dooro sannad-dugsiyeedka.';
+  if (!isUuid(year)) return 'Fadlan dooro sannad-dugsiyeed sax ah.';
+  if (stream && !isUuid(stream)) return 'Fadlan dooro qaybta fasalka saxda ah.';
+  return null;
+}
+
+function requireEnrollmentSelection(selection) {
+  const message = p4ValidateEnrollmentSelection(selection);
+  if (message) {
+    const e = new Error(message);
+    e.code = 'invalid_enrollment_selection';
+    throw e;
+  }
+  return {
+    classId: String(selection.classId).trim(),
+    academicYearId: String(selection.academicYearId).trim(),
+    streamId: selection.streamId ? String(selection.streamId).trim() : null,
+  };
+}
+
 /* Postgres error → short Somali message the form can show inline. */
 export function p4FriendlyError(error) {
   const msg = (error && (error.message || String(error))) || '';
   const code = error && error.code;
   if (code === 'not_configured') return msg;
   if (code === 'invalid_school_id') return 'Dooro dugsi sax ah ka hor inta aadan xogtiisa maamulin.';
+  if (code === 'invalid_enrollment_selection') return msg || 'Fadlan dooro fasalka iyo sannad-dugsiyeedka saxda ah.';
   if (code === '22P02' || /invalid input syntax for type uuid/i.test(msg)) {
     return 'Aqoonsi dugsi/diiwaan sax ah ayaa loo baahan yahay. Dooro dugsiga aad rabto inaad maamusho.';
   }
@@ -82,9 +113,15 @@ export function p4FriendlyError(error) {
   if (/row-level security|violates row-level/i.test(msg)) {
     return 'Ma lihid oggolaansho aad diiwaankan ku sameyso.';
   }
+  if (/active enrollment requires a class/i.test(msg)) return 'Fadlan dooro fasalka.';
+  if (/active enrollment requires an academic year/i.test(msg)) return 'Fadlan dooro sannad-dugsiyeedka.';
   if (/already linked/i.test(msg)) {
     return 'Waalidkan horey ayuu ugu xirnaa ardaygan.';
   }
+  if (/stream does not belong to the selected class/i.test(msg)) return 'Qaybta fasalku kama tirsana fasalka aad dooratay.';
+  if (/subject does not belong to the selected class/i.test(msg)) return 'Maaddadu kama tirsana fasalka aad dooratay.';
+  if (/class does not belong to the selected academic year/i.test(msg)) return 'Fasalku kama tirsana sannad-dugsiyeedka aad dooratay.';
+  if (/term does not belong to the selected academic year/i.test(msg)) return 'Term-ku kama tirsana sannad-dugsiyeedka aad dooratay.';
   if (/belongs to another/i.test(msg) || /another school/i.test(msg)) {
     return 'Diiwaanka aad dooratay wuxuu ka tirsan yahay dugsi/jaamacad kale.';
   }
@@ -122,7 +159,7 @@ export async function p4ActiveEnrollments(schoolId) {
    I'm not authorized to open it" — a single safe boolean, never class data,
    and never confirms/denies existence outside the caller's own school. */
 export async function p4ClassExistsInMySchool(classId) {
-  if (!isSupabaseConfigured() || !supabase) return false;
+  if (!isSupabaseConfigured() || !supabase || !isUuid(classId)) return false;
   const { data, error } = await supabase.rpc('class_exists_in_my_school', { p_class: classId });
   if (error) throw error;
   return data === true;
@@ -149,19 +186,20 @@ export async function p4Update(table, id, patch) {
 }
 
 /* Zero-count dashboard tiles for an empty institution. Uses head-count
-   queries (no row data transferred). Missing/blocked tables count as 0. */
+   queries (no row data transferred). A genuine empty institution returns
+   zeroes; network/RLS/schema failures throw so the UI never disguises an
+   unavailable count as a truthful-looking zero. */
 export async function p4Counts(schoolId, tables) {
   const out = {};
   // no real school selected yet (e.g. Super Admin before picking one) → all
   // zero, and crucially NO query is run with a placeholder school_id.
   if (!isUuid(schoolId)) { tables.forEach((t) => { out[t] = 0; }); return out; }
   await Promise.all(tables.map(async (t) => {
-    try {
-      requireTable(t);
-      const { count, error } = await supabase.from(t)
-        .select('id', { count: 'exact', head: true }).eq('school_id', schoolId);
-      out[t] = error ? 0 : (count || 0);
-    } catch (e) { out[t] = 0; }
+    requireTable(t);
+    const { count, error } = await supabase.from(t)
+      .select('id', { count: 'exact', head: true }).eq('school_id', schoolId);
+    if (error) throw error;
+    out[t] = count || 0;
   }));
   return out;
 }
@@ -200,10 +238,13 @@ export async function p4CreateClassCanonical({ profile, roleKey, name, capacity,
   const clean = String(name || '').trim();
   if (!clean) throw new Error('Magaca fasalka waa qasab (required).');
 
+  // Do not convert network/RLS/schema failures into a fake "no active year"
+  // or "no sections" state. A failed dependency load must abort creation and
+  // reach the form's visible error handling instead of creating a partial class.
   const [existing, year, sections] = await Promise.all([
     p4List('classes', schoolId),
-    p4ActiveAcademicYear(schoolId).catch(() => null),
-    p4List('school_sections', schoolId, { activeOnly: true }).catch(() => []),
+    p4ActiveAcademicYear(schoolId),
+    p4List('school_sections', schoolId, { activeOnly: true }),
   ]);
   if (existing.some((r) => (r.name || '').trim().toLowerCase() === clean.toLowerCase())) {
     const e = new Error('Fasal magacan wata ayaa horey u jiray. Beddel magaca.');
@@ -233,22 +274,17 @@ export async function p4AdmitStudentAtomic(schoolId, {
   guardianEmail = null, relationship = null, isPrimary = true,
 } = {}) {
   requireTable('admissions');
-  requireSchoolUuid(schoolId);
-  // enrolment defaults to the ACTIVE academic year when none is chosen
-  let yearId = academicYearId;
-  if (!yearId) {
-    try { const y = await p4ActiveAcademicYear(schoolId); yearId = y ? y.id : null; }
-    catch (e) { yearId = null; }
-  }
+  const school = requireSchoolUuid(schoolId);
+  const selection = requireEnrollmentSelection({ classId, academicYearId, streamId });
   const { data, error } = await supabase.rpc('admit_student_atomic', {
-    p_school: schoolId,
+    p_school: school,
     p_applicant_name: applicantName,
     p_gender: gender || null,
     p_date_of_birth: dateOfBirth || null,
     p_admission_number: admissionNumber || null,
-    p_class_id: classId || null,
-    p_stream_id: streamId || null,
-    p_academic_year_id: yearId || null,
+    p_class_id: selection.classId,
+    p_stream_id: selection.streamId,
+    p_academic_year_id: selection.academicYearId,
     p_admission_id: admissionId || null,
     p_student_id: studentId || null,
     p_parent_id: parentId || null,
@@ -274,17 +310,22 @@ export async function p4SaveStudentWithEnrollment(schoolId, {
   fullName, gender = null, dateOfBirth = null, admissionNumber = null,
   classId = null, streamId = null, academicYearId = null, studentId = null,
 } = {}) {
-  requireSchoolUuid(schoolId);
-  return p4AdmitStudentAtomic(schoolId, {
-    applicantName: fullName,
-    gender: gender || null,
-    dateOfBirth: dateOfBirth || null,
-    admissionNumber: admissionNumber || null,
-    classId: classId || null,
-    streamId: streamId || null,
-    academicYearId: academicYearId || null,
-    studentId: studentId || null,
+  const school = requireSchoolUuid(schoolId);
+  const selection = requireEnrollmentSelection({ classId, academicYearId, streamId });
+  const { data, error } = await supabase.rpc('save_student_with_enrollment_atomic', {
+    p_school: school,
+    p_student_id: studentId || null,
+    p_full_name: fullName,
+    p_gender: gender || null,
+    p_date_of_birth: dateOfBirth || null,
+    p_admission_number: admissionNumber || null,
+    p_class_id: selection.classId,
+    p_stream_id: selection.streamId,
+    p_academic_year_id: selection.academicYearId,
   });
+  if (error) throw error;
+  ['students', 'student_enrollments', 'classes'].forEach(notifyCanonicalChange);
+  return data;
 }
 
 /* Client-side validation shared by the CRUD forms (the DB re-validates all

@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { avatarColors } from '../theme/colors';
 import { usePhotos } from '../context/PhotoContext';
 import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 import Icon from './Icon';
 
 function initials(name) {
-  return name
-    .split(' ')
+  return String(name || 'K')
+    .trim()
+    .split(/\s+/)
     .map((w) => w[0])
     .slice(0, 2)
     .join('')
@@ -19,13 +21,16 @@ function initials(name) {
 export default function Avatar({ name, code, size = 44, editable = false }) {
   const { photos, pickPhoto } = usePhotos();
   const { role } = useRole();
-  const key = code || name;
-  const photo = photos[key];
+  const { isLive } = useAuth();
+  const key = String(code || name || 'Kobciye');
+  // PhotoContext is the prototype's device-local store. A real account must
+  // not display or edit those local images as if they were canonical data.
+  const photo = isLive ? null : photos[key];
   const seed = key.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0);
   const bg = avatarColors[seed % avatarColors.length];
 
   // Only Super Admin / School Admin may upload/replace profile photos.
-  const canEdit = editable && (role === 'schooladmin' || role === 'superadmin');
+  const canEdit = !isLive && editable && (role === 'schooladmin' || role === 'superadmin');
 
   const inner = photo ? (
     <Image source={{ uri: photo }} style={{ width: size, height: size, borderRadius: size / 2 }} />

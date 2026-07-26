@@ -7,26 +7,63 @@ const MANAGEMENT_ITEM = Object.freeze({
 });
 
 const MANAGEMENT_ROLES = Object.freeze(['schooladmin']);
-// Screen-level access is broader than the nav-menu item: a Super Admin never
-// gets the "Maamulka Dugsiga" MENU entry (their nav is platform-scoped), but
-// once they have PICKED a school they may open the very same management
-// screens to run it. Kept separate from canAccessManagement so the nav menu
-// stays school-admin-only while the screen itself admits a super_admin.
 const SCHOOL_DATA_MANAGER_ROLES = Object.freeze(['schooladmin', 'superadmin']);
+
+/* Phase 1–4 LIVE boundary.
+   Anything omitted here is either demo-only, unfinished, or belongs to
+   Phase 5 (attendance, finance, exams/results, discipline, reports, etc.).
+   Demo mode keeps the original prototype navigation unchanged. */
+const LIVE_NAV_KEYS = Object.freeze({
+  superadmin: Object.freeze(['dashboard', 'schoolonboarding', 'students', 'teachers', 'classes', 'lessons', 'messages', 'settings']),
+  schooladmin: Object.freeze(['dashboard', 'students', 'teachers', 'classes', 'lessons', 'management', 'messages', 'settings']),
+  teacher: Object.freeze(['dashboard', 'classes', 'lessons', 'messages', 'settings']),
+  accountant: Object.freeze(['dashboard', 'settings']),
+  parent: Object.freeze(['dashboard', 'settings']),
+  student: Object.freeze(['dashboard', 'messages', 'settings']),
+});
+
+const LIVE_ROUTE_KEYS = Object.freeze({
+  Dashboard: 'dashboard',
+  SchoolOnboarding: 'schoolonboarding',
+  Schools: 'schoolonboarding',
+  Management: 'management',
+  Ardayda: 'students',
+  ArdaydaStack: 'students',
+  Fasallada: 'classes',
+  FasalladaStack: 'classes',
+  ClassDetail: 'classes',
+  Teachers: 'teachers',
+  Lessons: 'lessons',
+  Messages: 'messages',
+  MessagesStack: 'messages',
+  Settings: 'settings',
+});
 
 function canAccessManagement(roleKey) {
   return MANAGEMENT_ROLES.includes(roleKey);
 }
 
-// may this role operate a school's management screens at all (given they have
-// resolved a real active school)? Super Admin included; used by the screens,
-// never by the nav-menu builder.
 function canManageSchoolData(roleKey) {
   return SCHOOL_DATA_MANAGER_ROLES.includes(roleKey);
 }
 
-function canRoleNavigate(roleKey, key) {
-  return key !== MANAGEMENT_ITEM.key || canAccessManagement(roleKey);
+function liveNavKeys(roleKey, baseKeys) {
+  const allowed = new Set(LIVE_NAV_KEYS[roleKey] || ['dashboard', 'settings']);
+  return (Array.isArray(baseKeys) ? baseKeys : []).filter((key) => allowed.has(key));
+}
+
+function canRoleNavigate(roleKey, key, isLive = false) {
+  if (key === MANAGEMENT_ITEM.key && !canAccessManagement(roleKey)) return false;
+  if (!isLive) return true;
+  return (LIVE_NAV_KEYS[roleKey] || []).includes(key);
+}
+
+function canAccessLiveRoute(roleKey, route) {
+  const normalized = normalizeSchoolRoute(route);
+  const key = LIVE_ROUTE_KEYS[route] || LIVE_ROUTE_KEYS[normalized];
+  if (!key) return false;
+  if (key === MANAGEMENT_ITEM.key) return canManageSchoolData(roleKey);
+  return canRoleNavigate(roleKey, key, true);
 }
 
 function withManagementNavigation(roleKey, baseKeys) {
@@ -37,8 +74,8 @@ function withManagementNavigation(roleKey, baseKeys) {
   return [...keys.slice(0, settingsIndex), MANAGEMENT_ITEM.key, ...keys.slice(settingsIndex)];
 }
 
-function activateNavigationItem({ roleKey, key, navMeta, navigate }) {
-  if (!canRoleNavigate(roleKey, key) || !navMeta || !navMeta[key] || typeof navigate !== 'function') return null;
+function activateNavigationItem({ roleKey, key, navMeta, navigate, isLive = false }) {
+  if (!canRoleNavigate(roleKey, key, isLive) || !navMeta || !navMeta[key] || typeof navigate !== 'function') return null;
   const route = navMeta[key][2];
   navigate(route);
   return route;
@@ -57,9 +94,13 @@ module.exports = {
   MANAGEMENT_ITEM,
   MANAGEMENT_ROLES,
   SCHOOL_DATA_MANAGER_ROLES,
+  LIVE_NAV_KEYS,
+  LIVE_ROUTE_KEYS,
   canAccessManagement,
   canManageSchoolData,
+  liveNavKeys,
   canRoleNavigate,
+  canAccessLiveRoute,
   withManagementNavigation,
   activateNavigationItem,
   normalizeSchoolRoute,

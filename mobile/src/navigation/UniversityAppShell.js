@@ -24,7 +24,8 @@ import { useAuth } from '../context/AuthContext';
 import Icon from '../components/Icon';
 import P4ModuleView from '../components/P4ModuleView';
 import { UNIVERSITY_MODULES, UNIVERSITY_COUNT_TABLES } from '../config/phase4Modules';
-import { p4Counts } from '../services/phase4';
+import { p4Counts, p4FriendlyError } from '../services/phase4';
+import useActiveSchoolId from '../hooks/useActiveSchoolId';
 import { UNIVERSITY_NAV_ITEMS, UNIVERSITY_PRIMARY_TAB_KEYS } from '../config/navigationByInstitutionType';
 
 export default function UniversityAppShell() {
@@ -32,26 +33,40 @@ export default function UniversityAppShell() {
   const { width } = useWindowDimensions();
   const wide = width >= 900;
   const { schoolName, profile, signOut } = useAuth();
+  const { schoolId } = useActiveSchoolId();
   const [activeKey, setActiveKey] = useState('dashboard');
   const [showMore, setShowMore] = useState(false);
 
-  const active = UNIVERSITY_NAV_ITEMS.find((i) => i.key === activeKey) || UNIVERSITY_NAV_ITEMS[0];
-  const primaryItems = UNIVERSITY_NAV_ITEMS.filter((i) => UNIVERSITY_PRIMARY_TAB_KEYS.includes(i.key));
-  const moreItems = UNIVERSITY_NAV_ITEMS.filter((i) => !UNIVERSITY_PRIMARY_TAB_KEYS.includes(i.key));
+  const phase4Items = UNIVERSITY_NAV_ITEMS.filter((item) => !['results', 'transcripts'].includes(item.key));
+  const active = phase4Items.find((i) => i.key === activeKey) || phase4Items[0];
+  const primaryItems = phase4Items.filter((i) => UNIVERSITY_PRIMARY_TAB_KEYS.includes(i.key));
+  const moreItems = phase4Items.filter((i) => !UNIVERSITY_PRIMARY_TAB_KEYS.includes(i.key));
 
   const select = (key) => { setActiveKey(key); setShowMore(false); };
 
-  // Phase 4: real per-university zero counts for the dashboard tiles
-  const schoolId = profile ? profile.school_id : null;
-  const [counts, setCounts] = useState(null);
-  useEffect(() => {
-    let alive = true;
-    if (!schoolId) { setCounts(null); return undefined; }
+  // Phase 4: real per-university counts. An empty university legitimately
+  // returns zeroes; a network/RLS failure is kept separate and shown instead
+  // of being rendered as misleading zero data.
+  const [countState, setCountState] = useState({ counts: null, loading: false, error: null });
+  const countRequestSeq = React.useRef(0);
+  const reloadCounts = React.useCallback(() => {
+    const requestId = ++countRequestSeq.current;
+    if (!schoolId) {
+      setCountState({ counts: null, loading: false, error: 'Jaamacad sax ah laguma xidhna akoonkan.' });
+      return () => { if (countRequestSeq.current === requestId) countRequestSeq.current += 1; };
+    }
+    setCountState((prev) => ({ counts: prev.counts, loading: true, error: null }));
     p4Counts(schoolId, UNIVERSITY_COUNT_TABLES)
-      .then((x) => { if (alive) setCounts(x); })
-      .catch(() => { if (alive) setCounts(null); });
-    return () => { alive = false; };
-  }, [schoolId, activeKey]);
+      .then((counts) => {
+        if (countRequestSeq.current === requestId) setCountState({ counts, loading: false, error: null });
+      })
+      .catch((error) => {
+        if (countRequestSeq.current === requestId) setCountState({ counts: null, loading: false, error: p4FriendlyError(error) });
+      });
+    return () => { if (countRequestSeq.current === requestId) countRequestSeq.current += 1; };
+  }, [schoolId]);
+  useEffect(() => reloadCounts(), [reloadCounts, activeKey]);
+  const counts = countState.counts;
 
   const p4Module = UNIVERSITY_MODULES.find((m) => m.key === activeKey) || null;
 
@@ -84,7 +99,20 @@ export default function UniversityAppShell() {
       ) : active.key === 'dashboard' ? (
         /* Phase 4: real zero counts for an empty university — no fake data */
         <View style={styles.countGrid}>
-          {[
+          {countState.error ? (
+            <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.rose, width: '100%' }]}>
+              <Text style={[styles.emptySub, { color: c.rose, textAlign: 'left', maxWidth: undefined }]}>{countState.error}</Text>
+              <TouchableOpacity onPress={() => reloadCounts()} activeOpacity={0.85} style={{ marginTop: 10 }}>
+                <Text style={{ color: c.blue, fontWeight: '800' }}>Isku day mar kale</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          {countState.loading && !counts ? (
+            <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.line, width: '100%' }]}>
+              <Text style={[styles.emptySub, { color: c.muted, textAlign: 'left', maxWidth: undefined }]}>Tirooyinka jaamacadda waa la soo dejinayaa…</Text>
+            </View>
+          ) : null}
+          {counts ? [
             ['university_students', 'Students', 'students'],
             ['faculties', 'Kulliyadaha', 'building'],
             ['programmes', 'Programmes', 'note'],
@@ -94,10 +122,10 @@ export default function UniversityAppShell() {
               <View style={[styles.countIcon, { backgroundColor: c.blueSoft }]}>
                 <Icon name={icon} size={18} color={c.blue} strokeWidth={2} />
               </View>
-              <Text style={[styles.countVal, { color: c.ink }]}>{counts ? String(counts[t] || 0) : '0'}</Text>
+              <Text style={[styles.countVal, { color: c.ink }]}>{String(counts[t] || 0)}</Text>
               <Text style={[styles.countLbl, { color: c.muted }]}>{label}</Text>
             </View>
-          ))}
+          )) : null}
           <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.line, width: '100%' }]}>
             <Text style={[styles.emptySub, { color: c.muted, textAlign: 'left', maxWidth: undefined }]}>
               Jaamacaddaadu waxay bilaabmaysaa madhan. U gudub Kulliyadaha, Programmes, Courses iyo Students si aad ugu darto diiwaannadaada ugu horreeya.
@@ -134,7 +162,7 @@ export default function UniversityAppShell() {
           <View style={[styles.sidebar, { backgroundColor: c.surface, borderRightColor: c.line }]}>
             <Text style={[styles.brand, { color: c.navy }]}>Kobciye — Jaamacad</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <NavList items={UNIVERSITY_NAV_ITEMS} />
+              <NavList items={phase4Items} />
             </ScrollView>
           </View>
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>

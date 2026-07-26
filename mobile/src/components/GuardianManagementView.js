@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, Pressable, ScrollView, Switch, ActivityIndicator } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -28,28 +28,50 @@ export default function GuardianManagementView() {
   const [linkForm, setLinkForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
+  const requestSeq = useRef(0);
 
-  const load = useCallback(async () => {
-    if (!isLive || !schoolId) { setLoading(false); return; }
+  const load = useCallback(async ({ clear = false } = {}) => {
+    const requestId = ++requestSeq.current;
+    if (clear) {
+      setGuardians([]); setStudents([]); setLinks({}); setSelectedId(null);
+      setGuardianForm(null); setLinkForm(null); setFormError(null); setSuccessMsg(null);
+    }
+    if (!isLive || !schoolId) {
+      if (requestSeq.current === requestId) { setLoading(false); setError(null); }
+      return;
+    }
     setLoading(true); setError(null);
     try {
       const data = await loadGuardianManagementData(schoolId);
+      if (requestSeq.current !== requestId) return;
       const grouped = {};
       data.guardians.forEach((parent) => { grouped[parent.id] = []; });
       data.links.forEach((link) => { if (grouped[link.parent_id]) grouped[link.parent_id].push(link); });
       setGuardians(data.guardians); setStudents(data.students); setLinks(grouped);
       setSelectedId((current) => current && data.guardians.some((p) => p.id === current) ? current : null);
-    } catch (e) { setError(p4FriendlyError(e)); }
-    finally { setLoading(false); }
+    } catch (e) {
+      if (requestSeq.current === requestId) { setGuardians([]); setStudents([]); setLinks({}); setError(p4FriendlyError(e)); }
+    }
+    finally { if (requestSeq.current === requestId) setLoading(false); }
   }, [isLive, schoolId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load({ clear: true });
+    return () => { requestSeq.current += 1; };
+  }, [load]);
+  useEffect(() => {
+    if (!successMsg) return undefined;
+    const timer = setTimeout(() => setSuccessMsg(null), 5000);
+    return () => clearTimeout(timer);
+  }, [successMsg]);
 
   const selected = guardians.find((parent) => parent.id === selectedId) || null;
   const selectedLinks = selected ? (links[selected.id] || []) : [];
 
   const openGuardian = (parent) => {
     setFormError(null);
+    setSuccessMsg(null);
     setGuardianForm({
       id: parent ? parent.id : null,
       full_name: parent ? parent.full_name : '', phone: parent ? parent.phone || '' : '', email: parent ? parent.email || '' : '',
@@ -61,8 +83,10 @@ export default function GuardianManagementView() {
     if (!guardianForm.full_name.trim() || !guardianForm.phone.trim()) { setFormError('Magaca iyo telefoonku waa qasab.'); return; }
     setSaving(true); setFormError(null);
     try {
-      if (guardianForm.id) await updateGuardian(guardianForm.id, guardianForm, schoolId);
+      const wasEditing = Boolean(guardianForm.id);
+      if (wasEditing) await updateGuardian(guardianForm.id, guardianForm, schoolId);
       else await createGuardian(guardianForm, schoolId);
+      setSuccessMsg(wasEditing ? 'Xogta waalidka si guul leh ayaa loo cusboonaysiiyey.' : 'Waalidka si guul leh ayaa loo kaydiyey.');
       setGuardianForm(null); await load();
     } catch (e) { setFormError(p4FriendlyError(e)); }
     finally { setSaving(false); }
@@ -70,6 +94,7 @@ export default function GuardianManagementView() {
 
   const openLink = (link) => {
     setFormError(null);
+    setSuccessMsg(null);
     setLinkForm({
       id: link ? link.id : null,
       student_id: link ? link.student_id : '',
@@ -84,8 +109,10 @@ export default function GuardianManagementView() {
     if (!linkForm.student_id) { setFormError('Dooro ardayga la xiriirinayo.'); return; }
     setSaving(true); setFormError(null);
     try {
-      if (linkForm.id) await updateParentStudentLink(linkForm.id, linkForm, schoolId);
+      const wasEditing = Boolean(linkForm.id);
+      if (wasEditing) await updateParentStudentLink(linkForm.id, linkForm, schoolId);
       else await createParentStudentLink(selected.id, linkForm, schoolId);
+      setSuccessMsg(wasEditing ? 'Xiriirka waalidka si guul leh ayaa loo cusboonaysiiyey.' : 'Waalidka si guul leh ayaa ardayga loogu xidhay.');
       setLinkForm(null); await load();
     } catch (e) { setFormError(p4FriendlyError(e)); }
     finally { setSaving(false); }
@@ -94,7 +121,7 @@ export default function GuardianManagementView() {
   const unlink = async (linkId) => {
     if (saving) return;
     setSaving(true); setFormError(null);
-    try { await deleteParentStudentLink(linkId, schoolId); setLinkForm(null); await load(); }
+    try { await deleteParentStudentLink(linkId, schoolId); setSuccessMsg('Xiriirka waalidka waa laga saaray.'); setLinkForm(null); await load(); }
     catch (e) { setFormError(p4FriendlyError(e)); }
     finally { setSaving(false); }
   };
@@ -106,6 +133,10 @@ export default function GuardianManagementView() {
 
   return (
     <View>
+      {successMsg ? <View style={[styles.success, { backgroundColor: c.greenSoft, borderColor: c.green }]}>
+        <Icon name="check" size={16} color={c.green} strokeWidth={2.3} />
+        <Text style={[styles.successTxt, { color: c.green }]}>{successMsg}</Text>
+      </View> : null}
       {!selected ? <>
         <View style={styles.toolbar}>
           <Text style={[styles.count, { color: c.muted }]}>{guardians.length} waalid / mas’uul</Text>
@@ -197,6 +228,7 @@ function SaveButtons({ saving, onSave, onClose, c }) { return <View style={style
 
 const styles = StyleSheet.create({
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }, count: { fontSize: 12.5, fontWeight: '700' },
+  success: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12 }, successTxt: { flex: 1, fontSize: 12.5, fontWeight: '800' },
   add: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 13, borderRadius: 12 }, addTxt: { color: '#fff', fontSize: 13, fontWeight: '800' },
   list: { borderWidth: 1, borderRadius: 16, overflow: 'hidden' }, row: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 }, rowTitle: { fontSize: 14, fontWeight: '700' }, rowSub: { fontSize: 12, fontWeight: '600', marginTop: 2 },
   badge: { minWidth: 28, height: 28, paddingHorizontal: 8, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, badgeTxt: { fontSize: 12, fontWeight: '800' },

@@ -305,8 +305,9 @@ ok('admissions still enrol through the atomic RPC', /p4AdmitStudentAtomic/.test(
 const phase4Source = read('src/services/phase4.js');
 ok('p4SaveStudentWithEnrollment exists in the data layer',
   /export async function p4SaveStudentWithEnrollment/.test(phase4Source));
-ok('p4SaveStudentWithEnrollment delegates to admit_student_atomic',
-  /p4SaveStudentWithEnrollment[\s\S]{0,600}p4AdmitStudentAtomic/.test(phase4Source));
+ok('p4SaveStudentWithEnrollment uses the no-duplicate-admission atomic RPC',
+  /p4SaveStudentWithEnrollment[\s\S]{0,700}save_student_with_enrollment_atomic/.test(phase4Source)
+  && !/p4SaveStudentWithEnrollment[\s\S]{0,700}p4AdmitStudentAtomic/.test(phase4Source));
 ok('the atomic RPC notifies every canonical table it touched',
   /'students', 'admissions', 'parents', 'student_parents', 'student_enrollments', 'classes'/.test(phase4Source));
 

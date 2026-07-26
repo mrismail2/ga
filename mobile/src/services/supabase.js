@@ -401,7 +401,7 @@ export function acceptSchoolInvite(invitationId) {
 export async function listSchools() {
   const { data, error } = await requireClient()
     .from('schools')
-    .select('id, name, slug, location, plan, status, created_at, subscriptions(status, trial_ends_at)')
+    .select('id, name, slug, location, logo_url, plan, status, institution_type, school_stage, created_at, subscriptions(status, trial_ends_at)')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data || [];
@@ -426,17 +426,20 @@ export async function listInvitations() {
 export async function getSchoolCounts(schoolId) {
   // a non-uuid school id ("*", "all", a demo id, null) means "no real school
   // scope" — return honest zeroes rather than sending it to a uuid column.
-  if (!supabase || !isUuid(schoolId)) return { students: 0, classes: 0, teachers: 0, payments: 0 };
-  const tables = ['classes', 'teachers', 'payments'];
+  if (!supabase || !isUuid(schoolId)) return { students: 0, classes: 0, teachers: 0, subjects: 0 };
+  const tables = ['classes', 'teachers', 'subjects'];
   const out = {};
   await Promise.all([
     ...tables.map(async (t) => {
-      const { count } = await supabase.from(t).select('id', { count: 'exact', head: true }).eq('school_id', schoolId);
+      const { count, error } = await supabase.from(t)
+        .select('id', { count: 'exact', head: true }).eq('school_id', schoolId);
+      if (error) throw error;
       out[t] = count || 0;
     }),
     (async () => {
-      const { count } = await supabase.from('student_enrollments')
+      const { count, error } = await supabase.from('student_enrollments')
         .select('id', { count: 'exact', head: true }).eq('school_id', schoolId).eq('status', 'active');
+      if (error) throw error;
       out.students = count || 0;
     })(),
   ]);

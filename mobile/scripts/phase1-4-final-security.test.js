@@ -57,7 +57,7 @@ ok('createLessonPlan persists the real class_id/subject_id when supplied', /clas
 ok('LessonPrepModal accepts a single teacherAssignmentPairs prop (canonical pairs, not two independent lists)', /teacherAssignmentPairs \}\) \{/.test(lessonPrepModal));
 ok('LessonPrepModal sources its pickers from the live pairs when given (not the hardcoded CLASS_OPTS)', /isLiveAssignmentMode \?/.test(lessonPrepModal) && /classOptions\.map/.test(lessonPrepModal));
 ok('the demo CLASS_OPTS fallback still exists (demo mode/no-assignments unaffected)', /const CLASS_OPTS = \['Form 5A', 'Form 6B', 'Form 7A'\]/.test(lessonPrepModal));
-ok('LessonsScreen fetches the signed-in teacher\'s own assignments in Live Mode', /myTeacherAssignments\(liveProfile\.school_id, liveProfile\.id\)/.test(lessonsScreen));
+ok('LessonsScreen fetches the signed-in teacher\'s own assignments using the resolved active school', /myTeacherAssignments\(schoolId, liveTeacherId\)/.test(lessonsScreen));
 ok('LessonsScreen only offers real options to LessonPrepModal when live', /teacherAssignmentPairs={isLive \? myAssignments\.pairs : null}/.test(lessonsScreen));
 
 console.log('\n[5] ClassDetail Live Mode: only Ardayda is offered (no Phase 5 tabs)');

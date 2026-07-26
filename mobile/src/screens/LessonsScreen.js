@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useRole } from '../context/RoleContext';
@@ -14,6 +14,8 @@ import { LESSON_STATUS } from '../data/datasets';
 import { useLessons } from '../context/LessonsContext';
 import { myTeacherAssignments } from '../services/lessonPlans';
 import { shadow } from '../theme/colors';
+import useActiveSchoolId from '../hooks/useActiveSchoolId';
+import { SchoolSelectPrompt, SuperAdminSchoolBar } from '../components/SchoolSelector';
 
 const STATUS_COLOR = (c) => ({ approved: c.green, pending: c.gold700, draft: c.blue, rejected: c.rose });
 
@@ -25,11 +27,14 @@ export default function LessonsScreen({ navigation }) {
   const { c } = useTheme();
   const { role, profile } = useRole();
   const { isLive, profile: liveProfile } = useAuth();
-  const { lessons, reviewCode, setLessonStatus, addLesson: addLessonCtx } = useLessons();
+  const { schoolId, needsSchoolSelection } = useActiveSchoolId();
+  const { lessons, reviewCode, setLessonStatus, addLesson: addLessonCtx, loading, error, reload } = useLessons();
   const [showAdd, setShowAdd] = useState(false);
   const [detail, setDetail] = useState(null);
   const [filter, setFilter] = useState('all');
   const [showCode, setShowCode] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
 
   const canApprove = role === 'superadmin' || role === 'schooladmin';
   const isTeacher = role === 'teacher';
@@ -40,14 +45,35 @@ export default function LessonsScreen({ navigation }) {
   // still refuses an unassigned class/subject regardless of what a client
   // ever sends, but the UI should only ever OFFER real, permitted options).
   const [myAssignments, setMyAssignments] = useState({ pairs: [] });
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentError, setAssignmentError] = useState(null);
+  const assignmentRequestSeq = useRef(0);
+  const liveTeacherId = liveProfile ? liveProfile.id : null;
+  const loadAssignments = useCallback(async () => {
+    const requestId = ++assignmentRequestSeq.current;
+    setMyAssignments({ pairs: [] });
+    setAssignmentError(null);
+    if (!isLive || !isTeacher || !liveTeacherId || !schoolId) {
+      if (assignmentRequestSeq.current === requestId) setAssignmentLoading(false);
+      return;
+    }
+    setAssignmentLoading(true);
+    try {
+      const a = await myTeacherAssignments(schoolId, liveTeacherId);
+      if (assignmentRequestSeq.current === requestId) setMyAssignments(a);
+    } catch (e) {
+      if (assignmentRequestSeq.current === requestId) {
+        setMyAssignments({ pairs: [] });
+        setAssignmentError((e && e.message) || 'Xilalka macallinka lama soo dejin karin.');
+      }
+    } finally {
+      if (assignmentRequestSeq.current === requestId) setAssignmentLoading(false);
+    }
+  }, [isLive, isTeacher, liveTeacherId, schoolId]);
   useEffect(() => {
-    let alive = true;
-    if (!isLive || !isTeacher || !liveProfile) { setMyAssignments({ pairs: [] }); return undefined; }
-    myTeacherAssignments(liveProfile.school_id, liveProfile.id)
-      .then((a) => { if (alive) setMyAssignments(a); })
-      .catch(() => { if (alive) setMyAssignments({ pairs: [] }); });
-    return () => { alive = false; };
-  }, [isLive, isTeacher, liveProfile]);
+    loadAssignments();
+    return () => { assignmentRequestSeq.current += 1; };
+  }, [loadAssignments]);
 
   const counts = useMemo(() => ({
     pending: lessons.filter((l) => l.status === 'pending').length,
@@ -55,8 +81,19 @@ export default function LessonsScreen({ navigation }) {
     draft: lessons.filter((l) => l.status === 'draft').length,
   }), [lessons]);
 
-  const setStatus = (id, status) => setLessonStatus(id, status);
-  const addLesson = (v) => addLessonCtx(v, profile.name);
+  const setStatus = async (id, status) => {
+    setActionError(null); setActionSuccess(null);
+    try {
+      await setLessonStatus(id, status);
+      setActionSuccess(status === 'approved' ? 'Casharka waa la ansixiyey.' : status === 'rejected' ? 'Casharka waa la diiday.' : 'Casharka ansixin ayaa loo gudbiyey.');
+    } catch (e) { setActionError((e && e.message) || 'Xaaladda casharka lama beddeli karin.'); }
+  };
+  const addLesson = async (v) => {
+    setActionError(null); setActionSuccess(null);
+    const row = await addLessonCtx(v, profile.name);
+    setActionSuccess('Casharka si guul leh ayaa loo kaydiyey.');
+    return row;
+  };
 
   const shown = filter === 'all' ? lessons : lessons.filter((l) => l.status === filter);
 
@@ -67,6 +104,25 @@ export default function LessonsScreen({ navigation }) {
       <Text style={[styles.sumLbl, { color: c.muted }]}>{label}</Text>
     </TouchableOpacity>
   );
+
+  if (isLive && needsSchoolSelection) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
+        <View style={styles.content}>
+          <ScreenHeader
+            title="Casharrada"
+            subtitle="Dooro dugsi si aad u aragto casharrada"
+            right={navigation ? (
+              <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={[styles.iconBtn, { backgroundColor: c.surface, borderColor: c.line }]}>
+                <Icon name="back" size={20} color={c.ink} />
+              </TouchableOpacity>
+            ) : null}
+          />
+          <SchoolSelectPrompt />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
@@ -80,6 +136,19 @@ export default function LessonsScreen({ navigation }) {
             </TouchableOpacity>
           ) : null}
         />
+
+        <SuperAdminSchoolBar />
+
+        {(actionError || assignmentError || error) ? (
+          <View style={[styles.feedback, { backgroundColor: c.roseSoft, borderColor: c.rose }]}>
+            <Text style={[styles.feedbackTxt, { color: c.rose }]}>{actionError || assignmentError || error}</Text>
+            <TouchableOpacity onPress={() => { reload(); if (isTeacher) loadAssignments(); }}><Text style={{ color: c.blue, fontWeight: '800' }}>Isku day mar kale</Text></TouchableOpacity>
+          </View>
+        ) : actionSuccess ? (
+          <View style={[styles.feedback, { backgroundColor: c.greenSoft, borderColor: c.green }]}>
+            <Text style={[styles.feedbackTxt, { color: c.green }]}>{actionSuccess}</Text>
+          </View>
+        ) : null}
 
         {/* status summary — tap a cell to filter */}
         <View style={styles.summary}>
@@ -95,8 +164,9 @@ export default function LessonsScreen({ navigation }) {
           </View>
         ) : null}
 
-        {/* invite the Ministry — reveal the read-only review code to share */}
-        {(canApprove || isTeacher) ? (
+        {/* The code-gated Ministry preview is demo-only. It has no authenticated
+            backend/RLS implementation and must never appear as real Live data. */}
+        {!isLive && reviewCode && (canApprove || isTeacher) ? (
           <View style={[styles.minCard, { backgroundColor: c.surface, borderColor: c.line }, shadow.sm]}>
             <View style={[styles.minIcon, { backgroundColor: c.greenSoft }]}>
               <Icon name="shield" size={16} color={c.green} />
@@ -115,7 +185,7 @@ export default function LessonsScreen({ navigation }) {
           </View>
         ) : null}
 
-        <FlatList
+        {loading ? <View style={styles.loading}><ActivityIndicator color={c.blue} /></View> : <FlatList
           data={shown}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
@@ -190,12 +260,12 @@ export default function LessonsScreen({ navigation }) {
               </View>
             );
           }}
-        />
+        />}
       </View>
 
-      <TouchableOpacity style={[styles.fab, { backgroundColor: c.blue }, shadow.card]} onPress={() => setShowAdd(true)} activeOpacity={0.85}>
+      {(!isLive || (isTeacher && !assignmentLoading && !assignmentError)) ? <TouchableOpacity style={[styles.fab, { backgroundColor: c.blue }, shadow.card]} onPress={() => setShowAdd(true)} activeOpacity={0.85}>
         <Icon name="plus" size={26} color="#fff" strokeWidth={2.2} />
-      </TouchableOpacity>
+      </TouchableOpacity> : null}
 
       <LessonPrepModal
         visible={showAdd}
@@ -211,6 +281,9 @@ export default function LessonsScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { flex: 1, padding: 16 },
+  feedback: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 12, padding: 11, marginBottom: 12 },
+  feedbackTxt: { flex: 1, fontSize: 12.5, fontWeight: '700', lineHeight: 18 },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
   iconBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   summary: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   sumCell: { flex: 1, alignItems: 'center', borderWidth: 1.5, borderRadius: 14, paddingVertical: 14 },

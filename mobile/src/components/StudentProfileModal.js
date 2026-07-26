@@ -92,7 +92,7 @@ function EditInfoForm({ c, initial, onCancel, onSave }) {
    Shows identity header + info grid + guardian contact.
    `readOnly` (ministry portal): no editing, no deleting, no exam marks —
    only the profile info, attendance % and the guardian contact. */
-export default function StudentProfileModal({ visible, student, className, onClose, onReportCase, cases = [], readOnly = false }) {
+export default function StudentProfileModal({ visible, student, className, onClose, onReportCase, cases = [], readOnly = false, liveMode = false }) {
   const { c } = useTheme();
   const { role, profile } = useRole();
   const { data: appData, reload } = useAppData();
@@ -109,6 +109,46 @@ export default function StudentProfileModal({ visible, student, className, onClo
   const canDelete = !readOnly && (role === 'superadmin' || role === 'schooladmin');
 
   if (!student) return null;
+
+  /* LIVE Phase 1–4 profile: only canonical identity/enrollment fields.
+     The prototype details below include attendance, fees, results, incidents
+     and AsyncStorage editing, so they must never render for a real account. */
+  if (liveMode) {
+    const displayName = student.full_name || student.name || 'Arday';
+    const displayId = student.student_id || student.admission_number || '—';
+    const gender = student.gender === 'male' ? 'Lab' : student.gender === 'female' ? 'Dhedig' : (student.gender || '—');
+    return (
+      <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+          <TouchableOpacity style={[styles.sheet, { backgroundColor: c.surface }]} activeOpacity={1}>
+            <View style={[styles.header, { borderBottomColor: c.line }]}>
+              <Avatar name={displayName} code={student.student_internal_id || student.id} size={60} />
+              <View style={{ flex: 1, marginLeft: 14 }}>
+                <Text style={[styles.name, { color: c.ink }]}>{displayName}</Text>
+                <Text style={[styles.code, { color: c.blue }]}>{displayId}</Text>
+                {className ? <Badge label={className} tone="navy" style={{ marginTop: 6 }} /> : null}
+              </View>
+              <TouchableOpacity onPress={onClose} hitSlop={10} style={styles.close}><Icon name="close" size={20} color={c.muted} /></TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+              <StudentIDDisplay studentId={displayId} c={c} />
+              <View style={styles.grid}>
+                <InfoCell label="MAGACA"><Text style={[styles.val, { color: c.ink }]}>{displayName}</Text></InfoCell>
+                <InfoCell label="FASALKA"><Text style={[styles.val, { color: c.ink }]}>{className || '—'}</Text></InfoCell>
+                <InfoCell label="JINSIGA"><Text style={[styles.val, { color: c.ink }]}>{gender}</Text></InfoCell>
+                <InfoCell label="TAARIIKHDA DHALASHADA"><Text style={[styles.val, { color: c.ink }]}>{student.date_of_birth || '—'}</Text></InfoCell>
+                <InfoCell label="LAMBARKA DIIWAANGELINTA"><Text style={[styles.val, { color: c.ink }]}>{student.admission_number || '—'}</Text></InfoCell>
+                <InfoCell label="XAALADDA"><Badge label="Firfircoon" tone="green" /></InfoCell>
+              </View>
+              <View style={[styles.liveNotice, { backgroundColor: c.blueSoft }]}>
+                <Text style={{ color: c.navy, fontSize: 12.5, fontWeight: '700', lineHeight: 18 }}>Xaadiris, lacag, imtixaan iyo natiijooyin waxay bilaabmayaan Phase 5.</Text>
+              </View>
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+    );
+  }
 
   // live = the stored record + any just-saved edits
   const live = overrides ? { ...student, ...overrides } : student;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import { Modal, View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { usePhotos } from '../context/PhotoContext';
 import Icon from './Icon';
@@ -71,6 +71,8 @@ export default function LessonPrepModal({ visible, onClose, onSave, teacherAssig
   const [homework, setHomework] = useState('');
   const [notes, setNotes] = useState('');
   const [id] = useState(() => 'lesson_' + Math.floor(1000 + Math.random() * 9000));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   // Live Mode only: (re)initialize the class+subject selection whenever the
   // real assignment pairs change (they may still be loading when the modal
@@ -101,6 +103,7 @@ export default function LessonPrepModal({ visible, onClose, onSave, teacherAssig
 
   const cover = photos[id];
   const reset = () => {
+    setSaveError(null);
     setTitle(''); setSubject(''); setTopic(''); setObjectives(''); setMaterials(''); setDuration(''); setWeek(''); setHomework(''); setNotes('');
     if (isLiveAssignmentMode) {
       setCls(pairs.length ? pairs[0].className : ''); setClassId(pairs.length ? pairs[0].classId : null);
@@ -126,12 +129,19 @@ export default function LessonPrepModal({ visible, onClose, onSave, teacherAssig
   const hasValidLivePair = !isLiveAssignmentMode || pairs.some((p) => p.classId === classId && p.subjectId === subjectId);
 
   const canSave = !!title.trim() && !liveHasNoAssignments && hasValidLivePair;
-  const save = () => {
-    if (!canSave) return;
+  const save = async () => {
+    if (!canSave || saving) return;
     const subjectName = isLiveAssignmentMode ? (pairs.find((p) => p.subjectId === subjectId) || {}).subjectName : (subject.trim() || 'Maadda');
-    onSave({ id, title: title.trim(), subject: subjectName || 'Maadda', subjectId, cls, classId, topic, objectives, materials, duration, week, homework, notes });
-    reset();
-    onClose();
+    setSaving(true); setSaveError(null);
+    try {
+      await Promise.resolve(onSave({ id, title: title.trim(), subject: subjectName || 'Maadda', subjectId, cls, classId, topic, objectives, materials, duration, week, homework, notes }));
+      reset();
+      onClose();
+    } catch (e) {
+      setSaveError((e && e.message) || 'Casharka lama kaydin karin.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -147,19 +157,22 @@ export default function LessonPrepModal({ visible, onClose, onSave, teacherAssig
           </View>
 
           <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-            {/* cover photo / attachment */}
-            <TouchableOpacity activeOpacity={0.85} onPress={() => pickPhoto(id)} style={[styles.cover, { backgroundColor: c.bg, borderColor: c.line }]}>
-              {cover ? (
-                <Image source={{ uri: cover }} style={styles.coverImg} />
-              ) : (
-                <View style={styles.coverEmpty}>
-                  <View style={[styles.camCircle, { backgroundColor: c.blueSoft }]}>
-                    <Icon name="camera" size={22} color={c.blue} />
+            {/* Device-local attachment preview is demo-only. Live Mode must not
+                imply an upload persisted when no canonical Storage flow exists. */}
+            {!isLiveAssignmentMode ? (
+              <TouchableOpacity activeOpacity={0.85} onPress={() => pickPhoto(id)} style={[styles.cover, { backgroundColor: c.bg, borderColor: c.line }]}>
+                {cover ? (
+                  <Image source={{ uri: cover }} style={styles.coverImg} />
+                ) : (
+                  <View style={styles.coverEmpty}>
+                    <View style={[styles.camCircle, { backgroundColor: c.blueSoft }]}>
+                      <Icon name="camera" size={22} color={c.blue} />
+                    </View>
+                    <Text style={[styles.coverHint, { color: c.muted }]}>Sawir / qalab cashar ku dar</Text>
                   </View>
-                  <Text style={[styles.coverHint, { color: c.muted }]}>Sawir / qalab cashar ku dar</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+            ) : null}
 
             <Field label="CINWAANKA CASHARKA" value={title} onChangeText={setTitle} placeholder="tusaale: Jajab & Boqolkiiba" />
 
@@ -226,13 +239,13 @@ export default function LessonPrepModal({ visible, onClose, onSave, teacherAssig
             <Field label="HAWSHA GURIGA" value={homework} onChangeText={setHomework} placeholder="Shaqada guriga…" multiline />
             <Field label="QORAAL DHEERAAD AH" value={notes} onChangeText={setNotes} placeholder="Faallo macalin…" multiline />
 
+            {saveError ? <Text style={[styles.saveError, { color: c.rose }]}>{saveError}</Text> : null}
             <View style={styles.foot}>
               <TouchableOpacity style={[styles.btn, { backgroundColor: c.bg, borderColor: c.line, borderWidth: 1 }]} onPress={onClose}>
                 <Text style={[styles.btnTxt, { color: c.ink2 }]}>Jooji</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, { backgroundColor: canSave ? c.blue : c.muted2 }]} onPress={save} disabled={!canSave}>
-                <Icon name="check" size={16} color="#fff" strokeWidth={2.2} />
-                <Text style={[styles.btnTxt, { color: '#fff' }]}>Kaydi Casharka</Text>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: canSave && !saving ? c.blue : c.muted2 }]} onPress={save} disabled={!canSave || saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <><Icon name="check" size={16} color="#fff" strokeWidth={2.2} /><Text style={[styles.btnTxt, { color: '#fff' }]}>Kaydi Casharka</Text></>}
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -263,6 +276,7 @@ const styles = StyleSheet.create({
   segBtn: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 11, alignItems: 'center' },
   segTxt: { fontSize: 12.5, fontWeight: '700' },
   rowTwo: { flexDirection: 'row', gap: 12 },
+  saveError: { fontSize: 12.5, fontWeight: '700', lineHeight: 18, marginTop: 8 },
   foot: { flexDirection: 'row', gap: 12, marginTop: 18 },
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12 },
   btnTxt: { fontSize: 14.5, fontWeight: '700' },

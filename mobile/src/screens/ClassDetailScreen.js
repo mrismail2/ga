@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { deactivateStudent } from '../services/appDataRepository';
 import useCanonicalRows from '../hooks/useCanonicalRows';
 import useActiveSchoolId from '../hooks/useActiveSchoolId';
+import { SchoolSelectPrompt } from '../components/SchoolSelector';
 import { p4ClassExistsInMySchool } from '../services/phase4';
 import { selectStudentsByClass, filterStudentsForProfile, getIncidentsByClass } from '../utils/dataSelectors';
 import {
@@ -69,12 +70,13 @@ export default function ClassDetailScreen({ route, navigation }) {
   // the RESOLVED active school (own school for School Admin/Teacher, the
   // picked school for Super Admin) — never the raw, possibly-null
   // profile.school_id.
-  const { schoolId } = useActiveSchoolId();
+  const { schoolId, needsSchoolSelection } = useActiveSchoolId();
   const liveRoleMayAttempt = roleKey === 'superadmin' || roleKey === 'schooladmin' || roleKey === 'teacher';
-  const liveClasses = useCanonicalRows('classes', schoolId, { enabled: isLive && !!liveRouteClassId && liveRoleMayAttempt });
+  const liveClasses = useCanonicalRows('classes', schoolId, { enabled: isLive && !!schoolId && !!liveRouteClassId && liveRoleMayAttempt });
   const liveClassRow = liveRouteClassId ? (liveClasses.rows.find((r) => r.id === liveRouteClassId) || null) : null;
-  const liveStillLoading = isLive && !!liveRouteClassId && liveRoleMayAttempt && liveClasses.loading;
-  const liveNotYetResolved = isLive && !!liveRouteClassId && liveRoleMayAttempt && !liveClassRow && !liveStillLoading;
+  const liveStillLoading = isLive && !!schoolId && !!liveRouteClassId && liveRoleMayAttempt && liveClasses.loading;
+  const liveClassError = isLive && liveRoleMayAttempt ? liveClasses.error : null;
+  const liveNotYetResolved = isLive && !!schoolId && !!liveRouteClassId && liveRoleMayAttempt && !liveClassRow && !liveStillLoading && !liveClassError;
 
   // once the RLS-scoped list has settled and the class isn't in it, find out
   // WHY — "genuinely doesn't exist" vs "exists in my school but I'm not
@@ -117,7 +119,7 @@ export default function ClassDetailScreen({ route, navigation }) {
   const allowedTabs = isLive ? (allowed ? LIVE_TABS : []) : (cls ? getAllowedClassTabs(profile, cls) : []);
   const readOnly = mode === 'readonly';
   // a genuinely-missing class vs an unauthorized one get distinct copy
-  const liveDenialKind = isLive && !allowed && !liveStillLoading
+  const liveDenialKind = isLive && !allowed && !liveStillLoading && !liveClassError && !needsSchoolSelection
     ? (liveExistsButDenied ? 'denied' : 'not_found')
     : null;
 
@@ -188,17 +190,18 @@ export default function ClassDetailScreen({ route, navigation }) {
   const [rollOrder, setRollOrder] = useState({ order: [], left: [] });
   const [rollFor, setRollFor] = useState(null);   // student whose number is being changed
   const [rollInput, setRollInput] = useState(''); // typed new number
-  const canRenumber = mode === 'full' && canPerformAction(profile, 'attendance.mark');
+  const canRenumber = !isLive && mode === 'full' && canPerformAction(profile, 'attendance.mark');
 
   // load this class's saved roll order (numbers a left student freed up)
   useEffect(() => {
+    if (isLive || !clsSchoolId || !clsClassId) { setRollOrder({ order: [], left: [] }); return undefined; }
     let alive = true;
     getRollOrder(clsSchoolId, clsClassId).then((ro) => { if (alive) setRollOrder(ro); });
     return () => { alive = false; };
-  }, [clsSchoolId, clsClassId]);
+  }, [isLive, clsSchoolId, clsClassId]);
 
   // the roster as the user has ordered it (left students dropped, custom order applied)
-  const orderedRoster = useMemo(() => applyRollOrder(roster, rollOrder), [roster, rollOrder]);
+  const orderedRoster = useMemo(() => isLive ? roster : applyRollOrder(roster, rollOrder), [isLive, roster, rollOrder]);
 
   const filtered = useMemo(
     () => orderedRoster.filter((s) => s.name.toLowerCase().includes(q.toLowerCase())),
@@ -255,6 +258,13 @@ export default function ClassDetailScreen({ route, navigation }) {
   // re-hydrate the saved register (by student_internal_id) when class/month
   // changes, so a saved register reappears when the Xaadiris tab is reopened.
   useEffect(() => {
+    // Attendance is Phase 5/local-demo functionality. In authenticated Live
+    // Mode the tab is suppressed and no AsyncStorage attendance read may run.
+    if (isLive || !clsSchoolId || !clsClassId) {
+      setAtt2({});
+      setAttSaved(false);
+      return undefined;
+    }
     let alive = true;
     getClassMarksMap(clsSchoolId, clsClassId, attDateKey).then((map) => {
       if (!alive) return;
@@ -264,7 +274,7 @@ export default function ClassDetailScreen({ route, navigation }) {
       setAttSaved(Object.keys(map).length > 0);
     });
     return () => { alive = false; };
-  }, [name, month]);
+  }, [isLive, clsSchoolId, clsClassId, attDateKey]);
 
   const setAtt = (sid, status) => {
     setAttSaved(false);
@@ -277,7 +287,10 @@ export default function ClassDetailScreen({ route, navigation }) {
   };
   // parent/student: load their own SAVED attendance from AsyncStorage
   useEffect(() => {
-    if (!readOnly) return;
+    if (isLive || !readOnly || !clsSchoolId) {
+      if (isLive) setRoSaved({});
+      return undefined;
+    }
     let alive = true;
     (async () => {
       const map = {};
@@ -285,7 +298,7 @@ export default function ClassDetailScreen({ route, navigation }) {
       if (alive) setRoSaved(map);
     })();
     return () => { alive = false; };
-  }, [readOnly, name]);
+  }, [isLive, readOnly, clsSchoolId, roster]);
 
   // teachers may only mark attendance if the School Admin granted it
   const canMark = canPerformAction(profile, 'attendance.mark');
@@ -336,6 +349,31 @@ export default function ClassDetailScreen({ route, navigation }) {
   const setFee = (code, key) => { setFees((f) => ({ ...f, [month]: { ...(f[month] || {}), [code]: key } })); setFeeSaved(false); };
   const setAllFees = (key) => setFees((f) => { const m = {}; orderedRoster.forEach((s) => { m[s.student_internal_id] = key; }); return { ...f, [month]: m }; });
   const feeOf = (s) => (fees[month] || {})[s.student_internal_id] || s.fee;
+
+  if (isLive && roleKey === 'superadmin' && needsSchoolSelection) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
+        <SchoolSelectPrompt />
+      </SafeAreaView>
+    );
+  }
+
+  if (liveClassError) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
+        <View style={styles.deniedWrap}>
+          <View style={[styles.deniedCard, { backgroundColor: c.surface, borderColor: c.line }]}>
+            <Icon name="warning" size={30} color={c.rose} />
+            <Text style={[styles.deniedTitle, { color: c.ink }]}>Fasalka lama soo dejin karin</Text>
+            <Text style={[styles.deniedSub, { color: c.muted }]}>{liveClassError}</Text>
+            <TouchableOpacity style={[styles.deniedBtn, { backgroundColor: c.navy }]} onPress={liveClasses.reload}>
+              <Text style={styles.deniedBtnTxt}>Isku day mar kale</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // ---- LIVE: still resolving the class (RLS-scoped query in flight, or the
   // not-found/denied distinction is still loading) — show a plain spinner,
@@ -432,15 +470,27 @@ export default function ClassDetailScreen({ route, navigation }) {
               style={[styles.searchInput, { color: c.ink }]}
             />
           </View>
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item.student_internal_id}
-            renderItem={({ item, index }) => (
-              <StudentRow student={item} index={index} onPress={setSelected} onRoll={canRenumber ? openRoll : undefined} />
-            )}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 90 }}
-          />
+          {isLive && (liveEnrollments.loading || liveStudents.loading) ? (
+            <View style={styles.liveRosterState}><ActivityIndicator color={c.blue} /></View>
+          ) : isLive && (liveEnrollments.error || liveStudents.error) ? (
+            <View style={styles.liveRosterState}>
+              <Text style={[styles.deniedSub, { color: c.rose }]}>{liveEnrollments.error || liveStudents.error}</Text>
+              <TouchableOpacity onPress={() => { liveEnrollments.reload(); liveStudents.reload(); }}>
+                <Text style={{ color: c.blue, fontWeight: '800', marginTop: 8 }}>Isku day mar kale</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.student_internal_id}
+              renderItem={({ item, index }) => (
+                <StudentRow student={item} index={index} onPress={setSelected} liveMode={isLive} onRoll={canRenumber ? openRoll : undefined} />
+              )}
+              ListEmptyComponent={isLive ? <Text style={[styles.mutedNote, { color: c.muted, textAlign: 'center', padding: 24 }]}>Weli arday firfircoon kuma jiro fasalkan.</Text> : null}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 90 }}
+            />
+          )}
         </View>
       )}
 
@@ -964,6 +1014,7 @@ export default function ClassDetailScreen({ route, navigation }) {
         student={selected}
         className={name}
         onClose={() => setSelected(null)}
+        liveMode={isLive}
         cases={selected ? classCases.filter((it) => it[11] === selected.student_internal_id) : []}
         onReportCase={canCreateCase ? (s) => { setSelected(null); openAddCase(s.student_internal_id, true); } : undefined}
       />
@@ -1029,6 +1080,7 @@ const styles = StyleSheet.create({
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, height: 44, marginBottom: 14 },
   searchInput: { flex: 1, fontSize: 14 },
   mutedNote: { fontSize: 12.5, fontWeight: '600', marginBottom: 14, lineHeight: 18 },
+  liveRosterState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   lockedWrap: { flex: 1, padding: 24, justifyContent: 'center' },
   lockedCard: { alignItems: 'center', gap: 8, padding: 28, borderRadius: 16, borderWidth: 1 },
   lockedTitle: { fontSize: 15, fontWeight: '800', textAlign: 'center' },

@@ -1,30 +1,27 @@
 /* ============================================================
    Kobciye — Lessons + Ministry review (shared state)
 
-   Lessons live here (not in a single screen) so two very different views
-   can read the SAME data:
-     • the in-app Casharrada screen (teacher prepares / admin approves), and
-     • the code-gated Ministry review portal (Wasaarad views approved plans
-       and leaves feedback the teacher then sees).
+   DEMO mode keeps the seeded prototype lessons in memory.
 
-   DEMO mode (unchanged): the seeded prototype lessons, in-memory only.
+   LIVE mode reads ONLY canonical lesson_plans rows from Supabase and scopes
+   every operation to the validated active school UUID resolved by
+   SchoolContext:
+     • School Admin / Teacher -> their own school
+     • Super Admin -> the real school selected in "Dooro Dugsi"
 
-   LIVE mode: ONLY canonical lesson_plans rows from Supabase — the demo
-   LESSONS seed is never used. A new school shows the approved empty
-   state; drafts persist after refresh; teachers submit their own plans
-   and only a school admin can approve/reject (enforced by the database,
-   not just this UI). The Lesson Plan UI itself is untouched.
+   A missing Super Admin selection produces an honest empty state and never
+   falls back to demo lessons. Switching schools clears the previous school's
+   rows immediately and stale async responses are ignored.
    ============================================================ */
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { LESSONS, LESSON_DETAILS } from '../data/datasets';
 import { useAuth } from './AuthContext';
+import useActiveSchoolId from '../hooks/useActiveSchoolId';
 import { listLessonPlans, createLessonPlan, setLessonPlanStatus } from '../services/lessonPlans';
 import { onCanonicalChange } from '../services/canonicalStore';
 
-// the school's ministry-review access code (shared with the Wasaarad)
 export const REVIEW_CODE = 'WAS-HID-2026';
 
-// seed tuples → rich lesson objects (with the prepared plan detail merged in)
 function seedLessons() {
   return LESSONS.map((t, i) => ({
     id: 'lesson_seed_' + i, subject: t[0], cls: t[1], title: t[2], status: t[3],
@@ -36,57 +33,105 @@ const LessonsContext = createContext(null);
 
 export function LessonsProvider({ children }) {
   const { isLive, profile } = useAuth();
+  const { schoolId, needsSchoolSelection } = useActiveSchoolId();
   const [demoLessons, setDemoLessons] = useState(seedLessons);
   const [liveLessons, setLiveLessons] = useState([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState(null);
+  const requestSeq = useRef(0);
 
-  const schoolId = isLive && profile ? profile.school_id : null;
-
-  // LIVE: load canonical lesson_plans; reload on any canonical change so an
-  // approval made anywhere shows everywhere; refresh-proof by re-reading.
   const reloadLive = useCallback(async () => {
-    if (!schoolId) { setLiveLessons([]); return; }
-    try { setLiveLessons(await listLessonPlans(schoolId)); }
-    catch (e) { setLiveLessons([]); }
-  }, [schoolId]);
+    const requestId = ++requestSeq.current;
+    // Clear old-school data before a new request starts. This also means a
+    // Super Admin with no selected school sees zero canonical lessons.
+    setLiveLessons([]);
+    setLiveError(null);
+    if (!isLive || !schoolId) { setLiveLoading(false); return; }
+    setLiveLoading(true);
+    try {
+      const rows = await listLessonPlans(schoolId);
+      if (requestSeq.current === requestId) setLiveLessons(rows);
+    } catch (e) {
+      if (requestSeq.current === requestId) {
+        setLiveLessons([]);
+        setLiveError((e && e.message) || 'Casharrada lama soo dejin karin.');
+      }
+    } finally {
+      if (requestSeq.current === requestId) setLiveLoading(false);
+    }
+  }, [isLive, schoolId]);
 
-  useEffect(() => { reloadLive(); }, [reloadLive]);
   useEffect(() => {
-    if (!schoolId) return undefined;
-    return onCanonicalChange((table) => { if (table === 'lesson_plans') reloadLive(); });
-  }, [schoolId, reloadLive]);
+    reloadLive();
+    return () => { requestSeq.current += 1; };
+  }, [reloadLive]);
 
-  const setLessonStatus = useCallback((id, status) => {
-    if (schoolId) {
-      // optimistic update, then persist canonically (rolls back via reload on error)
-      setLiveLessons((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)));
-      setLessonPlanStatus(id, status).catch(() => reloadLive());
-      return;
+  useEffect(() => {
+    if (!isLive || !schoolId) return undefined;
+    return onCanonicalChange((table) => {
+      if (table === 'lesson_plans') reloadLive();
+    });
+  }, [isLive, schoolId, reloadLive]);
+
+  const setLessonStatus = useCallback(async (id, status) => {
+    if (isLive) {
+      if (!schoolId) throw new Error('Dooro dugsi sax ah.');
+      setLiveError(null);
+      try {
+        const row = await setLessonPlanStatus(id, status);
+        setLiveLessons((ls) => ls.map((l) => (l.id === id ? row : l)));
+        return row;
+      } catch (e) {
+        setLiveError((e && e.message) || 'Xaaladda casharka lama beddeli karin.');
+        await reloadLive();
+        throw e;
+      }
     }
     setDemoLessons((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)));
-  }, [schoolId, reloadLive]);
+    return null;
+  }, [isLive, schoolId, reloadLive]);
 
-  const addLesson = useCallback((v, teacher) => {
-    if (schoolId) {
-      createLessonPlan(schoolId, profile ? profile.id : null, teacher, v)
-        .then((row) => setLiveLessons((ls) => [row, ...ls]))
-        .catch(() => reloadLive());
-      return;
+  const addLesson = useCallback(async (v, teacher) => {
+    if (isLive) {
+      if (!schoolId) throw new Error('Dooro dugsi sax ah.');
+      if (!profile || !profile.id) throw new Error('Akoon macallin sax ah ayaa loo baahan yahay.');
+      setLiveError(null);
+      try {
+        const row = await createLessonPlan(schoolId, profile.id, teacher, v);
+        setLiveLessons((ls) => [row, ...ls.filter((l) => l.id !== row.id)]);
+        return row;
+      } catch (e) {
+        setLiveError((e && e.message) || 'Casharka lama kaydin karin.');
+        throw e;
+      }
     }
     setDemoLessons((ls) => [{ ...v, status: 'draft', teacher: teacher || 'Macalin', submitted_at: 'Hadda', ministry_feedback: [] }, ...ls]);
-  }, [schoolId, profile, reloadLive]);
+    return null;
+  }, [isLive, schoolId, profile]);
 
-  // ministry leaves a complaint / advice on a lesson → teacher & admin see it
-  // (demo-only portal feature — untouched in Live Mode)
   const addMinistryFeedback = useCallback((id, entry) => {
+    // The code-gated ministry preview remains a demo-only prototype. It is
+    // never used as a fallback for an authenticated Live Mode session.
     setDemoLessons((ls) => ls.map((l) => (l.id === id
       ? { ...l, ministry_feedback: [...(l.ministry_feedback || []), { id: 'fb_' + (l.ministry_feedback || []).length + '_' + id, by: 'Wasaaradda Waxbarashada', ...entry }] }
       : l)));
   }, []);
 
-  const lessons = schoolId ? liveLessons : demoLessons;
+  const lessons = isLive ? liveLessons : demoLessons;
 
   return (
-    <LessonsContext.Provider value={{ lessons, reviewCode: REVIEW_CODE, setLessonStatus, addLesson, addMinistryFeedback }}>
+    <LessonsContext.Provider value={{
+      lessons,
+      reviewCode: isLive ? null : REVIEW_CODE,
+      setLessonStatus,
+      addLesson,
+      addMinistryFeedback,
+      schoolId,
+      needsSchoolSelection: isLive && needsSchoolSelection,
+      loading: isLive && liveLoading,
+      error: isLive ? liveError : null,
+      reload: reloadLive,
+    }}>
       {children}
     </LessonsContext.Provider>
   );

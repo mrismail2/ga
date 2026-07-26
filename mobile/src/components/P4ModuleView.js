@@ -9,7 +9,7 @@
    Embedded by SchoolManagementScreen (School Mode) and UniversityAppShell
    (University Mode) — the module catalogs keep the two wordings isolated.
    ============================================================ */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,7 @@ import Icon from './Icon';
 import {
   p4List, p4Create, p4Update, p4Validate, p4FriendlyError,
   p4AdmitStudentAtomic, p4ActiveEnrollments, p4SaveStudentWithEnrollment,
+  p4ValidateEnrollmentSelection,
 } from '../services/phase4';
 import { onCanonicalChange } from '../services/canonicalStore';
 
@@ -37,16 +38,27 @@ export default function P4ModuleView({ module, titleOverride }) {
   const [values, setValues] = useState({});
   const [formErr, setFormErr] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState(null);
   const [fkOptions, setFkOptions] = useState({}); // { fieldKey: [{value,label}] }
+  const [fkLoading, setFkLoading] = useState(false);
+  const [fkErrors, setFkErrors] = useState({});
+  const requestSeq = useRef(0);
+  const formRequestSeq = useRef(0);
 
   const title = titleOverride || module.title;
   const canUse = isLive && schoolId;
 
-  const load = useCallback(async () => {
-    if (!canUse) { setLoading(false); return; }
+  const load = useCallback(async ({ clear = false } = {}) => {
+    const requestId = ++requestSeq.current;
+    if (clear) setRows([]);
+    if (!canUse) {
+      if (requestSeq.current === requestId) { setRows([]); setLoadErr(null); setLoading(false); }
+      return;
+    }
     setLoading(true); setLoadErr(null);
     try {
       const listRows = await p4List(module.table, schoolId);
+      let nextRows = listRows;
       // the School Management student count/list uses the canonical ACTIVE
       // enrollment collection (never raw student rows, which can include
       // transferred-away/historical students) — the same source every other
@@ -54,16 +66,31 @@ export default function P4ModuleView({ module, titleOverride }) {
       if (module.table === 'students') {
         const active = await p4ActiveEnrollments(schoolId);
         const activeIds = new Set(active.map((e) => e.student_id));
-        setRows(listRows.filter((r) => activeIds.has(r.id)));
-      } else {
-        setRows(listRows);
+        nextRows = listRows.filter((r) => activeIds.has(r.id));
       }
+      if (requestSeq.current === requestId) setRows(nextRows);
     }
-    catch (e) { setLoadErr(p4FriendlyError(e)); }
-    finally { setLoading(false); }
+    catch (e) {
+      if (requestSeq.current === requestId) { setRows([]); setLoadErr(p4FriendlyError(e)); }
+    }
+    finally { if (requestSeq.current === requestId) setLoading(false); }
   }, [canUse, schoolId, module.table]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    // Tenant switch: close any form from the previous school and clear its
+    // rows/options before the new school's request begins.
+    formRequestSeq.current += 1;
+    setFormOpen(false); setEditing(null); setValues({}); setFkOptions({});
+    setFkLoading(false); setFkErrors({});
+    setFormErr(null); setSuccessMsg(null);
+    load({ clear: true });
+    return () => { requestSeq.current += 1; };
+  }, [load]);
+  useEffect(() => {
+    if (!successMsg) return undefined;
+    const timer = setTimeout(() => setSuccessMsg(null), 5000);
+    return () => clearTimeout(timer);
+  }, [successMsg]);
 
   // two-way sync: a record persisted from ANY screen (e.g. a class created
   // from the Fasallada main-menu modal) re-reads the same canonical rows here
@@ -75,28 +102,106 @@ export default function P4ModuleView({ module, titleOverride }) {
     });
   }, [canUse, module.table, load]);
 
-  const openForm = async (row) => {
-    setEditing(row || null);
+  const closeForm = () => {
+    formRequestSeq.current += 1;
+    setFormOpen(false);
+    setEditing(null);
+    setValues({});
+    setFkOptions({});
+    setFkLoading(false);
+    setFkErrors({});
     setFormErr(null);
-    const init = {};
-    module.fields.forEach((f) => { init[f.key] = row && row[f.key] != null ? String(row[f.key]) : ''; });
-    setValues(init);
-    setFormOpen(true);
-    // load FK dropdown options lazily
+  };
+
+  const loadForeignKeys = async (formRequestId, formSchoolId) => {
     const fks = module.fields.filter((f) => f.fk);
+    if (!fks.length) {
+      if (formRequestSeq.current === formRequestId && schoolId === formSchoolId) {
+        setFkOptions({}); setFkErrors({}); setFkLoading(false);
+      }
+      return;
+    }
+    setFkLoading(true);
+    setFkErrors({});
     const opts = {};
+    const errors = {};
     await Promise.all(fks.map(async (f) => {
       try {
-        const list = await p4List(f.fk.table, schoolId, { limit: 200 });
-        opts[f.key] = list.map((r) => ({ value: r.id, label: r[f.fk.labelKey] || r.id }));
-      } catch (e) { opts[f.key] = []; }
+        const list = await p4List(f.fk.table, formSchoolId, { limit: 200 });
+        opts[f.key] = list.map((r) => ({ value: r.id, label: r[f.fk.labelKey] || r.id, row: r }));
+      } catch (e) {
+        opts[f.key] = [];
+        errors[f.key] = p4FriendlyError(e);
+      }
     }));
-    setFkOptions(opts);
+    if (formRequestSeq.current === formRequestId && schoolId === formSchoolId) {
+      setFkOptions(opts);
+      setFkErrors(errors);
+      setFkLoading(false);
+    }
+  };
+
+  const retryForeignKeys = () => {
+    const formRequestId = ++formRequestSeq.current;
+    loadForeignKeys(formRequestId, schoolId);
+  };
+
+  const openForm = async (row) => {
+    const formRequestId = ++formRequestSeq.current;
+    const formSchoolId = schoolId;
+    setEditing(row || null);
+    setFormErr(null);
+    setSuccessMsg(null);
+    const init = {};
+    module.fields.forEach((f) => {
+      init[f.key] = row && row[f.key] != null
+        ? String(row[f.key])
+        : (f.defaultValue != null ? String(f.defaultValue) : '');
+    });
+    // An already-enrolled admission is canonical history. It may be edited
+    // through the atomic flow, but must never be silently downgraded while
+    // its student/enrollment remain active.
+    if (module.enrollAtomic && row && row.student_id) init.status = 'enrolled';
+    setValues(init);
+    setFkOptions({});
+    setFkErrors({});
+    setFormOpen(true);
+    // Load FK options lazily. A late response from School A must never populate
+    // a form after the user closed it or switched to School B. Network/RLS
+    // failures are shown as errors, never mislabeled as an honest empty list.
+    await loadForeignKeys(formRequestId, formSchoolId);
   };
 
   const save = async () => {
     if (saving) return;
     setFormErr(null);
+    if (fkLoading) { setFormErr('Fadlan sug inta doorashooyinka la soo dejinayo.'); return; }
+    if (Object.keys(fkErrors).length) { setFormErr('Doorashooyinka lama soo dejin karin. Isku day mar kale ka hor kaydinta.'); return; }
+    // Enrolled students always require a real class + academic year. Run
+    // this focused validation before the generic required-field pass so the
+    // user gets the clear Somali messages requested for these two fields.
+    if (module.table === 'students'
+        || (module.enrollAtomic && values.status === 'enrolled')) {
+      const enrollmentErr = p4ValidateEnrollmentSelection({
+        classId: module.table === 'students' ? values.class_id : values.desired_class_id,
+        academicYearId: values.academic_year_id,
+        streamId: module.table === 'students' ? values.stream_id : null,
+      });
+      if (enrollmentErr) { setFormErr(enrollmentErr); return; }
+    }
+    if (module.enrollAtomic && values.status === 'enrolled' && !values.parent_id) {
+      const guardianName = String(values.guardian_name || '').trim();
+      const guardianPhone = String(values.guardian_phone || '').trim();
+      if ((guardianName || guardianPhone) && !guardianName) {
+        setFormErr('Fadlan geli magaca waalidka cusub.'); return;
+      }
+      if ((guardianName || guardianPhone) && !guardianPhone) {
+        setFormErr('Fadlan geli telefoonka waalidka cusub.'); return;
+      }
+    }
+    if (module.enrollAtomic && editing && editing.student_id && values.status !== 'enrolled') {
+      setFormErr('Arday horay loo diiwaangeliyey dib looguma celin karo xaalad codsi.'); return;
+    }
     const err = p4Validate(module.fields, values);
     if (err) { setFormErr(err); return; }
     // `virtual` fields (guardian selection/relationship on Admissions) feed
@@ -117,6 +222,7 @@ export default function P4ModuleView({ module, titleOverride }) {
         await p4AdmitStudentAtomic(schoolId, {
           applicantName: payload.applicant_name,
           classId: payload.desired_class_id,
+          academicYearId: extra.academic_year_id,
           admissionId: editing ? editing.id : null,
           studentId: editing ? editing.student_id : null,
           parentId: extra.parent_id,
@@ -147,7 +253,19 @@ export default function P4ModuleView({ module, titleOverride }) {
       } else {
         await p4Create(module.table, { ...payload, school_id: schoolId });
       }
+      const success = module.table === 'students'
+        ? 'Ardayga si guul leh ayaa loo kaydiyey.'
+        : (module.enrollAtomic && payload.status === 'enrolled')
+          ? 'Diiwaangelinta ardayga waa la dhammeeyey.'
+          : `${module.single} si guul leh ayaa loo kaydiyey.`;
+      setSuccessMsg(success);
+      formRequestSeq.current += 1;
       setFormOpen(false);
+      setEditing(null);
+      setValues({});
+      setFkOptions({});
+      setFkErrors({});
+      setFkLoading(false);
       await load();
       // the class-enrollment / active-count queries live on OTHER screens
       // (Fasallada, Class Detail, School Admin dashboard) — they all
@@ -178,6 +296,51 @@ export default function P4ModuleView({ module, titleOverride }) {
     return a.kind === 'boolean' ? !!row.is_active : row.status === 'active';
   };
 
+
+  const optionsForField = (field) => {
+    let options = fkOptions[field.key] || [];
+    const selectedClass = values.class_id || values.desired_class_id || '';
+    const selectedYear = values.academic_year_id || '';
+    if (field.key === 'stream_id' && selectedClass) {
+      options = options.filter((o) => !o.row || o.row.class_id === selectedClass);
+    }
+    if (module.table === 'teacher_assignments') {
+      if (field.key === 'subject_id' && selectedClass) {
+        options = options.filter((o) => !o.row || !o.row.class_id || o.row.class_id === selectedClass);
+      }
+      if (field.key === 'term_id' && selectedYear) {
+        options = options.filter((o) => !o.row || !o.row.academic_year_id || o.row.academic_year_id === selectedYear);
+      }
+      if (field.key === 'academic_year_id' && values.class_id) {
+        const selectedClassRow = (fkOptions.class_id || []).find((o) => o.value === values.class_id);
+        if (selectedClassRow && selectedClassRow.row && selectedClassRow.row.academic_year_id) {
+          options = options.filter((o) => o.value === selectedClassRow.row.academic_year_id);
+        }
+      }
+    }
+    return options;
+  };
+
+  const choicesForField = (field) => {
+    let options = field.options || [];
+    if (field.key === 'status' && module.enrollAtomic && editing && editing.student_id) {
+      options = options.filter((o) => o.value === 'enrolled');
+    }
+    return options;
+  };
+
+  const chooseForeignKey = (fieldKey, value, isSelected) => {
+    setValues((current) => {
+      const next = { ...current, [fieldKey]: isSelected ? '' : value };
+      if (fieldKey === 'class_id' || fieldKey === 'desired_class_id') {
+        next.stream_id = '';
+        if (module.table === 'teacher_assignments') next.subject_id = '';
+      }
+      if (fieldKey === 'academic_year_id' && module.table === 'teacher_assignments') next.term_id = '';
+      return next;
+    });
+  };
+
   /* ── not live: honest state, never demo data ── */
   if (!canUse) {
     return (
@@ -202,6 +365,13 @@ export default function P4ModuleView({ module, titleOverride }) {
           <Text style={styles.addTxt}>Ku dar {module.single}</Text>
         </TouchableOpacity>
       </View>
+
+      {successMsg ? (
+        <View style={[styles.successBox, { backgroundColor: c.greenSoft, borderColor: c.green }]}> 
+          <Icon name="check" size={16} color={c.green} strokeWidth={2.3} />
+          <Text style={[styles.successTxt, { color: c.green }]}>{successMsg}</Text>
+        </View>
+      ) : null}
 
       {loadErr ? (
         <View style={[styles.box, { backgroundColor: c.roseSoft, borderColor: c.roseSoft }]}>
@@ -249,24 +419,32 @@ export default function P4ModuleView({ module, titleOverride }) {
       )}
 
       {/* add / edit form */}
-      <Modal visible={formOpen} transparent animationType="fade" onRequestClose={() => setFormOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setFormOpen(false)}>
+      <Modal visible={formOpen} transparent animationType="fade" onRequestClose={closeForm}>
+        <Pressable style={styles.overlay} onPress={closeForm}>
           <Pressable style={[styles.sheet, { backgroundColor: c.surface }]} onPress={() => {}}>
             <View style={styles.sheetHead}>
               <Text style={[styles.sheetTitle, { color: c.ink }]}>
                 {(editing ? 'Wax ka beddel ' : 'Ku dar ') + module.single}
               </Text>
-              <TouchableOpacity onPress={() => setFormOpen(false)} hitSlop={10}>
+              <TouchableOpacity onPress={closeForm} hitSlop={10}>
                 <Icon name="close" size={18} color={c.muted} strokeWidth={2.2} />
               </TouchableOpacity>
             </View>
             <ScrollView style={{ maxHeight: 430 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {Object.keys(fkErrors).length ? (
+                <View style={[styles.fkErrorBox, { backgroundColor: c.roseSoft, borderColor: c.rose }]}>
+                  <Text style={[styles.err, { color: c.rose, marginBottom: 0 }]}>Xogta doorashooyinka lama soo dejin karin. Hubi internet-ka iyo oggolaanshahaaga.</Text>
+                  <TouchableOpacity onPress={retryForeignKeys} disabled={fkLoading}>
+                    <Text style={{ color: c.blue, fontWeight: '800', marginTop: 8 }}>{fkLoading ? 'Soo dejinaya…' : 'Isku day mar kale'}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
               {module.fields.map((f) => (
                 <View key={f.key} style={{ marginBottom: 14 }}>
-                  <Text style={[styles.label, { color: c.muted }]}>{f.label}{f.required ? ' *' : ''}</Text>
+                  <Text style={[styles.label, { color: c.muted }]}>{f.label}{(f.required || (f.enrollmentRequired && values.status === 'enrolled')) ? ' *' : ''}</Text>
                   {f.options ? (
                     <View style={styles.optRow}>
-                      {f.options.map((o) => {
+                      {choicesForField(f).map((o) => {
                         const on = values[f.key] === o.value;
                         return (
                           <TouchableOpacity key={o.value} onPress={() => setValues((v) => ({ ...v, [f.key]: o.value }))}
@@ -278,12 +456,16 @@ export default function P4ModuleView({ module, titleOverride }) {
                     </View>
                   ) : f.fk ? (
                     <View style={styles.optRow}>
-                      {(fkOptions[f.key] || []).length === 0 ? (
+                      {fkLoading ? (
+                        <View style={styles.fkLoadingRow}><ActivityIndicator size="small" color={c.blue} /><Text style={[styles.rowSub, { color: c.muted }]}>Soo dejinaya…</Text></View>
+                      ) : fkErrors[f.key] ? (
+                        <Text style={[styles.rowSub, { color: c.rose }]}>Doorashadan lama soo dejin karin.</Text>
+                      ) : optionsForField(f).length === 0 ? (
                         <Text style={[styles.rowSub, { color: c.muted2 }]}>Diiwaan lama helin — marka hore ku dar.</Text>
-                      ) : (fkOptions[f.key] || []).map((o) => {
+                      ) : optionsForField(f).map((o) => {
                         const on = values[f.key] === o.value;
                         return (
-                          <TouchableOpacity key={o.value} onPress={() => setValues((v) => ({ ...v, [f.key]: on ? '' : o.value }))}
+                          <TouchableOpacity key={o.value} onPress={() => chooseForeignKey(f.key, o.value, on)}
                             style={[styles.optChip, { borderColor: on ? c.blue : c.line2, backgroundColor: on ? c.blueSoft : c.surface }]}>
                             <Text style={[styles.optTxt, { color: on ? c.blue : c.muted }]} numberOfLines={1}>{o.label}</Text>
                           </TouchableOpacity>
@@ -321,6 +503,10 @@ export default function P4ModuleView({ module, titleOverride }) {
 const styles = StyleSheet.create({
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   count: { fontSize: 12.5, fontWeight: '700' },
+  successBox: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12 },
+  successTxt: { flex: 1, fontSize: 12.5, fontWeight: '800' },
+  fkErrorBox: { borderWidth: 1, borderRadius: 12, padding: 11, marginBottom: 14 },
+  fkLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 34 },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12 },
   addTxt: { color: '#fff', fontSize: 13, fontWeight: '800' },
   box: { borderRadius: 16, borderWidth: 1, padding: 22, alignItems: 'center', gap: 6 },

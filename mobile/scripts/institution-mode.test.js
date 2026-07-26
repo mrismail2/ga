@@ -136,8 +136,8 @@ ok('services/supabase.js has NO write (.update/.insert) call against the schools
   !/\.from\('schools'\)[\s\S]{0,120}\.(update|insert|upsert|delete)\(/.test(supabaseSvc));
 ok('schools table client access is limited to the two intended read-only paths (profile institution + listSchools)',
   (supabaseSvc.match(/\.from\('schools'\)/g) || []).length === 2
-  && /getMyProfile\(\)[\s\S]*?\.from\('schools'\)[\s\S]*?\.select\('id, name, location, student_id_prefix, next_student_sequence, institution_type, school_stage'\)/.test(supabaseSvc)
-  && /listSchools\(\)[\s\S]*?\.from\('schools'\)[\s\S]*?\.select\('id, name, slug, location, plan, status, created_at, subscriptions/.test(supabaseSvc));
+  && /getMyProfile\(\)[\s\S]*?\.from\('schools'\)[\s\S]*?\.select\('[^']*institution_type, school_stage'\)/.test(supabaseSvc)
+  && /listSchools\(\)[\s\S]*?\.from\('schools'\)[\s\S]*?\.select\('[^']*subscriptions\(status, trial_ends_at\)'\)/.test(supabaseSvc));
 ok('createSchoolAndInvite only ever CREATES (via the Edge Function), never updates an existing school',
   /invokeFunction\('create-school-and-invite-admin'/.test(supabaseSvc));
 

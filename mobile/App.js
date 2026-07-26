@@ -37,7 +37,7 @@ function useLiveRoleBridge() {
   const { setRole, setLiveIdentity } = useRole();
   useEffect(() => {
     if (isLive && roleKey && roleKey !== 'pending') {
-      setRole(roleKey);
+      setRole(roleKey, { persist: false });
       setLiveIdentity({
         name: (profile && profile.full_name) || 'Kobciye',
         school_id: profile ? profile.school_id : null,

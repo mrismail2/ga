@@ -3,7 +3,7 @@
    permissions (persisted in AsyncStorage) are merged into the profile and
    used to filter the teacher's navigation — so toggling a permission updates
    the teacher's UI immediately and survives an app restart. */
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ROLES } from '../data/roles';
 import { setCurrentProfile } from '../data/access';
@@ -43,22 +43,32 @@ export function RoleProvider({ children }) {
   // it overrides the static preview identity so an authenticated user never
   // shows the Dugsiga Hidaayada demo name/school.
   const [liveIdentity, setLiveIdentityState] = useState(null);
+  const liveIdentityRef = useRef(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY).then((v) => { if (v && ROLES[v]) setRoleState(v); });
+    AsyncStorage.getItem(KEY).then((v) => {
+      // A late demo-role read must never overwrite the authenticated database
+      // role that the live bridge has already installed.
+      if (!liveIdentityRef.current && v && ROLES[v]) setRoleState(v);
+    });
     getTeacherPermissions(TEACHER_ID).then(setTeacherPerms);
   }, []);
 
-  const setRole = (r) => {
+  const setRole = useCallback((r, options = {}) => {
     if (!ROLES[r]) return;
     setRoleState(r);
-    // only the demo/preview role is persisted; the live role is re-derived
-    // from the DB profile on every launch, so it is not persisted here.
-    AsyncStorage.setItem(KEY, r).catch(() => {});
-  };
+    // Persist only an explicit demo/preview role. The authenticated role is
+    // re-derived from the database profile on every launch and must not leak
+    // into a later signed-out demo session on this device.
+    if (options.persist !== false) AsyncStorage.setItem(KEY, r).catch(() => {});
+  }, []);
 
   // set (pass identity object) or clear (pass null) the live identity override
-  const setLiveIdentity = useCallback((identity) => setLiveIdentityState(identity || null), []);
+  const setLiveIdentity = useCallback((identity) => {
+    const next = identity || null;
+    liveIdentityRef.current = next;
+    setLiveIdentityState(next);
+  }, []);
 
   // School Admin toggles one teacher permission — persist + update live state
   const setTeacherPermission = (permKey, enabled) => {
@@ -76,7 +86,13 @@ export function RoleProvider({ children }) {
     const base = ROLES[role];
     let p = base;
     if (role === 'teacher') {
-      p = { ...base, permissions: teacherPerms, nav: teacherNav(teacherPerms) };
+      // AsyncStorage permissions belong to the explicit demo prototype only.
+      // A real teacher's LIVE navigation is constrained by the central
+      // Phase 1–4 navigation policy + database RLS, never by local preview
+      // toggles left on this device.
+      p = liveIdentity
+        ? { ...base, permissions: [], nav: base.nav }
+        : { ...base, permissions: teacherPerms, nav: teacherNav(teacherPerms) };
     }
     if (liveIdentity) {
       p = {

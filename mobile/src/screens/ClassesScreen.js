@@ -131,12 +131,12 @@ export default function ClassesScreen({ navigation }) {
             style={[styles.searchInput, { color: c.ink }]}
           />
         </View>
-        {isLive && live.loading ? (
+        {isLive && (live.loading || liveEnrollments.loading) ? (
           <View style={styles.liveState}><ActivityIndicator color={c.blue} /></View>
-        ) : isLive && live.error ? (
+        ) : isLive && (live.error || liveEnrollments.error) ? (
           <View style={styles.liveState}>
-            <Text style={[styles.liveErr, { color: c.rose }]}>{live.error}</Text>
-            <TouchableOpacity onPress={live.reload}><Text style={{ color: c.blue, fontWeight: '700', marginTop: 8 }}>Isku day mar kale</Text></TouchableOpacity>
+            <Text style={[styles.liveErr, { color: c.rose }]}>{live.error || liveEnrollments.error}</Text>
+            <TouchableOpacity onPress={() => { live.reload(); liveEnrollments.reload(); }}><Text style={{ color: c.blue, fontWeight: '700', marginTop: 8 }}>Isku day mar kale</Text></TouchableOpacity>
           </View>
         ) : (
           <FlatList

@@ -17,7 +17,7 @@ export default function Sidebar({ active, onNavigate }) {
   const { profile } = useRole();
   const { isLive, demoActive, signOut } = useAuth();
   const stageTerms = useStageTerminology();
-  const items = profile.nav.filter((k) => NAV_META[k] && canRoleNavigate(profile.key, k));
+  const items = profile.nav.filter((k) => NAV_META[k] && canRoleNavigate(profile.key, k, isLive));
   // stage-aware wording (Fasallada vs Formamka) — config/schoolStages.js
   const labelFor = (k, label) => (k === 'classes' ? stageTerms.classLabelPlural : label);
 
@@ -37,7 +37,7 @@ export default function Sidebar({ active, onNavigate }) {
             <TouchableOpacity
               key={k}
               style={[styles.item, on && { backgroundColor: c.blueSoft }]}
-              onPress={() => activateNavigationItem({ roleKey: profile.key, key: k, navMeta: NAV_META, navigate: onNavigate })}
+              onPress={() => activateNavigationItem({ roleKey: profile.key, key: k, navMeta: NAV_META, navigate: onNavigate, isLive })}
               activeOpacity={0.7}
             >
               {on && <View style={[styles.activeBar, { backgroundColor: c.blue }]} />}

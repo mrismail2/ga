@@ -17,8 +17,11 @@ import { useAppData } from '../../context/AppDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useSchools } from '../../context/SchoolContext';
 import { useViewMode } from '../../context/ViewModeContext';
-import { listSchools, getSchoolCounts } from '../../services/supabase';
+import { listSchools, listInvitations, getSchoolCounts } from '../../services/supabase';
 import { onCanonicalChange } from '../../services/canonicalStore';
+import useActiveSchoolId from '../../hooks/useActiveSchoolId';
+import { p4Counts } from '../../services/phase4';
+import { getTeacherPhase4Summary, getParentPhase4Children, getStudentPhase4Self } from '../../services/liveDashboard';
 import { getParentChildren, getClassById } from '../../data/identity';
 import {
   getIncidentsForStudent, filterIncidentsForProfile, filterPaymentsForProfile, selectResultsForProfile,
@@ -81,17 +84,18 @@ export function SuperAdminDash({ navigation }) {
   const { active: activeSchool, needsSchoolSelection } = useSchools();
 
   // LIVE: real platform figures from Supabase (all zero on a fresh platform).
-  const [live, setLive] = useState({ total: 0, active: 0, pending: 0, loaded: false });
+  const [live, setLive] = useState({ total: 0, active: 0, pending: 0, loaded: false, error: null });
   useEffect(() => {
     let alive = true;
-    if (!isLive) return undefined;
-    listSchools()
-      .then((rows) => {
+    if (!isLive) { setLive({ total: 0, active: 0, pending: 0, loaded: false, error: null }); return undefined; }
+    Promise.all([listSchools(), listInvitations()])
+      .then(([rows, invitations]) => {
         if (!alive) return;
         const active = rows.filter((s) => s.status === 'active').length;
-        setLive({ total: rows.length, active, pending: 0, loaded: true });
+        const pending = invitations.filter((i) => i.status === 'pending').length;
+        setLive({ total: rows.length, active, pending, loaded: true, error: null });
       })
-      .catch(() => { if (alive) setLive((p) => ({ ...p, loaded: true })); });
+      .catch((e) => { if (alive) setLive({ total: 0, active: 0, pending: 0, loaded: true, error: (e && e.message) || 'Dugsiyada lama soo dejin karin.' }); });
     return () => { alive = false; };
   }, [isLive]);
 
@@ -118,14 +122,14 @@ export function SuperAdminDash({ navigation }) {
           { label: 'Dugsiyada Guud', value: String(live.total), icon: 'building', tone: 'navy' },
           { label: 'Firfircoon', value: String(live.active), icon: 'building', tone: 'green' },
           { label: 'Casuumaad Sugaya', value: String(live.pending), icon: 'notice', tone: 'gold' },
-          { label: 'Dakhliga Bishan', value: '$0', icon: 'finance', tone: 'blue' },
+          { label: 'Dugsi La Doortay', value: activeSchool ? 'Haa' : 'Maya', icon: 'check', tone: 'blue' },
         ])}
         <Section title="Dugsiyada" action={<Text style={{ color: c.blue, fontWeight: '800', fontSize: 12.5 }} onPress={goRegister}>Maaree →</Text>}>
           <Card>
-            <Text style={{ color: c.muted, fontSize: 13.5, lineHeight: 20 }}>
-              {live.total === 0
+            <Text style={{ color: live.error ? c.rose : c.muted, fontSize: 13.5, lineHeight: 20 }}>
+              {live.error || (live.total === 0
                 ? 'Weli dugsi lama abuurin. Riix "Register New School" si aad u abuurto midka koowaad oo aad casuumo maamulahiisa.'
-                : `Waxaa jira ${live.total} dugsi. U gudub "Dugsiyada" si aad u aragto casuumaadaha & xaaladaha.`}
+                : `Waxaa jira ${live.total} dugsi. U gudub "Dugsiyada" si aad u aragto casuumaadaha & xaaladaha.`)}
             </Text>
           </Card>
         </Section>
@@ -176,13 +180,13 @@ export function SchoolAdminDash({ navigation }) {
   // states, never demo records). Each count is a live Supabase head query,
   // re-read whenever ANY screen persists through the canonical repository
   // so the dashboard tiles always reflect the same canonical records.
-  const [counts, setCounts] = useState({ students: 0, classes: 0, teachers: 0, payments: 0, loaded: false });
+  const [counts, setCounts] = useState({ students: 0, classes: 0, teachers: 0, subjects: 0, loaded: false, error: null });
   useEffect(() => {
     let alive = true;
-    if (!isLive || !profile.school_id) return undefined;
+    if (!isLive || !profile.school_id) { setCounts({ students: 0, classes: 0, teachers: 0, subjects: 0, loaded: false, error: null }); return undefined; }
     const refresh = () => getSchoolCounts(profile.school_id)
-      .then((x) => { if (alive) setCounts({ ...x, loaded: true }); })
-      .catch(() => { if (alive) setCounts((p) => ({ ...p, loaded: true })); });
+      .then((x) => { if (alive) setCounts({ ...x, loaded: true, error: null }); })
+      .catch((e) => { if (alive) setCounts({ students: 0, classes: 0, teachers: 0, subjects: 0, loaded: true, error: (e && e.message) || 'Tirooyinka dugsiga lama soo dejin karin.' }); });
     refresh();
     const unsub = onCanonicalChange(() => refresh());
     return () => { alive = false; unsub(); };
@@ -199,12 +203,12 @@ export function SchoolAdminDash({ navigation }) {
           { label: 'Tirada Ardayda', value: String(counts.students), icon: 'students', tone: 'blue' },
           { label: meta.classLabelPlural, value: String(counts.classes), icon: 'classes', tone: 'green' },
           { label: 'Macalimiin', value: String(counts.teachers), icon: 'teachers', tone: 'gold' },
-          { label: 'Lacag La Uruuriyay', value: '$0', icon: 'finance', tone: 'navy' },
+          { label: 'Maaddooyin', value: String(counts.subjects || 0), icon: 'lessons', tone: 'navy' },
         ])}
         <Section title="Bilaw Dugsigaaga">
           <Card>
-            <Text style={{ color: c.muted, fontSize: 13.5, lineHeight: 20 }}>
-              Ku soo dhawoow! Dugsigaagu wuu bilaabmayaa madhan. Riix "Maamulka Dugsiga" si aad ugu darto sannad-dugsiyeedka, fasallada, macallimiinta iyo ardayda — xogtaada dhabta ah ayaa halkan ka muuqan doonta.
+            <Text style={{ color: counts.error ? c.rose : c.muted, fontSize: 13.5, lineHeight: 20 }}>
+              {counts.error || 'Ku soo dhawoow! Dugsigaagu wuu bilaabmayaa madhan. Riix "Maamulka Dugsiga" si aad ugu darto sannad-dugsiyeedka, fasallada, macallimiinta iyo ardayda — xogtaada dhabta ah ayaa halkan ka muuqan doonta.'}
             </Text>
           </Card>
         </Section>
@@ -241,6 +245,36 @@ export function SchoolAdminDash({ navigation }) {
    (Fasal / Form / Waalid), mirroring UNIVERSITY_ONLY_TERMS /
    SCHOOL_ONLY_TERMS in config/navigationByInstitutionType.js. */
 export function UniversityAdminDash() {
+  const { c } = useTheme();
+  const { isLive } = useAuth();
+  const { schoolId } = useActiveSchoolId();
+  const [counts, setCounts] = useState({ university_students: 0, faculties: 0, courses: 0, lecturers: 0, loaded: false, error: null });
+  useEffect(() => {
+    let alive = true;
+    if (!isLive || !schoolId) { setCounts({ university_students: 0, faculties: 0, courses: 0, lecturers: 0, loaded: false, error: null }); return undefined; }
+    const refresh = () => p4Counts(schoolId, ['university_students', 'faculties', 'courses', 'lecturers'])
+      .then((x) => { if (alive) setCounts({ ...x, loaded: true, error: null }); })
+      .catch((e) => { if (alive) setCounts({ university_students: 0, faculties: 0, courses: 0, lecturers: 0, loaded: true, error: (e && e.message) || 'Tirooyinka jaamacadda lama soo dejin karin.' }); });
+    refresh();
+    const unsub = onCanonicalChange(refresh);
+    return () => { alive = false; unsub(); };
+  }, [isLive, schoolId]);
+
+  if (isLive) {
+    return (
+      <>
+        {grid([
+          { label: 'Ardayda', value: String(counts.university_students || 0), icon: 'students', tone: 'blue' },
+          { label: 'Kulliyado', value: String(counts.faculties || 0), icon: 'building', tone: 'green' },
+          { label: 'Koorsooyin', value: String(counts.courses || 0), icon: 'lessons', tone: 'gold' },
+          { label: 'Muxaadiriin', value: String(counts.lecturers || 0), icon: 'teachers', tone: 'navy' },
+        ])}
+        <Section title="Xogta Jaamacadda">
+          <Card><Text style={{ color: counts.error ? c.rose : c.muted, fontSize: 13.5, lineHeight: 20 }}>{counts.error || (counts.loaded ? 'Tirooyinkani waxay si toos ah uga yimaadaan Supabase. Weli xog aan la diiwaangelin waxaa lagu muujinayaa eber.' : 'Xogta waa la soo dejinayaa…')}</Text></Card>
+        </Section>
+      </>
+    );
+  }
   const FACULTIES = [
     ['Kulliyadda Caafimaadka', 'Faculty of Health', '320 arday'],
     ['Kulliyadda Injineerinka', 'Faculty of Engineering', '280 arday'],
@@ -255,11 +289,7 @@ export function UniversityAdminDash() {
         { label: 'Koorsooyin', value: '84', icon: 'lessons', tone: 'gold' },
         { label: 'Muxaadiriin', value: '96', icon: 'teachers', tone: 'navy' },
       ])}
-      <Section title="Kulliyadaha">
-        <Card padded={false}>
-          {FACULTIES.map((f, i) => <ListRow key={i} left={f[0]} sub={f[1]} right={f[2]} />)}
-        </Card>
-      </Section>
+      <Section title="Kulliyadaha"><Card padded={false}>{FACULTIES.map((f, i) => <ListRow key={i} left={f[0]} sub={f[1]} right={f[2]} />)}</Card></Section>
     </>
   );
 }
@@ -268,10 +298,35 @@ export function UniversityAdminDash() {
 export function TeacherDash() {
   const { c } = useTheme();
   const { profile } = useRole();
+  const { isLive } = useAuth();
+  const { schoolId } = useActiveSchoolId();
   const { data: appData } = useAppData();
-  // teacher isolation: incidents only for assigned classes (by class_id)
+  const [live, setLive] = useState({ classes: 0, subjects: 0, assignments: 0, lessons: 0, loaded: false, error: null });
+  useEffect(() => {
+    let alive = true;
+    if (!isLive || !schoolId || !profile.profile_id) { setLive({ classes: 0, subjects: 0, assignments: 0, lessons: 0, loaded: false, error: null }); return undefined; }
+    const refresh = () => getTeacherPhase4Summary(profile.profile_id, schoolId)
+      .then((x) => { if (alive) setLive({ ...x, loaded: true, error: null }); })
+      .catch((e) => { if (alive) setLive((p) => ({ ...p, loaded: true, error: e.message || 'Xogta lama soo dejin.' })); });
+    refresh();
+    const unsub = onCanonicalChange(refresh);
+    return () => { alive = false; unsub(); };
+  }, [isLive, schoolId, profile.profile_id]);
+  if (isLive) {
+    return (
+      <>
+        {grid([
+          { label: 'Fasalladayda', value: String(live.classes), icon: 'classes', tone: 'blue' },
+          { label: 'Maaddooyinkayga', value: String(live.subjects), icon: 'lessons', tone: 'green' },
+          { label: 'Qoondayn', value: String(live.assignments), icon: 'teachers', tone: 'gold' },
+          { label: 'Casharradayda', value: String(live.lessons), icon: 'lessons', tone: 'navy' },
+        ])}
+        <Section title="Xogta Macallinka"><Card><Text style={{ color: live.error ? c.rose : c.muted, fontSize: 13.5, lineHeight: 20 }}>{live.error || (live.loaded ? 'Waxaad aragtaa oo keliya fasallada, maaddooyinka iyo casharrada laguu xilsaaray.' : 'Xogta waa la soo dejinayaa…')}</Text></Card></Section>
+      </>
+    );
+  }
   const incidents = filterIncidentsForProfile(profile, appData.incidents);
-  const myStudents = (appData.students || []).filter((s) => (profile.assigned_class_ids || []).indexOf(s.class_id) !== -1);
+  const myStudents = (appData.students || []).filter((row) => (profile.assigned_class_ids || []).includes(row.class_id));
   return (
     <>
       {grid([
@@ -280,13 +335,7 @@ export function TeacherDash() {
         { label: 'Maaddooyin', value: String((profile.assigned_subject_ids || []).length), icon: 'lessons', tone: 'green' },
         { label: 'Casharro', value: '5', icon: 'lessons', tone: 'navy' },
       ])}
-      <Section title="Ardayda u baahan feejignaan">
-        <Card padded={false}>
-          {incidents.slice(0, 4).map((it, i) => (
-            <ListRow key={i} left={it[0]} sub={it[2]} right={SEVERITY[it[3]].label} tone={SEVERITY[it[3]].tone} />
-          ))}
-        </Card>
-      </Section>
+      <Section title="Ardayda u baahan feejignaan"><Card padded={false}>{incidents.slice(0, 4).map((it, i) => <ListRow key={i} left={it[0]} sub={it[2]} right={SEVERITY[it[3]].label} tone={SEVERITY[it[3]].tone} />)}</Card></Section>
     </>
   );
 }
@@ -295,7 +344,15 @@ export function TeacherDash() {
 export function AccountantDash() {
   const { c } = useTheme();
   const { profile } = useRole();
+  const { isLive } = useAuth();
   const { data: appData } = useAppData();
+  if (isLive) {
+    return (
+      <Section title="Maaliyadda">
+        <Card><Text style={{ color: c.muted, fontSize: 13.5, lineHeight: 20 }}>Qaybta Maaliyadda waxay bilaabmaysaa Phase 5. Xog demo ama tirooyin aan Supabase ka iman halkan laguma muujinayo.</Text></Card>
+      </Section>
+    );
+  }
   const payments = filterPaymentsForProfile(profile, appData.payments);
   const collectedPct = Math.round((FINANCE.collected / FINANCE.expected) * 100);
   return (
@@ -306,17 +363,8 @@ export function AccountantDash() {
         { label: 'Hadhay', value: '$' + FINANCE.remaining, icon: 'finance', tone: 'gold' },
         { label: 'Ardayda Bixiyey', value: '6 / 9', icon: 'students', tone: 'blue' },
       ])}
-      <Card style={{ marginTop: 16, alignItems: 'center' }}>
-        <Text style={[cardTitleStyle(c), { alignSelf: 'flex-start' }]}>Heerka Uruurinta Lacagta</Text>
-        <Donut percent={collectedPct} color={c.green} label="La uruuriyay" sub={'$' + FINANCE.collected + ' / $' + FINANCE.expected} />
-      </Card>
-      <Section title="Lacagaha Dhowaan">
-        <Card padded={false}>
-          {payments.slice(0, 5).map((p, i) => (
-            <ListRow key={i} left={p[0]} sub={`${p[1]} · ${p[3]}`} right={p[2]} />
-          ))}
-        </Card>
-      </Section>
+      <Card style={{ marginTop: 16, alignItems: 'center' }}><Text style={[cardTitleStyle(c), { alignSelf: 'flex-start' }]}>Heerka Uruurinta Lacagta</Text><Donut percent={collectedPct} color={c.green} label="La uruuriyay" sub={'$' + FINANCE.collected + ' / $' + FINANCE.expected} /></Card>
+      <Section title="Lacagaha Dhowaan"><Card padded={false}>{payments.slice(0, 5).map((row, i) => <ListRow key={i} left={row[0]} sub={`${row[1]} · ${row[3]}`} right={row[2]} />)}</Card></Section>
     </>
   );
 }
@@ -326,95 +374,80 @@ const FEE_LABEL = { full: 'La bixiyay', partial: 'Qayb ahaan', due: 'Ma bixin', 
 export function ParentDash() {
   const { c } = useTheme();
   const { profile } = useRole();
+  const { isLive } = useAuth();
+  const { schoolId } = useActiveSchoolId();
   const { data: appData } = useAppData();
-  // a parent's children are resolved from child_student_ids (never names)
-  const children = getParentChildren(profile).map((s) => ({
-    student_internal_id: s.student_internal_id,
-    name: (s.full_name || '').split(' ')[0],
-    cls: (getClassById(s.class_id) || {}).name || '—',
-    att: (s.att != null ? s.att : 90) + '%',
-    fee: FEE_LABEL[s.fee] || 'La bixiyay',
-    result: (60 + ((s.att || 70) % 35)) + '%',
-  }));
+  const [liveChildren, setLiveChildren] = useState([]);
+  const [liveState, setLiveState] = useState({ loaded: false, error: null });
   const [child, setChild] = useState(0);
-  const kid = children[child] || children[0] || { name: '—', cls: '—', att: '—', fee: '—', result: '—', student_internal_id: null };
-
-  return (
-    <>
-      {/* child switcher — a parent with two children switches between them */}
-      <View style={[styles.sectionRow, { marginTop: 0 }]}>
-        <View style={[styles.sectionBar, { backgroundColor: c.blue }]} />
-        <Text style={[styles.section, { color: c.ink }]}>Caruurtayda</Text>
-      </View>
-      <View style={styles.childBar}>
-        {children.map((k, i) => {
+  useEffect(() => {
+    let alive = true;
+    if (!isLive || !schoolId || !profile.profile_id) { setLiveChildren([]); setLiveState({ loaded: false, error: null }); setChild(0); return undefined; }
+    setLiveChildren([]); setLiveState({ loaded: false, error: null }); setChild(0);
+    getParentPhase4Children(profile.profile_id, schoolId)
+      .then((rows) => { if (alive) { setLiveChildren(rows); setLiveState({ loaded: true, error: null }); setChild(0); } })
+      .catch((e) => { if (alive) setLiveState({ loaded: true, error: e.message || 'Xogta carruurta lama soo dejin.' }); });
+    return () => { alive = false; };
+  }, [isLive, schoolId, profile.profile_id]);
+  if (isLive) {
+    const kid = liveChildren[child] || null;
+    return (
+      <>
+        <View style={[styles.sectionRow, { marginTop: 0 }]}><View style={[styles.sectionBar, { backgroundColor: c.blue }]} /><Text style={[styles.section, { color: c.ink }]}>Caruurtayda</Text></View>
+        {liveChildren.length ? <View style={styles.childBar}>{liveChildren.map((row, i) => {
           const on = i === child;
-          return (
-            <TouchableOpacity key={k.student_internal_id} onPress={() => setChild(i)}
-              style={[styles.childCard, { backgroundColor: on ? c.navy : c.surface, borderColor: on ? c.navy : c.line }]}>
-              <View style={[styles.childAv, { backgroundColor: on ? 'rgba(255,255,255,.2)' : c.blueSoft }]}>
-                <Text style={[styles.childAvTxt, { color: on ? '#fff' : c.navy }]}>{k.name[0]}</Text>
-              </View>
-              <Text style={[styles.childName, { color: on ? '#fff' : c.ink }]}>{k.name}</Text>
-              <Text style={[styles.childCls, { color: on ? 'rgba(255,255,255,.7)' : c.muted }]}>{k.cls}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {grid([
-        { label: 'Fasalka', value: kid.cls, icon: 'classes', tone: 'blue' },
-        { label: 'Xaadiris Maanta', value: kid.att, icon: 'attendance', tone: 'green' },
-        { label: 'Lacagta', value: kid.fee, icon: 'finance', tone: 'navy' },
-        { label: 'Celcelis Natiijo', value: kid.result, icon: 'exams', tone: 'gold' },
-      ])}
-      <Section title={`Warbixinta ${kid.name}`}>
-        <Card padded={false}>
-          {/* incidents resolved by student_internal_id (never by name) */}
-          {getIncidentsForStudent(kid.student_internal_id, profile, appData.incidents).map((it, i) => (
-            <ListRow key={i} left={it[2]} sub={it[12] || it[1]} right={SEVERITY[it[3]].label} tone={SEVERITY[it[3]].tone} />
-          ))}
-          {NOTICES.map((n, i) => <ListRow key={'n' + i} left={n[0]} sub={n[1]} right={n[3]} />)}
-        </Card>
-      </Section>
-    </>
-  );
+          return <TouchableOpacity key={row.id} onPress={() => setChild(i)} style={[styles.childCard, { backgroundColor: on ? c.navy : c.surface, borderColor: on ? c.navy : c.line }]}><View style={[styles.childAv, { backgroundColor: on ? 'rgba(255,255,255,.2)' : c.blueSoft }]}><Text style={[styles.childAvTxt, { color: on ? '#fff' : c.navy }]}>{(row.name || 'A')[0]}</Text></View><Text style={[styles.childName, { color: on ? '#fff' : c.ink }]}>{row.name}</Text><Text style={[styles.childCls, { color: on ? 'rgba(255,255,255,.7)' : c.muted }]}>{row.className}</Text></TouchableOpacity>;
+        })}</View> : <Card><Text style={{ color: liveState.error ? c.rose : c.muted, fontSize: 13.5, lineHeight: 20 }}>{liveState.error || (liveState.loaded ? 'Weli arday laguguma xidhin.' : 'Xogta waa la soo dejinayaa…')}</Text></Card>}
+        {kid ? grid([
+          { label: 'Magaca', value: kid.name, icon: 'students', tone: 'blue' },
+          { label: 'Fasalka', value: kid.className, icon: 'classes', tone: 'green' },
+          { label: 'Lambarka Ardayga', value: kid.studentId || '—', icon: 'note', tone: 'navy' },
+        ]) : null}
+        <Section title="Phase 1–4"><Card><Text style={{ color: c.muted, fontSize: 13.5, lineHeight: 20 }}>Xaadiris, lacag, imtixaan iyo natiijooyin waxay bilaabmayaan Phase 5; halkan xog demo laguma muujinayo.</Text></Card></Section>
+      </>
+    );
+  }
+  const children = getParentChildren(profile).map((row) => ({ student_internal_id: row.student_internal_id, name: (row.full_name || '').split(' ')[0], cls: (getClassById(row.class_id) || {}).name || '—', att: (row.att != null ? row.att : 90) + '%', fee: FEE_LABEL[row.fee] || 'La bixiyay', result: (60 + ((row.att || 70) % 35)) + '%' }));
+  const kid = children[child] || children[0] || { name: '—', cls: '—', att: '—', fee: '—', result: '—', student_internal_id: null };
+  return (<>{grid([{ label: 'Fasalka', value: kid.cls, icon: 'classes', tone: 'blue' }, { label: 'Xaadiris Maanta', value: kid.att, icon: 'attendance', tone: 'green' }, { label: 'Lacagta', value: kid.fee, icon: 'finance', tone: 'navy' }, { label: 'Celcelis Natiijo', value: kid.result, icon: 'exams', tone: 'gold' }])}<Section title={`Warbixinta ${kid.name}`}><Card padded={false}>{getIncidentsForStudent(kid.student_internal_id, profile, appData.incidents).map((it, i) => <ListRow key={i} left={it[2]} sub={it[12] || it[1]} right={SEVERITY[it[3]].label} tone={SEVERITY[it[3]].tone} />)}{NOTICES.map((n, i) => <ListRow key={'n' + i} left={n[0]} sub={n[1]} right={n[3]} />)}</Card></Section></>);
 }
 
 /* ====================== STUDENT ====================== */
 export function StudentDash() {
   const { c } = useTheme();
   const { profile } = useRole();
+  const { isLive } = useAuth();
+  const { schoolId } = useActiveSchoolId();
   const { data: appData } = useAppData();
-  // own PUBLISHED results only, from the central store (by student_internal_id)
+  const [self, setSelf] = useState(null);
+  const [liveState, setLiveState] = useState({ loaded: false, error: null });
+  useEffect(() => {
+    let alive = true;
+    if (!isLive || !schoolId || !profile.profile_id) { setSelf(null); setLiveState({ loaded: false, error: null }); return undefined; }
+    setSelf(null); setLiveState({ loaded: false, error: null });
+    getStudentPhase4Self(profile.profile_id, schoolId)
+      .then((row) => { if (alive) { setSelf(row); setLiveState({ loaded: true, error: null }); } })
+      .catch((e) => { if (alive) setLiveState({ loaded: true, error: e.message || 'Xogta ardayga lama soo dejin.' }); });
+    return () => { alive = false; };
+  }, [isLive, schoolId, profile.profile_id]);
+  if (isLive) {
+    return (
+      <>
+        {grid([
+          { label: 'Magacayga', value: self ? self.name : '—', icon: 'students', tone: 'blue' },
+          { label: 'Fasalkayga', value: self ? self.className : '—', icon: 'classes', tone: 'green' },
+          { label: 'Lambarkayga', value: self ? self.studentId : '—', icon: 'note', tone: 'navy' },
+        ])}
+        <Section title="Xogtayda"><Card><Text style={{ color: liveState.error ? c.rose : c.muted, fontSize: 13.5, lineHeight: 20 }}>{liveState.error || (!liveState.loaded ? 'Xogta waa la soo dejinayaa…' : self ? 'Xogtan waxay si toos ah uga timid Supabase.' : 'Akoonkaaga weli lama xiriirin diiwaanka ardayga.')}</Text></Card></Section>
+        <Section title="Phase 1–4"><Card><Text style={{ color: c.muted, fontSize: 13.5, lineHeight: 20 }}>Xaadiris, lacag, imtixaan iyo natiijooyin waxay bilaabmayaan Phase 5; xog demo halkan laguma muujinayo.</Text></Card></Section>
+      </>
+    );
+  }
   const results = selectResultsForProfile(profile, appData.results);
-  const subjName = (id) => ((appData.subjects || []).find((s) => s.subject_id === id) || {}).name || id;
-  const myAvg = results.length ? Math.round(results.reduce((a, r) => a + (r.percentage || 0), 0) / results.length) : 0;
+  const subjName = (id) => ((appData.subjects || []).find((row) => row.subject_id === id) || {}).name || id;
+  const myAvg = results.length ? Math.round(results.reduce((a, row) => a + (row.percentage || 0), 0) / results.length) : 0;
   const myClass = (getClassById(profile.class_id) || {}).name || '—';
-  return (
-    <>
-      {grid([
-        { label: 'Fasalkayga', value: myClass, icon: 'classes', tone: 'blue' },
-        { label: 'Xaadirintayda', value: '92%', icon: 'attendance', tone: 'green' },
-        { label: 'Celcelis Natiijo', value: (myAvg || 76) + '%', icon: 'exams', tone: 'gold' },
-        { label: 'Lacagta', value: 'La bixiyay', icon: 'finance', tone: 'navy' },
-      ])}
-      <Section title="Natiijooyinkayga (Term 2)">
-        <Card padded={false}>
-          {results.map((r, i) => (
-            <ListRow key={i} left={subjName(r.subject_id)} sub={'Natiijo'} right={(r.percentage || 0) + '%'} tone={(r.percentage || 0) >= 50 ? 'green' : 'rose'} />
-          ))}
-        </Card>
-      </Section>
-      <Section title="Faallada Macalinka">
-        <Card>
-          <Text style={{ color: c.ink2, fontSize: 13.5, lineHeight: 20 }}>
-            "Aaliyah waa arday firfircoon oo wax akhriya. Waxay u baahan tahay inay xoogga saarto Xisaabta."
-          </Text>
-        </Card>
-      </Section>
-    </>
-  );
+  return (<>{grid([{ label: 'Fasalkayga', value: myClass, icon: 'classes', tone: 'blue' }, { label: 'Xaadirintayda', value: '92%', icon: 'attendance', tone: 'green' }, { label: 'Celcelis Natiijo', value: (myAvg || 76) + '%', icon: 'exams', tone: 'gold' }, { label: 'Lacagta', value: 'La bixiyay', icon: 'finance', tone: 'navy' }])}<Section title="Natiijooyinkayga (Term 2)"><Card padded={false}>{results.map((row, i) => <ListRow key={i} left={subjName(row.subject_id)} sub="Natiijo" right={(row.percentage || 0) + '%'} tone={(row.percentage || 0) >= 50 ? 'green' : 'rose'} />)}</Card></Section></>);
 }
 
 function cardTitle() {

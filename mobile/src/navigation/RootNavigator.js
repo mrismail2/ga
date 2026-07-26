@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../theme/ThemeContext';
 import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 import useStageTerminology from '../hooks/useStageTerminology';
 import Icon from '../components/Icon';
 import DesktopShell from '../components/DesktopShell';
@@ -30,11 +31,11 @@ import SchoolsScreen from '../screens/SchoolsScreen';
 import SchoolManagementScreen from '../screens/SchoolManagementScreen';
 import SchoolOnboardingScreen from '../screens/SchoolOnboardingScreen';
 import SimulatorScreen from '../screens/SimulatorScreen';
+const { canAccessLiveRoute } = require('../domain/navigationPolicy');
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-/* tab catalog: route → [iconName, label, component] */
 const TAB_DEFS = {
   Dashboard: ['dashboard', 'Dashboard', DashboardScreen],
   Ardayda: ['students', 'Ardayda', StudentsScreen],
@@ -45,23 +46,33 @@ const TAB_DEFS = {
   Dheeraad: ['more', 'Dheeraad', MoreScreen],
 };
 
-/* which middle tabs each role gets (Dashboard + … + Dheeraad always added) */
-const ROLE_TABS = {
+const ROLE_TABS_DEMO = {
   superadmin: ['Ardayda', 'Fasallada', 'Messages'],
   schooladmin: ['Ardayda', 'Fasallada', 'Messages'],
   teacher: ['Fasallada', 'Attendance', 'Messages'],
   accountant: ['Finance'],
-  parent: ['Attendance', 'Finance'], // a parent has no direct teacher–student chat
+  parent: ['Attendance', 'Finance'],
   student: ['Attendance', 'Messages'],
+};
+
+/* Live Phase 1–4 tabs only. Phase 5 tabs remain registered for the explicit
+   demo prototype, but are not mounted or navigable for a real account. */
+const ROLE_TABS_LIVE = {
+  superadmin: ['Ardayda', 'Fasallada', 'Messages'],
+  schooladmin: ['Ardayda', 'Fasallada', 'Messages'],
+  teacher: ['Fasallada', 'Messages'],
+  accountant: [],
+  parent: [],
+  student: ['Messages'],
 };
 
 function Tabs() {
   const { c } = useTheme();
   const { role } = useRole();
-  // stage-aware wording: the classes tab is "Fasallada" for a Primary/Middle
-  // school and "Formamka" for a Secondary school (config/schoolStages.js).
+  const { isLive } = useAuth();
   const stageTerms = useStageTerminology();
-  const middle = ROLE_TABS[role] || ROLE_TABS.schooladmin;
+  const catalog = isLive ? ROLE_TABS_LIVE : ROLE_TABS_DEMO;
+  const middle = catalog[role] || catalog.schooladmin || [];
   const routes = ['Dashboard', ...middle, 'Dheeraad'];
   const labelFor = (r) => (r === 'Fasallada' ? stageTerms.classLabelPlural : TAB_DEFS[r][1]);
 
@@ -83,7 +94,6 @@ function Tabs() {
   );
 }
 
-/* secondary screens reached from "Dheeraad" (never bottom tabs) */
 const STACK_SCREENS = {
   ClassDetail: ClassDetailScreen,
   Management: SchoolManagementScreen,
@@ -100,7 +110,6 @@ const STACK_SCREENS = {
   Permissions: PermissionsScreen,
   Advisor: AdvisorScreen,
   Settings: SettingsScreen,
-  // also reachable from More for roles where they aren't tabs:
   ArdaydaStack: StudentsScreen,
   FasalladaStack: ClassesScreen,
   AttendanceStack: AttendanceScreen,
@@ -110,21 +119,17 @@ const STACK_SCREENS = {
 
 export default function RootNavigator() {
   const { role } = useRole();
+  const { isLive } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
 
-  // Desktop / wide screens (computer): sidebar layout like the web app.
-  if (isDesktop) return <DesktopShell key={role} />;
+  if (isDesktop) return <DesktopShell key={`${role}:${isLive ? 'live' : 'demo'}`} />;
 
-  // Phones / narrow screens: bottom-tab navigation.
+  const stackEntries = Object.entries(STACK_SCREENS).filter(([name]) => !isLive || canAccessLiveRoute(role, name));
   return (
-    <Stack.Navigator
-      // remount tabs when role changes so the tab set updates
-      key={role}
-      screenOptions={{ headerShown: false }}
-    >
+    <Stack.Navigator key={`${role}:${isLive ? 'live' : 'demo'}`} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Tabs" component={Tabs} />
-      {Object.entries(STACK_SCREENS).map(([name, Comp]) => (
+      {stackEntries.map(([name, Comp]) => (
         <Stack.Screen key={name} name={name} component={Comp} />
       ))}
     </Stack.Navigator>

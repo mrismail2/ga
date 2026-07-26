@@ -3,6 +3,7 @@ import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 import RoleSwitcher from '../components/RoleSwitcher';
 import NotificationBell from '../components/NotificationBell';
 import SchoolHero from '../components/SchoolHero';
@@ -17,6 +18,7 @@ import { DASH_BY_ROLE, UniversityAdminDash } from './dashboards/RoleDashboards';
 export default function DashboardScreen({ navigation }) {
   const { c } = useTheme();
   const { role, profile } = useRole();
+  const { isLive } = useAuth();
   const { mode, meta, names } = useViewMode();
 
   const isAdmin = role === 'schooladmin';
@@ -27,7 +29,7 @@ export default function DashboardScreen({ navigation }) {
 
   // Super Admin oversees the whole platform; everyone else uses their active
   // school branch (SchoolHero pulls it from SchoolContext when not forced).
-  const platform = { name: 'Kobciye Platform', type: 'School Management SaaS', city: '42 Dugsi', students: null };
+  const platform = { name: 'Kobciye Platform', type: 'School Management SaaS', city: isLive ? 'Maamulka guud' : '42 Dugsi', students: null };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>

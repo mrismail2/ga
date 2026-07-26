@@ -60,11 +60,11 @@ export default function TeacherProfileModal({ visible, teacher, onClose, onDelet
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity style={[styles.sheet, { backgroundColor: c.surface }]} activeOpacity={1}>
           <View style={[styles.header, { borderBottomColor: c.line }]}>
-            <Avatar name={name} code={code} size={60} editable />
+            <Avatar name={name} code={code} size={60} editable={!live} />
             <View style={{ flex: 1, marginLeft: 14 }}>
               <Text style={[styles.name, { color: c.ink }]}>{name}</Text>
-              <Text style={[styles.sub, { color: c.muted }]}>{subject}</Text>
-              <Badge label={`${exp} sano khibrad`} tone="gold" style={{ marginTop: 6 }} />
+              <Text style={[styles.sub, { color: c.muted }]}>{live ? 'Macalin' : subject}</Text>
+              {!live ? <Badge label={`${exp} sano khibrad`} tone="gold" style={{ marginTop: 6 }} /> : null}
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {canDelete && (
@@ -79,14 +79,21 @@ export default function TeacherProfileModal({ visible, teacher, onClose, onDelet
           </View>
 
           <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-            <Text style={[styles.uploadHint, { color: c.muted2 }]}>Riix sawirka si aad u beddesho (📷)</Text>
+            {!live ? <Text style={[styles.uploadHint, { color: c.muted2 }]}>Riix sawirka si aad u beddesho (📷)</Text> : null}
             <View style={styles.grid}>
-              <InfoCell label="MAADDOOYINKA"><Text style={[styles.val, { color: c.ink }]}>{subject}</Text></InfoCell>
-              <InfoCell label="FASALLADA"><Text style={[styles.val, { color: c.ink }]}>{classes}</Text></InfoCell>
-              <InfoCell label="KHIBRAD"><Text style={[styles.val, { color: c.ink }]}>{exp} sano</Text></InfoCell>
-              <InfoCell label="MAGAALADA"><Text style={[styles.val, { color: c.ink }]}>{city}</Text></InfoCell>
-              <InfoCell label="EMAIL"><Text style={[styles.val, { color: c.ink2, fontSize: 12.5 }]}>{email}</Text></InfoCell>
-              <InfoCell label="ID MACALIN"><Text style={[styles.val, { color: c.ink }]}>{code}</Text></InfoCell>
+              {live ? (<>
+                <InfoCell label="EMAIL"><Text style={[styles.val, { color: c.ink2, fontSize: 12.5 }]}>{email}</Text></InfoCell>
+                <InfoCell label="TALEEFOON"><Text style={[styles.val, { color: c.ink }]}>{phone}</Text></InfoCell>
+                <InfoCell label="ID MACALIN"><Text style={[styles.val, { color: c.ink }]}>{code}</Text></InfoCell>
+                <InfoCell label="XAALADDA"><Badge label={live.status === 'archived' ? 'Hakad' : 'Firfircoon'} tone={live.status === 'archived' ? 'gold' : 'green'} /></InfoCell>
+              </>) : (<>
+                <InfoCell label="MAADDOOYINKA"><Text style={[styles.val, { color: c.ink }]}>{subject}</Text></InfoCell>
+                <InfoCell label="FASALLADA"><Text style={[styles.val, { color: c.ink }]}>{classes}</Text></InfoCell>
+                <InfoCell label="KHIBRAD"><Text style={[styles.val, { color: c.ink }]}>{exp} sano</Text></InfoCell>
+                <InfoCell label="MAGAALADA"><Text style={[styles.val, { color: c.ink }]}>{city}</Text></InfoCell>
+                <InfoCell label="EMAIL"><Text style={[styles.val, { color: c.ink2, fontSize: 12.5 }]}>{email}</Text></InfoCell>
+                <InfoCell label="ID MACALIN"><Text style={[styles.val, { color: c.ink }]}>{code}</Text></InfoCell>
+              </>)}
             </View>
 
             <TouchableOpacity style={[styles.contactRow, { backgroundColor: c.blueSoft }]} onPress={call} activeOpacity={0.8}>

@@ -105,12 +105,12 @@ ok('teacher profile modal never fabricates live contact details', /live \? \(liv
 
 console.log('\n[G] Casharrada — no demo lessons live');
 ok('live mode loads canonical lesson_plans', /listLessonPlans\(schoolId\)/.test(lessonsCtx));
-ok('demo seed only serves demo mode', /schoolId \? liveLessons : demoLessons/.test(lessonsCtx));
+ok('demo seed only serves demo mode', /const lessons = isLive \? liveLessons : demoLessons/.test(lessonsCtx));
 ok('lesson service reads the lesson_plans table', /from\('lesson_plans'\)/.test(lessonsSvc));
 ok('migration guards approval to admins', /only a school admin may approve or reject/.test(migration));
 
 console.log('\n[H] Fariimaha — no demo conversations live');
-ok('live mode loads canonical conversations', /listMyConversations\(profileId\)/.test(messages));
+ok('live mode loads canonical conversations scoped to the active school', /listMyConversations\(profileId, schoolId\)/.test(messages));
 ok('demo MESSAGES array only serves demo mode', /isLive \? liveConvs : filterMessagesForProfile/.test(messages));
 ok('approved empty state wording', /Weli wada-hadal ma jiro\./.test(messages));
 ok('voice/photo never simulated in live mode', /canAttach = canSend && !isLive/.test(messages));

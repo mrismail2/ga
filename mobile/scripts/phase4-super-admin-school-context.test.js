@@ -138,7 +138,7 @@ const canonicalHookSource = read('src/hooks/useCanonicalRows.js');
 ok('useCanonicalRows stays inert for a non-uuid school',
   /const active = enabled && isUuid\(schoolId\)/.test(canonicalHookSource));
 ok('useCanonicalRows clears rows instead of querying with a placeholder',
-  /if \(!active\) \{ setRows\(\[\]\); setLoading\(false\); return; \}/.test(canonicalHookSource));
+  /if \(!active\)[\s\S]{0,220}setRows\(\[\]\)[\s\S]{0,160}setLoading\(false\)[\s\S]{0,80}return/.test(canonicalHookSource));
 
 /* ---------- 7. Super Admin may manage a school only after selecting ---------- */
 ok('Super Admin still does NOT get the school-admin management MENU item',

@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing } from 'react-native';
+import { View, StyleSheet, Animated, Easing, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
-/* Universal loading indicator — three dots bouncing in a wave, used for
-   every busy/tap state (buttons, list loads) and every full-screen loading
-   moment (session restore) so the app has one consistent loading language
-   instead of scattered native ActivityIndicators. */
+const K_MARK_WHITE = require('../../assets/kobciye-mark-white.png');
+
+/* Compact inline loading indicator for buttons and small in-screen waits.
+   Full-screen waits use the Kobciye K mark through LoadingOverlay below. */
 function Dot({ anim, color, size }) {
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -size * 0.9] });
   const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
@@ -44,14 +44,14 @@ export default function LoadingDots({ color = '#fff', size = 8, gap = 6, style }
   );
 }
 
-// full-screen loading state — brand blue background, white dots. Used
-// everywhere a screen/app is still opening (splash-adjacent, but for
-// in-app waits rather than the one-time launch splash).
+// Full-screen waits use the same final Kobciye K mark as the startup
+// splash. Inline button/list waits may still use LoadingDots, but there is
+// only one full-screen loading logo throughout the application.
 export function LoadingOverlay() {
   const { c } = useTheme();
   return (
-    <View style={[styles.fullscreen, { backgroundColor: c.blue }]}>
-      <LoadingDots color="#fff" size={13} gap={10} />
+    <View style={[styles.fullscreen, { backgroundColor: c.navy || c.blue }]}>
+      <Image source={K_MARK_WHITE} style={styles.fullscreenMark} resizeMode="contain" />
     </View>
   );
 }
@@ -59,4 +59,5 @@ export function LoadingOverlay() {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   fullscreen: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  fullscreenMark: { width: 84, height: 84 },
 });

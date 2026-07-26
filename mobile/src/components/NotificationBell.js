@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { radius } from '../theme/colors';
 import Icon from './Icon';
 import { NOTIFICATIONS } from '../data/mock';
 
-/* A bell button with an unread dot that opens a notifications panel —
-   mirrors the web app's topbar bell. */
+/* A bell button with an unread dot that opens a notifications panel.
+   Phase 1–4 Live Mode has no canonical notifications backend yet, so it must
+   never display the prototype's mock notifications as if they were real. */
 export default function NotificationBell() {
   const { c } = useTheme();
+  const { isLive } = useAuth();
   const [open, setOpen] = useState(false);
+  const notifications = isLive ? [] : NOTIFICATIONS;
 
   return (
     <>
@@ -17,34 +21,45 @@ export default function NotificationBell() {
         style={[styles.bell, { backgroundColor: c.surface, borderColor: c.line2 }]}
         onPress={() => setOpen(true)}
         activeOpacity={0.8}
+        accessibilityLabel="Ogeysiisyada"
       >
         <Icon name="bell" size={19} color={c.ink2} />
-        <View style={[styles.dot, { backgroundColor: c.rose, borderColor: c.bg }]} />
+        {notifications.length ? <View style={[styles.dot, { backgroundColor: c.rose, borderColor: c.bg }]} /> : null}
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
           <View style={[styles.panel, { backgroundColor: c.surface }]}>
-            <View style={[styles.head, { borderBottomColor: c.line }]}>
+            <View style={[styles.head, { borderBottomColor: c.line }]}> 
               <Text style={[styles.title, { color: c.ink }]}>Ogeysiisyada</Text>
-              <View style={[styles.count, { backgroundColor: c.rose }]}>
-                <Text style={styles.countTxt}>{NOTIFICATIONS.length}</Text>
-              </View>
-            </View>
-            <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
-              {NOTIFICATIONS.map((n, i) => (
-                <View key={i} style={[styles.row, { borderTopColor: c.line, borderTopWidth: i === 0 ? 0 : 1 }]}>
-                  <View style={[styles.iconDot, { backgroundColor: n.color + '22' }]}>
-                    <View style={[styles.innerDot, { backgroundColor: n.color }]} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.nTitle, { color: c.ink }]} numberOfLines={1}>{n.title}</Text>
-                    <Text style={[styles.nText, { color: c.muted }]} numberOfLines={1}>{n.text}</Text>
-                  </View>
-                  <Text style={[styles.nTime, { color: c.muted2 }]}>{n.time}</Text>
+              {notifications.length ? (
+                <View style={[styles.count, { backgroundColor: c.rose }]}> 
+                  <Text style={styles.countTxt}>{notifications.length}</Text>
                 </View>
-              ))}
-            </ScrollView>
+              ) : null}
+            </View>
+            {isLive ? (
+              <View style={styles.emptyWrap}>
+                <Icon name="bell" size={28} color={c.muted2} />
+                <Text style={[styles.emptyTitle, { color: c.ink }]}>Ogeysiisyo cusub ma jiraan</Text>
+                <Text style={[styles.emptyText, { color: c.muted }]}>Ogeysiisyada otomaatiga ahi waxay bilaabmayaan Phase 5. Xog demo ah Live Mode laguma soo bandhigayo.</Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+                {notifications.map((n, i) => (
+                  <View key={i} style={[styles.row, { borderTopColor: c.line, borderTopWidth: i === 0 ? 0 : 1 }]}> 
+                    <View style={[styles.iconDot, { backgroundColor: n.color + '22' }]}> 
+                      <View style={[styles.innerDot, { backgroundColor: n.color }]} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.nTitle, { color: c.ink }]} numberOfLines={1}>{n.title}</Text>
+                      <Text style={[styles.nText, { color: c.muted }]} numberOfLines={1}>{n.text}</Text>
+                    </View>
+                    <Text style={[styles.nTime, { color: c.muted2 }]}>{n.time}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -67,4 +82,7 @@ const styles = StyleSheet.create({
   nTitle: { fontSize: 13.5, fontWeight: '700' },
   nText: { fontSize: 12, marginTop: 2 },
   nTime: { fontSize: 10.5, fontWeight: '600' },
+  emptyWrap: { alignItems: 'center', paddingHorizontal: 24, paddingVertical: 30 },
+  emptyTitle: { fontSize: 14, fontWeight: '800', marginTop: 10 },
+  emptyText: { fontSize: 12, lineHeight: 18, marginTop: 6, textAlign: 'center' },
 });

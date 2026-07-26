@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Modal, View, Text, Image, StyleSheet, ScrollView, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { Modal, View, Text, Image, StyleSheet, ScrollView, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { useRole } from '../context/RoleContext';
@@ -12,6 +12,8 @@ import { MESSAGES } from '../data/datasets';
 import { filterMessagesForProfile, hasPermission } from '../data/access';
 import { pickStudentImageFromGallery } from '../services/studentPhotoStorage';
 import { listMyConversations, listConversationMessages, sendConversationMessage, markConversationRead } from '../services/messaging';
+import useActiveSchoolId from '../hooks/useActiveSchoolId';
+import { SchoolSelectPrompt, SuperAdminSchoolBar } from '../components/SchoolSelector';
 
 const firstName = (s) => String(s || '').replace(/\(.*\)/, '').trim().split(' ')[0];
 
@@ -40,6 +42,7 @@ export default function MessagesScreen({ navigation }) {
   const { c } = useTheme();
   const { profile } = useRole();
   const { isLive, profile: liveProfile } = useAuth();
+  const { schoolId, needsSchoolSelection } = useActiveSchoolId();
   const [open, setOpen] = useState(null);
   const [thread, setThread] = useState([]);
   const [draft, setDraft] = useState('');
@@ -47,20 +50,46 @@ export default function MessagesScreen({ navigation }) {
   const [recording, setRecording] = useState(false);
   const [recSecs, setRecSecs] = useState(0);
   const recTimer = useRef(null);
+  const convRequestSeq = useRef(0);
+  const threadRequestSeq = useRef(0);
 
-  // LIVE canonical conversations (empty school → zero, honestly)
+  // LIVE canonical conversations are always scoped to the resolved active
+  // school. No selection means no query and no demo fallback.
   const profileId = isLive && liveProfile ? liveProfile.id : null;
-  const liveSchoolId = isLive && liveProfile ? liveProfile.school_id : null;
   const [liveConvs, setLiveConvs] = useState([]);
+  const [convLoading, setConvLoading] = useState(false);
+  const [convError, setConvError] = useState(null);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [threadError, setThreadError] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState(null);
   const reloadConvs = useCallback(async () => {
-    if (!profileId) { setLiveConvs([]); return; }
-    try { setLiveConvs(await listMyConversations(profileId)); }
-    catch (e) { setLiveConvs([]); }
-  }, [profileId]);
-  useEffect(() => { reloadConvs(); }, [reloadConvs]);
+    const requestId = ++convRequestSeq.current;
+    setLiveConvs([]); setConvError(null);
+    if (!isLive || !profileId || !schoolId) { setConvLoading(false); return; }
+    setConvLoading(true);
+    try {
+      const rows = await listMyConversations(profileId, schoolId);
+      if (convRequestSeq.current === requestId) setLiveConvs(rows);
+    } catch (e) {
+      if (convRequestSeq.current === requestId) { setLiveConvs([]); setConvError((e && e.message) || 'Wada-hadallada lama soo dejin karin.'); }
+    } finally {
+      if (convRequestSeq.current === requestId) setConvLoading(false);
+    }
+  }, [isLive, profileId, schoolId]);
+
+  // Switching schools must clear every piece of School A state immediately.
+  useEffect(() => {
+    threadRequestSeq.current += 1;
+    setOpen(null); setThread([]); setDraft(''); setQ('');
+    setThreadError(null); setSendError(null); setSending(false);
+    setRecording(false); setRecSecs(0);
+    reloadConvs();
+    return () => { convRequestSeq.current += 1; threadRequestSeq.current += 1; };
+  }, [reloadConvs]);
 
   const moderator = profile.scope === 'platform' || profile.scope === 'school';
-  const canSend = isLive ? true : (hasPermission(profile, 'messages.send') || profile.scope === 'self');
+  const canSend = isLive ? Boolean(profileId && schoolId) : (hasPermission(profile, 'messages.send') || profile.scope === 'self');
   // photo / voice must never SIMULATE success — live mode disables them
   const canAttach = canSend && !isLive;
   const all = isLive ? liveConvs : filterMessagesForProfile(profile, MESSAGES);
@@ -76,15 +105,23 @@ export default function MessagesScreen({ navigation }) {
 
   const openThread = async (msg) => {
     if (moderator && !isLive) return;
-    setOpen(msg); setDraft(''); setRecording(false); setRecSecs(0);
+    setOpen(msg); setDraft(''); setRecording(false); setRecSecs(0); setThreadError(null); setSendError(null);
     if (isLive) {
-      setThread([]);
+      if (!profileId || !schoolId) return;
+      const requestId = ++threadRequestSeq.current;
+      const expectedSchool = schoolId;
+      setThread([]); setThreadLoading(true);
       try {
-        const msgs = await listConversationMessages(msg.id, profileId);
+        const msgs = await listConversationMessages(msg.id, profileId, expectedSchool);
+        if (threadRequestSeq.current !== requestId || schoolId !== expectedSchool) return;
         setThread(msgs);
-        await markConversationRead(msg.id, profileId);
-        reloadConvs(); // clears the unread ring from the canonical state
-      } catch (e) { setThread([]); }
+        await markConversationRead(msg.id, profileId, expectedSchool);
+        reloadConvs();
+      } catch (e) {
+        if (threadRequestSeq.current === requestId) { setThread([]); setThreadError((e && e.message) || 'Fariimaha lama soo dejin karin.'); }
+      } finally {
+        if (threadRequestSeq.current === requestId) setThreadLoading(false);
+      }
       return;
     }
     setThread(seedThread(msg));
@@ -93,12 +130,16 @@ export default function MessagesScreen({ navigation }) {
     const text = draft.trim();
     if (!text || !canSend) return;
     if (isLive && open) {
-      setDraft('');
+      if (sending) return;
+      setSending(true); setSendError(null);
       try {
-        await sendConversationMessage(open.id, liveSchoolId, profileId, text);
+        await sendConversationMessage(open.id, schoolId, profileId, text);
+        setDraft('');
         setThread((t) => [...t, { me: true, text, time: 'Hadda' }]);
         reloadConvs();
-      } catch (e) { /* the honest state: nothing appended on failure */ }
+      } catch (e) {
+        setSendError((e && e.message) || 'Fariinta lama dirin. Mar kale isku day.');
+      } finally { setSending(false); }
       return;
     }
     setThread((t) => [...t, { me: true, text, time: 'Hadda' }]);
@@ -118,6 +159,25 @@ export default function MessagesScreen({ navigation }) {
     setRecSecs(0);
   };
 
+  if (isLive && needsSchoolSelection) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
+        <View style={styles.content}>
+          <ScreenHeader
+            title="Fariimaha"
+            subtitle="Dooro dugsi si aad u aragto fariimaha"
+            right={navigation ? (
+              <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={[styles.iconBtn, { backgroundColor: c.surface, borderColor: c.line }]}>
+                <Icon name="back" size={20} color={c.ink} />
+              </TouchableOpacity>
+            ) : null}
+          />
+          <SchoolSelectPrompt />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
       <View style={styles.content}>
@@ -131,12 +191,14 @@ export default function MessagesScreen({ navigation }) {
           }
         />
 
+        <SuperAdminSchoolBar />
+
         {moderator ? (
           <>
             <View style={styles.modSummary}>
               <View style={[styles.sumCell, { backgroundColor: c.surface, borderColor: c.line }, shadow.sm]}>
                 <Text style={[styles.sumVal, { color: c.navy }]}>{all.length}</Text>
-                <Text style={[styles.sumLbl, { color: c.muted }]}>Wadar fariimo</Text>
+                <Text style={[styles.sumLbl, { color: c.muted }]}>Wada-hadallo</Text>
               </View>
               <View style={[styles.sumCell, { backgroundColor: c.surface, borderColor: c.line }, shadow.sm]}>
                 <Text style={[styles.sumVal, { color: c.green }]}>{all.filter((m) => m.role === 'teacher').length}</Text>
@@ -174,7 +236,13 @@ export default function MessagesScreen({ navigation }) {
           <TextInput value={q} onChangeText={setQ} placeholder="Raadi fariin…" placeholderTextColor={c.muted2} style={[styles.searchInput, { color: c.ink }]} />
         </View>
 
-        <FlatList
+        {convError ? (
+          <View style={[styles.feedback, { backgroundColor: c.roseSoft, borderColor: c.rose }]}>
+            <Text style={[styles.feedbackTxt, { color: c.rose }]}>{convError}</Text>
+            <TouchableOpacity onPress={reloadConvs}><Text style={{ color: c.blue, fontWeight: '800' }}>Isku day mar kale</Text></TouchableOpacity>
+          </View>
+        ) : null}
+        {convLoading ? <View style={styles.loading}><ActivityIndicator color={c.blue} /></View> : <FlatList
           data={list}
           keyExtractor={(m) => m.id}
           showsVerticalScrollIndicator={false}
@@ -228,7 +296,7 @@ export default function MessagesScreen({ navigation }) {
               </TouchableOpacity>
             );
           }}
-        />
+        />}
       </View>
 
       {/* chat thread */}
@@ -256,7 +324,8 @@ export default function MessagesScreen({ navigation }) {
                   </View>
                 ) : null}
 
-                <ScrollView contentContainerStyle={styles.thread} showsVerticalScrollIndicator={false}>
+                {threadError ? <Text style={[styles.threadError, { color: c.rose }]}>{threadError}</Text> : null}
+                {threadLoading ? <View style={styles.loading}><ActivityIndicator color={c.blue} /></View> : <ScrollView contentContainerStyle={styles.thread} showsVerticalScrollIndicator={false}>
                   <View style={styles.daySep}><View style={[styles.dayPill, { backgroundColor: c.surface, borderColor: c.line }]}><Text style={[styles.dayTxt, { color: c.muted }]}>Maanta</Text></View></View>
                   {thread.map((b, i) => (
                     <View key={i} style={[styles.bubbleRow, { justifyContent: b.me ? 'flex-end' : 'flex-start' }]}>
@@ -283,8 +352,9 @@ export default function MessagesScreen({ navigation }) {
                       </View>
                     </View>
                   ))}
-                </ScrollView>
+                </ScrollView>}
 
+                {sendError ? <Text style={[styles.sendError, { color: c.rose, backgroundColor: c.roseSoft }]}>{sendError}</Text> : null}
                 {/* composer — text, photo and voice (student & teacher) */}
                 {recording ? (
                   <View style={[styles.composer, { backgroundColor: c.surface, borderTopColor: c.line }]}>
@@ -307,8 +377,8 @@ export default function MessagesScreen({ navigation }) {
                     <TextInput value={draft} onChangeText={setDraft} editable={canSend} placeholder={canSend ? 'Qor fariin…' : 'Fariin ma diri kartid'} placeholderTextColor={c.muted2}
                       style={[styles.input, { backgroundColor: c.bg, borderColor: c.line, color: c.ink }]} />
                     {draft.trim() ? (
-                      <TouchableOpacity style={[styles.sendBtn, { backgroundColor: c.blue }]} onPress={send}>
-                        <Icon name="send" size={18} color="#fff" strokeWidth={2} />
+                      <TouchableOpacity style={[styles.sendBtn, { backgroundColor: c.blue, opacity: sending ? 0.7 : 1 }]} onPress={send} disabled={sending}>
+                        {sending ? <ActivityIndicator color="#fff" size="small" /> : <Icon name="send" size={18} color="#fff" strokeWidth={2} />}
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity style={[styles.sendBtn, { backgroundColor: canAttach ? c.navy : c.muted2 }]} onPress={startRec} disabled={!canAttach}>
@@ -329,6 +399,11 @@ export default function MessagesScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { flex: 1, padding: 16 },
+  feedback: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 12, padding: 11, marginBottom: 10 },
+  feedbackTxt: { flex: 1, fontSize: 12.5, fontWeight: '700', lineHeight: 18 },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
+  threadError: { padding: 12, textAlign: 'center', fontSize: 12.5, fontWeight: '700' },
+  sendError: { paddingVertical: 8, paddingHorizontal: 14, textAlign: 'center', fontSize: 12, fontWeight: '700' },
   iconBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   modBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 11, borderRadius: 12, marginBottom: 12 },
   modTxt: { flex: 1, fontSize: 11.5, fontWeight: '700', lineHeight: 16 },

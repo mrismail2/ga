@@ -89,29 +89,50 @@ const schoolContextSource = read('src/context/SchoolContext.js');
 ok('live Super Admin never falls back to a demo branch',
   /listSchools/.test(schoolContextSource) && !/DEFAULT\[0\]\.id;?\s*\/\/ live/.test(schoolContextSource));
 
-/* ---------- D4. no non-Kobciye files ---------- */
+/* ---------- D4. no non-Kobciye deployable/runtime files ---------- */
 const NON_KOBCIYE = ['index.html', 'main.js', 'styles.css', 'assets/banner-1.png', 'assets/header.png'];
 for (const rel of NON_KOBCIYE) {
   ok(`the non-Kobciye root file "${rel}" is gone`, !exists(rel, repoRoot));
 }
 function walk(dir, out = []) {
+  if (!fs.existsSync(dir)) return out;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist' || entry.name === 'build') continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full, out); else out.push(full);
   }
   return out;
 }
-// the scanned corpus deliberately excludes THIS file: it necessarily
-// contains the very strings it forbids (as assertion patterns).
-const SELF = path.resolve(__filename);
-const textFiles = walk(repoRoot)
-  .filter((f) => /\.(js|json|html|css|md|sql)$/.test(f))
-  .filter((f) => path.resolve(f) !== SELF);
-const iceHits = textFiles.filter((f) => {
+// Scan only deployable/runtime locations. Audit/correction Markdown files may
+// legitimately mention the historical removal and must not cause a false
+// failure. Test scripts are also excluded because assertion text necessarily
+// contains the forbidden brand string.
+const runtimeRoots = [
+  path.join(repoRoot, 'mobile/src'),
+  path.join(repoRoot, 'landing'),
+  path.join(repoRoot, 'supabase/functions'),
+];
+const runtimeSingles = [
+  path.join(repoRoot, 'mobile/App.js'),
+  path.join(repoRoot, 'mobile/index.js'),
+  path.join(repoRoot, 'mobile/app.json'),
+];
+const runtimeFiles = runtimeRoots.flatMap((dir) => walk(dir))
+  .concat(runtimeSingles.filter((f) => fs.existsSync(f)))
+  .filter((f) => /\.(js|jsx|ts|tsx|json|html|css|sql)$/.test(f));
+const iceHits = runtimeFiles.filter((f) => {
   try { return /gabiley\s*ice|GABILEY<span>ICE/i.test(fs.readFileSync(f, 'utf8')); } catch (e) { return false; }
 });
-ok('no Gabiley Ice content remains anywhere in the source', iceHits.length === 0);
+ok('no Gabiley Ice content remains in deployable/runtime source', iceHits.length === 0);
+
+// Runtime imports must not point at any of the removed non-Kobciye asset
+// names. Legitimate Kobciye imports from mobile/src/assets remain allowed.
+const removedAssetImports = runtimeFiles.filter((f) => {
+  try { return /(?:from\s+|require\()[^\n]*(?:gabiley\s*ice|ice[-_ ]?cream|banner-1\.png)/i.test(fs.readFileSync(f, 'utf8')); } catch (e) { return false; }
+});
+ok('no Kobciye runtime file imports removed non-Kobciye assets', removedAssetImports.length === 0);
+
+const textFiles = runtimeFiles;
 
 /* ---------- D5. the approved UI is preserved ---------- */
 const classesSource = read('src/screens/ClassesScreen.js');

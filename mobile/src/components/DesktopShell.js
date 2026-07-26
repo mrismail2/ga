@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useRole } from '../context/RoleContext';
+import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 
 import DashboardScreen from '../screens/DashboardScreen';
@@ -24,7 +26,7 @@ import SchoolsScreen from '../screens/SchoolsScreen';
 import SchoolManagementScreen from '../screens/SchoolManagementScreen';
 import SchoolOnboardingScreen from '../screens/SchoolOnboardingScreen';
 import SimulatorScreen from '../screens/SimulatorScreen';
-const { normalizeSchoolRoute, resolveSchoolScreen } = require('../domain/navigationPolicy');
+const { normalizeSchoolRoute, resolveSchoolScreen, canAccessLiveRoute } = require('../domain/navigationPolicy');
 
 /* route → screen component (same screens the mobile app uses) */
 const SCREENS = {
@@ -56,14 +58,16 @@ const SCREENS = {
    exact same screen components work without React Navigation here. */
 export default function DesktopShell() {
   const { c } = useTheme();
+  const { role } = useRole();
+  const { isLive } = useAuth();
   const [stack, setStack] = useState([{ route: 'Dashboard', params: {} }]);
   const current = stack[stack.length - 1];
 
   const navigate = useCallback((route, params = {}) => {
     // strip the *Stack aliases used by the mobile More menu
     const clean = normalizeSchoolRoute(route);
-    if (SCREENS[clean]) setStack((s) => [...s, { route: clean, params }]);
-  }, []);
+    if (SCREENS[clean] && (!isLive || canAccessLiveRoute(role, clean))) setStack((s) => [...s, { route: clean, params }]);
+  }, [isLive, role]);
 
   const goBack = useCallback(() => {
     setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
@@ -72,10 +76,11 @@ export default function DesktopShell() {
   // sidebar click resets to that top-level view
   const selectView = useCallback((route) => {
     const clean = normalizeSchoolRoute(route);
-    if (SCREENS[clean]) setStack([{ route: clean, params: {} }]);
-  }, []);
+    if (SCREENS[clean] && (!isLive || canAccessLiveRoute(role, clean))) setStack([{ route: clean, params: {} }]);
+  }, [isLive, role]);
 
-  const Screen = resolveSchoolScreen(current.route, SCREENS, DashboardScreen);
+  const allowedCurrent = !isLive || canAccessLiveRoute(role, current.route);
+  const Screen = allowedCurrent ? resolveSchoolScreen(current.route, SCREENS, DashboardScreen) : DashboardScreen;
   const navShim = { navigate, goBack, push: navigate };
   const routeShim = { params: current.params, name: current.route };
 

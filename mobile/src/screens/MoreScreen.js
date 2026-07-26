@@ -53,7 +53,7 @@ export default function MoreScreen({ navigation }) {
   const labelFor = (k, label) => (k === 'classes' ? stageTerms.classLabelPlural : label);
 
   // everything in the role's nav except the dashboard (always a tab)
-  const items = profile.nav.filter((k) => k !== 'dashboard' && NAV_META[k] && canRoleNavigate(profile.key, k));
+  const items = profile.nav.filter((k) => k !== 'dashboard' && NAV_META[k] && canRoleNavigate(profile.key, k, isLive));
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.bg }]} edges={['top']}>
@@ -90,6 +90,7 @@ export default function MoreScreen({ navigation }) {
                   key: k,
                   navMeta: NAV_META,
                   navigate: (nextRoute) => navigation.navigate(STACK_ALIAS[nextRoute] || nextRoute),
+                  isLive,
                 })}
               >
                 <View style={[styles.linkChip, { backgroundColor: t.bg }]}>

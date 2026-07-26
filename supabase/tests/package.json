@@ -15,7 +15,8 @@
     "test:final-privacy-security": "node final_privacy_and_lesson_security.test.js",
     "test:final-membership-message-lesson-guards": "node final_membership_message_lesson_guards.test.js",
     "test:student-enrollment-workflow": "node student_enrollment_workflow.test.js",
-    "test:phase4-db-rls": "node phase4_core.test.js && node phase4_runtime_fixes.test.js && node phase4_guardian_upgrade.test.js && node phase4_operational_roles.test.js && node phase1_4_audit_fixes.test.js && node final_security_corrections.test.js && node final_privacy_and_lesson_security.test.js && node final_membership_message_lesson_guards.test.js && node student_enrollment_workflow.test.js"
+    "test:phase4-db-rls": "node phase4_core.test.js && node phase4_runtime_fixes.test.js && node phase4_guardian_upgrade.test.js && node phase4_operational_roles.test.js && node phase1_4_audit_fixes.test.js && node final_security_corrections.test.js && node final_privacy_and_lesson_security.test.js && node final_membership_message_lesson_guards.test.js && node student_enrollment_workflow.test.js && node phase1_4_runtime_integrity.test.js",
+    "test:phase1-4-runtime-integrity": "node phase1_4_runtime_integrity.test.js"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.0"

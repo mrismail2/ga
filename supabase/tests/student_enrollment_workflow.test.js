@@ -44,7 +44,7 @@ const rejects = async (fn, pattern) => {
     const sql = fs.readFileSync(path.join(dir, file), 'utf8').replace(/create extension if not exists "pgcrypto";/g, '');
     await db.exec(sql);
   }
-  console.log(`applied ${fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).length} existing migrations (no new migration required)\n`);
+  console.log(`applied ${fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).length} migrations to disposable Postgres\n`);
 
   const asService = async () => { await db.exec('reset role'); await db.exec(`select set_config('myapp.test_uid', '', false)`); };
   const asClient = async (uid) => {
@@ -104,6 +104,18 @@ const rejects = async (fn, pattern) => {
   ok('the student is visible in the school student list', await visibleStudents(schoolA) === 1);
   ok('the class active count updates to 1', await activeCount(class1) === 1);
   ok('the other class stays at 0', await activeCount(class2) === 0);
+
+  /* active enrollment scope is now mandatory at the DB boundary too */
+  const beforeRequiredChecks = Number((await db.query(
+    `select count(*) n from students where school_id='${schoolA}'`)).rows[0].n);
+  ok('an active enrollment without a class is rejected', await rejects(
+    () => db.query(`select admit_student_atomic('${schoolA}','Missing Class',null,null,null,null,null,'${yearA}')`),
+    /active enrollment requires a class/i));
+  ok('an active enrollment without an academic year is rejected', await rejects(
+    () => db.query(`select admit_student_atomic('${schoolA}','Missing Year',null,null,null,'${class1}')`),
+    /active enrollment requires an academic year/i));
+  ok('required-field failures roll back the partial student row', Number((await db.query(
+    `select count(*) n from students where school_id='${schoolA}'`)).rows[0].n) === beforeRequiredChecks);
 
   /* ---- the failure path leaves NOTHING behind (real atomicity) ---- */
   const beforeStudents = Number((await db.query(`select count(*) n from students where school_id='${schoolA}'`)).rows[0].n);

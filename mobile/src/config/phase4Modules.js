@@ -40,7 +40,7 @@ export const SCHOOL_MODULES = [
     active: STATUS,
     fields: [
       { key: 'name', label: 'MAGACA', required: true, placeholder: 'tusaale: Term 1' },
-      { key: 'academic_year_id', label: 'SANNAD-DUGSIYEEDKA', fk: { table: 'academic_years', labelKey: 'name' } },
+      { key: 'academic_year_id', label: 'SANNAD-DUGSIYEEDKA', required: true, fk: { table: 'academic_years', labelKey: 'name' } },
       { key: 'starts_on', label: 'BILOW (YYYY-MM-DD)', date: true, placeholder: '2026-09-01' },
       { key: 'ends_on', label: 'DHAMMAAD (YYYY-MM-DD)', date: true, placeholder: '2026-12-15' },
     ],
@@ -100,7 +100,7 @@ export const SCHOOL_MODULES = [
       { key: 'name', label: 'MAGACA', required: true, placeholder: 'tusaale: Xisaab' },
       { key: 'code', label: 'KOODHKA', upper: true, placeholder: 'tusaale: MATH (gaar)' },
       { key: 'school_section_id', label: 'QAYBTA DUGSIGA', fk: { table: 'school_sections', labelKey: 'name' } },
-      { key: 'class_id', label: 'FASALKA', stageLabelKey: 'classFieldLabel', fk: { table: 'classes', labelKey: 'name' } },
+      { key: 'class_id', label: 'FASALKA', stageLabelKey: 'classFieldLabel', required: true, fk: { table: 'classes', labelKey: 'name' } },
     ],
     listTitle: (r) => r.name,
     listSub: (r) => r.code || '—',
@@ -141,9 +141,9 @@ export const SCHOOL_MODULES = [
         { value: 'male', label: 'Lab' }, { value: 'female', label: 'Dhedig' },
       ] },
       { key: 'date_of_birth', label: 'TAARIIKHDA DHALASHADA (YYYY-MM-DD)', date: true, placeholder: '2015-01-01' },
-      { key: 'class_id', label: 'FASALKA', stageLabelKey: 'classFieldLabel', fk: { table: 'classes', labelKey: 'name' } },
+      { key: 'class_id', label: 'FASALKA', stageLabelKey: 'classFieldLabel', required: true, fk: { table: 'classes', labelKey: 'name' } },
       { key: 'stream_id', label: 'QAYBTA FASALKA', stageLabelKey: 'streamFieldLabel', fk: { table: 'class_streams', labelKey: 'name' } },
-      { key: 'academic_year_id', label: 'SANNAD-DUGSIYEEDKA', fk: { table: 'academic_years', labelKey: 'name' } },
+      { key: 'academic_year_id', label: 'SANNAD-DUGSIYEEDKA', required: true, fk: { table: 'academic_years', labelKey: 'name' } },
     ],
     listTitle: (r) => r.full_name,
     listSub: (r) => [r.student_id, r.admission_number].filter(Boolean).join(' · ') || '—',
@@ -168,10 +168,11 @@ export const SCHOOL_MODULES = [
     enrollAtomic: true,
     fields: [
       { key: 'applicant_name', label: 'MAGACA CODSADAHA', required: true, placeholder: 'Magaca ardayga cusub' },
-      { key: 'desired_class_id', label: 'FASALKA', stageLabelKey: 'classFieldLabel', fk: { table: 'classes', labelKey: 'name' } },
+      { key: 'desired_class_id', label: 'FASALKA', stageLabelKey: 'classFieldLabel', enrollmentRequired: true, fk: { table: 'classes', labelKey: 'name' } },
       // guardian linking (Phase 1–4 foundation): pick an existing same-school
       // guardian OR enter a new one below — `virtual` fields feed the atomic
       // admission RPC and are never written to the admissions table itself
+      { key: 'academic_year_id', label: 'SANNAD-DUGSIYEEDKA', virtual: true, enrollmentRequired: true, fk: { table: 'academic_years', labelKey: 'name' } },
       { key: 'parent_id', label: 'WAALID JIRA (XULO HADDII UU JIRO)', virtual: true, fk: { table: 'parents', labelKey: 'full_name' } },
       { key: 'guardian_name', label: 'MAGACA WAALIDKA (CUSUB)', placeholder: 'ikhtiyaari' },
       { key: 'guardian_phone', label: 'TELEFOONKA WAALIDKA', phone: true, placeholder: '+252 …' },
@@ -182,7 +183,7 @@ export const SCHOOL_MODULES = [
         { value: 'guardian', label: 'Mas\'uul' },
         { value: 'other', label: 'Kale' },
       ] },
-      { key: 'status', label: 'XAALADDA', options: [
+      { key: 'status', label: 'XAALADDA', required: true, defaultValue: 'draft', options: [
         { value: 'draft', label: 'Qabyo (Draft)' },
         { value: 'pending', label: 'Sugaya' },
         { value: 'accepted', label: 'La aqbalay' },
@@ -317,7 +318,7 @@ export const UNIVERSITY_MODULES = [
     fields: [
       { key: 'applicant_name', label: 'MAGACA CODSADAHA', required: true, placeholder: 'Magaca ardayga cusub' },
       { key: 'guardian_phone', label: 'TELEFOONKA XIRIIRKA', phone: true, placeholder: '+252 …' },
-      { key: 'status', label: 'XAALADDA', options: [
+      { key: 'status', label: 'XAALADDA', required: true, defaultValue: 'draft', options: [
         { value: 'draft', label: 'Draft' },
         { value: 'pending', label: 'Pending' },
         { value: 'accepted', label: 'Accepted' },

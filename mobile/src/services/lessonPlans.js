@@ -43,6 +43,7 @@ export function lessonRowToView(row) {
     cls: row.class_label || '—',
     status: row.status,
     teacher: row.teacher_name || 'Macalin',
+    teacherProfileId: row.teacher_profile_id || null,
     submitted_at: row.updated_at ? String(row.updated_at).slice(0, 10) : '',
     ministry_feedback: [],
     ...(row.detail || {}),

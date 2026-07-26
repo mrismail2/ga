@@ -58,13 +58,19 @@ export function SchoolProvider({ children }) {
     setSchoolsLoading(true); setSchoolsError(null);
     try {
       const rows = await listSchools();
-      const list = (rows || []).map((s) => ({
+      // This selector feeds School Mode screens (classes, students, teachers,
+      // guardians). University institutions have their own structurally
+      // separate shell and must never be offered here.
+      const list = (rows || []).filter((s) => s.institution_type === 'school').map((s) => ({
         id: s.id, code: s.slug, name: s.name,
         type: s.plan === 'large' ? 'Large School' : 'School',
-        city: s.location || '', students: null, status: s.status || 'active', live: true,
+        city: s.location || '', logoUrl: s.logo_url || null, students: null, status: s.status || 'active', live: true,
       }));
       setSuperSchools(list);
     } catch (e) {
+      // Do not keep a stale School A list active after a failed refresh. The
+      // selector shows the retryable error and no school-scoped query runs.
+      setSuperSchools([]);
       setSchoolsError((e && e.message) || 'Lama soo dejin karin liiska dugsiyada.');
     } finally {
       setSchoolsLoading(false);
@@ -91,7 +97,7 @@ export function SchoolProvider({ children }) {
         const one = {
           id: s.id, code: s.slug, name: s.name,
           type: s.plan === 'large' ? 'Large School' : 'School',
-          city: s.location || '', students: null, status: s.status || 'active', live: true,
+          city: s.location || '', logoUrl: s.logo_url || null, students: null, status: s.status || 'active', live: true,
         };
         setSchools([one]); setActiveId(s.id);
       } else {

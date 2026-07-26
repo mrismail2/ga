@@ -43,9 +43,9 @@ ok('the empty/disabled state reuses the existing dashed cover-box style (no new 
 ok('Save is disabled whenever there is no title, zero assignments, or an invalid pair',
   /const canSave = !!title\.trim\(\) && !liveHasNoAssignments && hasValidLivePair/.test(modal));
 ok('the Save button itself is wired to canSave, not just title',
-  /onPress={save} disabled={!canSave}/.test(modal));
+  /onPress={save} disabled={!canSave \|\| saving}/.test(modal));
 ok('save() itself refuses to proceed when canSave is false (defense in depth, not just a disabled button)',
-  /const save = \(\) => \{\s*if \(!canSave\) return;/.test(modal));
+  /const save = async \(\) => \{\s*if \(!canSave \|\| saving\) return;/.test(modal));
 ok('the demo CLASS_OPTS fallback is reachable ONLY when Live Mode was never signalled at all',
   /const CLASS_OPTS = \['Form 5A', 'Form 6B', 'Form 7A'\]/.test(modal)
   && /isLiveAssignmentMode \? \(/.test(modal));

@@ -49,7 +49,7 @@ ok('Save stays disabled while there is no valid real pair selected (hasValidLive
   /const hasValidLivePair = !isLiveAssignmentMode \|\| pairs\.some\(\(p\) => p\.classId === classId && p\.subjectId === subjectId\)/.test(modal)
   && /liveHasNoAssignments && hasValidLivePair/.test(modal));
 ok('no null class_id/subject_id can be submitted once a real pair is required (save() checks canSave first)',
-  /const save = \(\) => \{\s*if \(!canSave\) return;/.test(modal));
+  /const save = async \(\) => \{\s*if \(!canSave \|\| saving\) return;/.test(modal));
 
 console.log('\n[7] class/subject selectors use canonical assignment PAIRS only');
 ok('myTeacherAssignments returns enriched pairs (classId/className/subjectId/subjectName), not two flat lists',
