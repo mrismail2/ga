@@ -31,6 +31,13 @@ import SchoolsScreen from '../screens/SchoolsScreen';
 import SchoolManagementScreen from '../screens/SchoolManagementScreen';
 import SchoolOnboardingScreen from '../screens/SchoolOnboardingScreen';
 import SimulatorScreen from '../screens/SimulatorScreen';
+// ---- Phase 5 screens (real, Supabase-backed) ----
+import { AttendanceRoute, ExamsRoute, FinanceRoute, IncidentsRoute, ReportsRoute } from '../screens/phase5/liveRoutes';
+import TimetableScreen from '../screens/phase5/TimetableScreen';
+import AssignmentsScreen from '../screens/phase5/AssignmentsScreen';
+import ExamsResultsScreen from '../screens/phase5/ExamsResultsScreen';
+import NotificationsScreen from '../screens/phase5/NotificationsScreen';
+import ProvisioningScreen from '../screens/phase5/ProvisioningScreen';
 const { canAccessLiveRoute } = require('../domain/navigationPolicy');
 
 const Tab = createBottomTabNavigator();
@@ -40,8 +47,8 @@ const TAB_DEFS = {
   Dashboard: ['dashboard', 'Dashboard', DashboardScreen],
   Ardayda: ['students', 'Ardayda', StudentsScreen],
   Fasallada: ['classes', 'Fasallada', ClassesScreen],
-  Attendance: ['attendance', 'Xaadiris', AttendanceScreen],
-  Finance: ['finance', 'Lacag', FinanceScreen],
+  Attendance: ['attendance', 'Xaadiris', AttendanceRoute],
+  Finance: ['finance', 'Lacag', FinanceRoute],
   Messages: ['messages', 'Fariimo', MessagesScreen],
   Dheeraad: ['more', 'Dheeraad', MoreScreen],
 };
@@ -59,11 +66,11 @@ const ROLE_TABS_DEMO = {
    demo prototype, but are not mounted or navigable for a real account. */
 const ROLE_TABS_LIVE = {
   superadmin: ['Ardayda', 'Fasallada', 'Messages'],
-  schooladmin: ['Ardayda', 'Fasallada', 'Messages'],
-  teacher: ['Fasallada', 'Messages'],
-  accountant: [],
-  parent: [],
-  student: ['Messages'],
+  schooladmin: ['Ardayda', 'Fasallada', 'Attendance'],
+  teacher: ['Fasallada', 'Attendance', 'Messages'],
+  accountant: ['Finance'],
+  parent: ['Attendance', 'Finance'],
+  student: ['Attendance', 'Messages'],
 };
 
 function Tabs() {
@@ -99,21 +106,27 @@ const STACK_SCREENS = {
   Management: SchoolManagementScreen,
   Teachers: TeachersScreen,
   Billing: BillingScreen,
-  Exams: ExamsScreen,
+  Exams: ExamsRoute,
   Lessons: LessonsScreen,
-  Incidents: IncidentsScreen,
+  Incidents: IncidentsRoute,
   Notices: NoticesScreen,
   Schools: SchoolsScreen,
   SchoolOnboarding: SchoolOnboardingScreen,
   Simulator: SimulatorScreen,
-  Reports: ReportsScreen,
+  Reports: ReportsRoute,
   Permissions: PermissionsScreen,
   Advisor: AdvisorScreen,
   Settings: SettingsScreen,
+  // ---- Phase 5 routes ----
+  Jadwal: TimetableScreen,
+  Assignments: AssignmentsScreen,
+  Results: ExamsResultsScreen,
+  Notifications: NotificationsScreen,
+  Provisioning: ProvisioningScreen,
   ArdaydaStack: StudentsScreen,
   FasalladaStack: ClassesScreen,
-  AttendanceStack: AttendanceScreen,
-  FinanceStack: FinanceScreen,
+  AttendanceStack: AttendanceRoute,
+  FinanceStack: FinanceRoute,
   MessagesStack: MessagesScreen,
 };
 

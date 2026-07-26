@@ -12,12 +12,12 @@ export const ROLES = {
   superadmin: {
     key: 'superadmin', label: 'Super Admin', labelSo: 'Maamulaha Guud',
     name: 'Maxamed Cabdi', avatar: 'MC', sub: 'Kobciye Platform · Maamulka Guud',
-    nav: ['dashboard', 'schoolonboarding', 'advisor', 'simulator', 'students', 'teachers', 'classes', 'attendance', 'finance', 'billing', 'exams', 'lessons', 'incidents', 'notice', 'reports', 'permissions', 'messages', 'settings'],
+    nav: ['dashboard', 'schoolonboarding', 'advisor', 'simulator', 'students', 'teachers', 'classes', 'jadwal', 'attendance', 'assignments', 'exams', 'results', 'finance', 'billing', 'lessons', 'incidents', 'notice', 'reports', 'notifications', 'provisioning', 'permissions', 'messages', 'settings'],
   },
   schooladmin: {
     key: 'schooladmin', label: 'School Admin', labelSo: 'Maamulaha Dugsiga',
     name: 'Faadumo Cali', avatar: 'FC', sub: 'Dugsiga Hidaayada · Gabiley',
-    nav: withManagementNavigation('schooladmin', ['dashboard', 'advisor', 'simulator', 'students', 'teachers', 'classes', 'attendance', 'finance', 'billing', 'exams', 'lessons', 'incidents', 'notice', 'reports', 'permissions', 'messages', 'settings']),
+    nav: withManagementNavigation('schooladmin', ['dashboard', 'advisor', 'simulator', 'students', 'teachers', 'classes', 'jadwal', 'attendance', 'assignments', 'exams', 'results', 'finance', 'billing', 'lessons', 'incidents', 'notice', 'reports', 'notifications', 'provisioning', 'permissions', 'messages', 'settings']),
   },
   teacher: {
     key: 'teacher', label: 'Teacher', labelSo: 'Macalin',
@@ -39,13 +39,13 @@ export const ROLES = {
     ],
     // a teacher marks attendance INSIDE each class (ClassDetail · Xaadiris tab),
     // so the standalone 'attendance' sidebar item is admin-only — not in nav here.
-    nav: ['dashboard', 'classes', 'exams', 'lessons', 'incidents', 'reports', 'messages', 'settings'],
+    nav: ['dashboard', 'classes', 'jadwal', 'attendance', 'assignments', 'exams', 'results', 'lessons', 'incidents', 'reports', 'notifications', 'messages', 'settings'],
   },
   accountant: {
     key: 'accountant', label: 'Accountant', labelSo: 'Xisaabiye',
     name: 'Cabdi Jaamac', avatar: 'CJ', sub: 'Maaliyadda · Dugsiga Hidaayada',
     school_id: 'school_001', scope: 'finance',
-    nav: ['dashboard', 'finance', 'billing', 'reports', 'settings'],
+    nav: ['dashboard', 'finance', 'billing', 'reports', 'notifications', 'settings'],
   },
   parent: {
     key: 'parent', label: 'Parent', labelSo: 'Waalid',
@@ -57,7 +57,7 @@ export const ROLES = {
     // display-only labels (NOT used for access control)
     childNames: ['Ahmed', 'Zakariye'],
     // a parent has NO direct teacher–student chat: 'messages' is not in nav.
-    nav: ['dashboard', 'attendance', 'finance', 'exams', 'incidents', 'notice', 'settings'],
+    nav: ['dashboard', 'jadwal', 'attendance', 'assignments', 'exams', 'results', 'finance', 'incidents', 'notice', 'notifications', 'settings'],
   },
   student: {
     key: 'student', label: 'Student', labelSo: 'Arday — Form 5A',
@@ -69,7 +69,7 @@ export const ROLES = {
     // display-only labels (NOT used for access control)
     studentName: 'Aaliyah', studentClass: 'Form 5A',
     // a student does NOT see the full Incidents module: 'incidents' is not in nav.
-    nav: ['dashboard', 'attendance', 'finance', 'exams', 'notice', 'messages', 'settings'],
+    nav: ['dashboard', 'jadwal', 'attendance', 'assignments', 'exams', 'results', 'finance', 'notice', 'notifications', 'messages', 'settings'],
   },
 };
 
@@ -101,6 +101,13 @@ export const NAV_META = {
   reports: ['reports', 'Warbixinno', 'Reports'],
   permissions: ['shield', 'Permissions', 'Permissions'],
   messages: ['messages', 'Fariimaha', 'Messages'],
+  // ---- Phase 5 (real, Supabase-backed) ----
+  jadwal: ['clock', 'Jadwal', 'Jadwal'],
+  assignments: ['note', 'Shaqo-guri', 'Assignments'],
+  results: ['reports', 'Natiijooyin', 'Results'],
+  notifications: ['bell', 'Ogeysiisyo', 'Notifications'],
+  provisioning: ['profile', 'Akoonnada', 'Provisioning'],
+  transcripts: ['download', 'Transcripts', 'Transcripts'],
   [MANAGEMENT_ITEM.key]: [MANAGEMENT_ITEM.icon, MANAGEMENT_ITEM.label, MANAGEMENT_ITEM.route],
   settings: ['settings', 'Goobaha', 'Settings'],
 };

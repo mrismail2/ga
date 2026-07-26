@@ -26,6 +26,12 @@ import SchoolsScreen from '../screens/SchoolsScreen';
 import SchoolManagementScreen from '../screens/SchoolManagementScreen';
 import SchoolOnboardingScreen from '../screens/SchoolOnboardingScreen';
 import SimulatorScreen from '../screens/SimulatorScreen';
+import { AttendanceRoute, ExamsRoute, FinanceRoute, IncidentsRoute, ReportsRoute } from '../screens/phase5/liveRoutes';
+import TimetableScreen from '../screens/phase5/TimetableScreen';
+import AssignmentsScreen from '../screens/phase5/AssignmentsScreen';
+import ExamsResultsScreen from '../screens/phase5/ExamsResultsScreen';
+import NotificationsScreen from '../screens/phase5/NotificationsScreen';
+import ProvisioningScreen from '../screens/phase5/ProvisioningScreen';
 const { normalizeSchoolRoute, resolveSchoolScreen, canAccessLiveRoute } = require('../domain/navigationPolicy');
 
 /* route → screen component (same screens the mobile app uses) */
@@ -39,18 +45,24 @@ const SCREENS = {
   Fasallada: ClassesScreen,
   ClassDetail: ClassDetailScreen,
   Teachers: TeachersScreen,
-  Attendance: AttendanceScreen,
-  Finance: FinanceScreen,
+  Attendance: AttendanceRoute,
+  Finance: FinanceRoute,
   Billing: BillingScreen,
-  Exams: ExamsScreen,
+  Exams: ExamsRoute,
   Lessons: LessonsScreen,
-  Incidents: IncidentsScreen,
+  Incidents: IncidentsRoute,
   Notices: NoticesScreen,
-  Reports: ReportsScreen,
+  Reports: ReportsRoute,
   Permissions: PermissionsScreen,
   Messages: MessagesScreen,
   Advisor: AdvisorScreen,
   Settings: SettingsScreen,
+  // ---- Phase 5 ----
+  Jadwal: TimetableScreen,
+  Assignments: AssignmentsScreen,
+  Results: ExamsResultsScreen,
+  Notifications: NotificationsScreen,
+  Provisioning: ProvisioningScreen,
 };
 
 /* Desktop layout: fixed sidebar + a content pane that swaps screens.

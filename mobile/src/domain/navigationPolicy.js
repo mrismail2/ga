@@ -9,17 +9,21 @@ const MANAGEMENT_ITEM = Object.freeze({
 const MANAGEMENT_ROLES = Object.freeze(['schooladmin']);
 const SCHOOL_DATA_MANAGER_ROLES = Object.freeze(['schooladmin', 'superadmin']);
 
-/* Phase 1–4 LIVE boundary.
-   Anything omitted here is either demo-only, unfinished, or belongs to
-   Phase 5 (attendance, finance, exams/results, discipline, reports, etc.).
-   Demo mode keeps the original prototype navigation unchanged. */
+/* LIVE navigation boundary.
+   Phase 1–4 keys plus the Phase 5 modules that are now fully implemented and
+   Supabase-backed (§15: a menu item is revealed only after its workflow is
+   real). Demo mode keeps the original prototype navigation unchanged, so
+   anything omitted here is simply not offered to an authenticated Live user.
+   Role scope mirrors RLS: teachers get their assignment-scoped modules,
+   student/parent get their read-scoped modules, accountant gets finance. */
+const PHASE5_COMMON = ['jadwal', 'attendance', 'assignments', 'exams', 'results', 'notifications'];
 const LIVE_NAV_KEYS = Object.freeze({
-  superadmin: Object.freeze(['dashboard', 'schoolonboarding', 'students', 'teachers', 'classes', 'lessons', 'messages', 'settings']),
-  schooladmin: Object.freeze(['dashboard', 'students', 'teachers', 'classes', 'lessons', 'management', 'messages', 'settings']),
-  teacher: Object.freeze(['dashboard', 'classes', 'lessons', 'messages', 'settings']),
-  accountant: Object.freeze(['dashboard', 'settings']),
-  parent: Object.freeze(['dashboard', 'settings']),
-  student: Object.freeze(['dashboard', 'messages', 'settings']),
+  superadmin: Object.freeze(['dashboard', 'schoolonboarding', 'students', 'teachers', 'classes', 'lessons', 'messages', 'management', 'provisioning', ...PHASE5_COMMON, 'finance', 'incidents', 'reports', 'settings']),
+  schooladmin: Object.freeze(['dashboard', 'students', 'teachers', 'classes', 'lessons', 'management', 'provisioning', 'messages', ...PHASE5_COMMON, 'finance', 'incidents', 'reports', 'settings']),
+  teacher: Object.freeze(['dashboard', 'classes', 'lessons', 'messages', 'jadwal', 'attendance', 'assignments', 'exams', 'results', 'incidents', 'reports', 'notifications', 'settings']),
+  accountant: Object.freeze(['dashboard', 'finance', 'reports', 'notifications', 'settings']),
+  parent: Object.freeze(['dashboard', 'jadwal', 'attendance', 'assignments', 'exams', 'results', 'finance', 'incidents', 'notifications', 'settings']),
+  student: Object.freeze(['dashboard', 'messages', 'jadwal', 'attendance', 'assignments', 'exams', 'results', 'finance', 'notifications', 'settings']),
 });
 
 const LIVE_ROUTE_KEYS = Object.freeze({
@@ -37,6 +41,20 @@ const LIVE_ROUTE_KEYS = Object.freeze({
   Messages: 'messages',
   MessagesStack: 'messages',
   Settings: 'settings',
+  // ---- Phase 5 ----
+  Jadwal: 'jadwal',
+  Attendance: 'attendance',
+  AttendanceStack: 'attendance',
+  Assignments: 'assignments',
+  Exams: 'exams',
+  Results: 'results',
+  Finance: 'finance',
+  FinanceStack: 'finance',
+  Incidents: 'incidents',
+  Reports: 'reports',
+  Notifications: 'notifications',
+  Provisioning: 'provisioning',
+  Transcripts: 'transcripts',
 });
 
 function canAccessManagement(roleKey) {

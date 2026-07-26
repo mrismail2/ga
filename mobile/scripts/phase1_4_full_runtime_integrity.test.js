@@ -39,10 +39,16 @@ const supabaseService = read('src/services/supabase.js');
 const universityShell = read('src/navigation/UniversityAppShell.js');
 const schoolContext = read('src/context/SchoolContext.js');
 
-console.log('\n[1] Live Phase 1–4 boundary');
-for (const key of ['attendance','finance','billing','exams','results','incidents','reports']) {
-  ok(`Live navigation excludes ${key}`, !new RegExp(`LIVE_NAV_KEYS[\\s\\S]{0,2000}['\"]${key}['\"]`).test(nav));
+console.log('\n[1] Live navigation boundary (Phase 5 revealed)');
+// Phase 5 is now implemented and Supabase-backed, so these modules ARE part
+// of the Live navigation (§15 "reveal a menu item only after its workflow is
+// implemented"). `billing` remains a later-phase item and stays excluded.
+for (const key of ['attendance','finance','exams','results','incidents','reports','jadwal','assignments','notifications']) {
+  ok(`Live navigation now includes ${key} (Phase 5 revealed)`,
+    new RegExp(`LIVE_NAV_KEYS[\\s\\S]{0,2000}['\"]${key}['\"]`).test(nav));
 }
+ok('Live navigation still excludes the later-phase billing key',
+  !new RegExp(`LIVE_NAV_KEYS[\\s\\S]{0,2000}['\"]billing['\"]`).test(nav));
 ok('RootNavigator filters every Live stack route through policy', /stackEntries[\s\S]{0,160}canAccessLiveRoute/.test(rootNav));
 ok('More and Sidebar apply the same Live navigation policy', /canRoleNavigate/.test(more) && /canRoleNavigate/.test(sidebar));
 ok('Class Detail Live tabs remain Ardayda-only', /const LIVE_TABS = \['Ardayda'\]/.test(classDetail));
