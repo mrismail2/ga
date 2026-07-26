@@ -1,7 +1,7 @@
 /* Ogeysiisyo — real, persisted Supabase notifications for the signed-in user.
    Every user sees only their OWN notifications (RLS); a parent sees only
    linked-child notifications. Read state persists in the database. No fake
-   rows, no AsyncStorage. */
+   rows, no device-local storage. */
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';

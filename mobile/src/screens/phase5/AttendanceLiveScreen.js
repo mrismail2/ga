@@ -2,7 +2,7 @@
    Teacher/admin picks a class + date, the ACTIVE-enrollment roster loads,
    each student is marked present/absent/late/excused, and the whole session
    saves atomically through save_attendance_session_atomic (which also creates
-   the automatic parent absence notifications). No demo data, no AsyncStorage. */
+   the automatic parent absence notifications). No demo data, no device-local storage. */
 import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
