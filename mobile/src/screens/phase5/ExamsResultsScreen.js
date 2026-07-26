@@ -8,7 +8,7 @@ import Phase5ModuleView from '../../components/Phase5ModuleView';
 import { p4List } from '../../services/phase4';
 import { listExams, createExam, submitResults, approveResults, publishResults } from '../../services/phase5';
 
-export default function ExamsResultsScreen() {
+export default function ExamsResultsScreen({ navigation }) {
   const module = {
     single: 'Imtixaan', icon: 'exams', emptyText: 'Weli imtixaan lama diiwaangelin.',
     list: (schoolId) => listExams(schoolId),
@@ -28,6 +28,8 @@ export default function ExamsResultsScreen() {
     listTitle: (r) => r.title,
     listSub: (r) => (r.status || 'draft') + ' · ' + (r.full_marks || 100) + ' dhibcood',
     rowActions: [
+      // teacher/admin enters per-student scores for the exam's class roster
+      { label: 'Natiijo geli', roles: ['schooladmin', 'superadmin', 'teacher'], run: (r, ctx) => { if (ctx.navigation && ctx.navigation.navigate) ctx.navigation.navigate('ResultEntry', { exam: r }); } },
       // teacher submits their entered results; only an admin approves + publishes
       { label: 'Gudbi', roles: ['schooladmin', 'superadmin', 'teacher'], run: async (r, ctx) => { try { const n = await submitResults(ctx.schoolId, r.id); ctx.setSuccess(`La gudbiyay: ${n}.`); } catch (e) { ctx.setLoadErr('Lama gudbin karin.'); } } },
       { label: 'Ansixi', roles: ['schooladmin', 'superadmin'], run: async (r, ctx) => { try { const n = await approveResults(ctx.schoolId, r.id); ctx.setSuccess(`La ansixiyay: ${n}.`); } catch (e) { ctx.setLoadErr('Kaliya maamulaha ayaa ansixin kara.'); } } },
@@ -36,7 +38,7 @@ export default function ExamsResultsScreen() {
   };
   return (
     <ModuleScreenFrame title="Imtixaanno & Natiijooyin" subtitle="Qorshaynta iyo natiijada">
-      <Phase5ModuleView module={module} />
+      <Phase5ModuleView module={module} navigation={navigation} />
     </ModuleScreenFrame>
   );
 }

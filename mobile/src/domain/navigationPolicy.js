@@ -48,6 +48,7 @@ const LIVE_ROUTE_KEYS = Object.freeze({
   Assignments: 'assignments',
   Exams: 'exams',
   Results: 'results',
+  ResultEntry: 'results',
   Finance: 'finance',
   FinanceStack: 'finance',
   Incidents: 'incidents',

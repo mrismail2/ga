@@ -119,6 +119,20 @@ ok('a read-only student/parent attendance screen exists and never marks',
   exists('src/screens/phase5/MyAttendanceScreen.js')
   && !/saveAttendanceSession/.test(read('src/screens/phase5/MyAttendanceScreen.js')));
 
+/* ---------- 9b. enterResult is wired to a real per-student entry UI (§9) ---------- */
+ok('a ResultEntry screen exists and calls enterResult on a roster',
+  exists('src/screens/phase5/ResultEntryScreen.js')
+  && /enterResult/.test(read('src/screens/phase5/ResultEntryScreen.js'))
+  && /p4ActiveEnrollments/.test(read('src/screens/phase5/ResultEntryScreen.js')));
+ok('the exams module opens ResultEntry via a teacher+admin row action',
+  /Natiijo geli/.test(examSrc) && /navigate\('ResultEntry'/.test(examSrc));
+ok('ResultEntry is a registered, role-gated route (mobile + desktop)',
+  /ResultEntry: ResultEntryScreen/.test(rootNav)
+  && /ResultEntry: ResultEntryScreen/.test(read('src/components/DesktopShell.js'))
+  && /ResultEntry: 'results'/.test(read('src/domain/navigationPolicy.js')));
+ok('ResultEntry blocks non-marking roles from entering scores',
+  /canMarkAttendance/.test(read('src/screens/phase5/ResultEntryScreen.js')));
+
 /* ---------- 10. correction pass: provisioning email + one-time credentials ---------- */
 const provSrc = read('src/screens/phase5/ProvisioningScreen.js');
 ok('provisioning lets the admin enter/correct an email before inviting', /inviteEmail/.test(provSrc) && /EMAIL_RE/.test(provSrc));

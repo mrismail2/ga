@@ -23,7 +23,7 @@ const { canCreateModule, visibleRowActions } = require('../domain/phase5Access')
    BEFORE render (not merely rejected by RLS), so Student/Parent/Teacher never
    see controls they cannot use (§5). The decision lives in the pure,
    unit-tested domain/phase5Access; RLS remains the real authority underneath. */
-export default function Phase5ModuleView({ module }) {
+export default function Phase5ModuleView({ module, navigation }) {
   const { c } = useTheme();
   const { roleKey } = useAuth();
   const { schoolId } = useActiveSchoolId();
@@ -129,7 +129,7 @@ export default function Phase5ModuleView({ module }) {
                 <Text style={[styles.rowSub, { color: c.muted }]} numberOfLines={1}>{module.listSub(r)}</Text>
               </View>
               {visibleActions.map((a) => (
-                <TouchableOpacity key={a.label} onPress={() => a.run(r, { schoolId, reload: load, setSuccess, setLoadErr })}
+                <TouchableOpacity key={a.label} onPress={() => a.run(r, { schoolId, reload: load, setSuccess, setLoadErr, navigation })}
                   style={[styles.actBtn, { borderColor: c.line }]}>
                   <Text style={[styles.actTxt, { color: c.blue }]}>{a.label}</Text>
                 </TouchableOpacity>

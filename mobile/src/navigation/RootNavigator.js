@@ -36,6 +36,7 @@ import { AttendanceRoute, ExamsRoute, FinanceRoute, IncidentsRoute, ReportsRoute
 import TimetableScreen from '../screens/phase5/TimetableScreen';
 import AssignmentsScreen from '../screens/phase5/AssignmentsScreen';
 import ExamsResultsScreen from '../screens/phase5/ExamsResultsScreen';
+import ResultEntryScreen from '../screens/phase5/ResultEntryScreen';
 import NotificationsScreen from '../screens/phase5/NotificationsScreen';
 import ProvisioningScreen from '../screens/phase5/ProvisioningScreen';
 const { canAccessLiveRoute } = require('../domain/navigationPolicy');
@@ -121,6 +122,7 @@ const STACK_SCREENS = {
   Jadwal: TimetableScreen,
   Assignments: AssignmentsScreen,
   Results: ExamsResultsScreen,
+  ResultEntry: ResultEntryScreen,
   Notifications: NotificationsScreen,
   Provisioning: ProvisioningScreen,
   ArdaydaStack: StudentsScreen,
