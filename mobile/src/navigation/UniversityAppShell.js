@@ -28,6 +28,7 @@ import { p4Counts, p4FriendlyError } from '../services/phase4';
 import useActiveSchoolId from '../hooks/useActiveSchoolId';
 import { UNIVERSITY_NAV_ITEMS, UNIVERSITY_PRIMARY_TAB_KEYS } from '../config/navigationByInstitutionType';
 import TranscriptsScreen from '../screens/phase5/TranscriptsScreen';
+import CourseResultsScreen from '../screens/phase5/CourseResultsScreen';
 
 export default function UniversityAppShell() {
   const { c } = useTheme();
@@ -38,9 +39,9 @@ export default function UniversityAppShell() {
   const [activeKey, setActiveKey] = useState('dashboard');
   const [showMore, setShowMore] = useState(false);
 
-  // Phase 5: Transcripts is now real (course results snapshot → GPA). Only
-  // 'results' remains a later-phase university detail view.
-  const phase4Items = UNIVERSITY_NAV_ITEMS.filter((item) => item.key !== 'results');
+  // Phase 5: both Results (course-result entry → GPA snapshot) and Transcripts
+  // are now real, so the full university catalog is offered.
+  const phase4Items = UNIVERSITY_NAV_ITEMS;
   const active = phase4Items.find((i) => i.key === activeKey) || phase4Items[0];
   const primaryItems = phase4Items.filter((i) => UNIVERSITY_PRIMARY_TAB_KEYS.includes(i.key));
   const moreItems = phase4Items.filter((i) => !UNIVERSITY_PRIMARY_TAB_KEYS.includes(i.key));
@@ -135,6 +136,9 @@ export default function UniversityAppShell() {
             </Text>
           </View>
         </View>
+      ) : active.key === 'results' ? (
+        /* Phase 5: real course-result entry (enrol + score → transcript GPA) */
+        <CourseResultsScreen />
       ) : active.key === 'transcripts' ? (
         /* Phase 5: real university transcripts (published course-result GPA snapshot) */
         <TranscriptsScreen />

@@ -133,6 +133,40 @@ ok('ResultEntry is a registered, role-gated route (mobile + desktop)',
 ok('ResultEntry blocks non-marking roles from entering scores',
   /canMarkAttendance/.test(read('src/screens/phase5/ResultEntryScreen.js')));
 
+/* ---------- 9c. createExamSchedule is wired (§9) ---------- */
+ok('an ExamSchedule screen exists and calls createExamSchedule',
+  exists('src/screens/phase5/ExamScheduleScreen.js')
+  && /createExamSchedule/.test(read('src/screens/phase5/ExamScheduleScreen.js')));
+ok('the exams module opens ExamSchedule via an admin-only row action',
+  /label: 'Qorshee', roles: \['schooladmin', 'superadmin'\]/.test(examSrc) && /navigate\('ExamSchedule'/.test(examSrc));
+ok('ExamSchedule is a registered route (mobile + desktop + policy)',
+  /ExamSchedule: ExamScheduleScreen/.test(rootNav)
+  && /ExamSchedule: ExamScheduleScreen/.test(read('src/components/DesktopShell.js'))
+  && /ExamSchedule: 'exams'/.test(read('src/domain/navigationPolicy.js')));
+
+/* ---------- 9d. assignments submit + grade are wired (§8) ---------- */
+const submScreen = 'src/screens/phase5/AssignmentSubmissionsScreen.js';
+ok('an AssignmentSubmissions screen exists with submit + grade',
+  exists(submScreen)
+  && /createSubmission/.test(read(submScreen)) && /gradeSubmission/.test(read(submScreen)));
+ok('assignments open the submissions screen for graders and students',
+  /navigate\('AssignmentSubmissions'/.test(assignSrc)
+  && /label: 'Gudbinno', roles: \['schooladmin', 'superadmin', 'teacher'\]/.test(assignSrc)
+  && /label: 'Gudbi', roles: \['student'\]/.test(assignSrc));
+ok('AssignmentSubmissions is a registered route (mobile + desktop + policy)',
+  /AssignmentSubmissions: AssignmentSubmissionsScreen/.test(rootNav)
+  && /AssignmentSubmissions: AssignmentSubmissionsScreen/.test(read('src/components/DesktopShell.js'))
+  && /AssignmentSubmissions: 'assignments'/.test(read('src/domain/navigationPolicy.js')));
+
+/* ---------- 9e. university course results are wired (§14) ---------- */
+const courseResScreen = 'src/screens/phase5/CourseResultsScreen.js';
+ok('a CourseResults screen exists with enrol + result entry',
+  exists(courseResScreen)
+  && /createCourseEnrollment/.test(read(courseResScreen)) && /upsertCourseResult/.test(read(courseResScreen)));
+ok('the University shell reveals real Results (no "not built" placeholder)',
+  /CourseResultsScreen/.test(read('src/navigation/UniversityAppShell.js'))
+  && !/item\.key !== 'results'/.test(read('src/navigation/UniversityAppShell.js')));
+
 /* ---------- 10. correction pass: provisioning email + one-time credentials ---------- */
 const provSrc = read('src/screens/phase5/ProvisioningScreen.js');
 ok('provisioning lets the admin enter/correct an email before inviting', /inviteEmail/.test(provSrc) && /EMAIL_RE/.test(provSrc));

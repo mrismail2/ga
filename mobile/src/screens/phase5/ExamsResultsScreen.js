@@ -28,6 +28,8 @@ export default function ExamsResultsScreen({ navigation }) {
     listTitle: (r) => r.title,
     listSub: (r) => (r.status || 'draft') + ' · ' + (r.full_marks || 100) + ' dhibcood',
     rowActions: [
+      // admin schedules the sitting (date/time/room) for the exam
+      { label: 'Qorshee', roles: ['schooladmin', 'superadmin'], run: (r, ctx) => { if (ctx.navigation && ctx.navigation.navigate) ctx.navigation.navigate('ExamSchedule', { exam: r }); } },
       // teacher/admin enters per-student scores for the exam's class roster
       { label: 'Natiijo geli', roles: ['schooladmin', 'superadmin', 'teacher'], run: (r, ctx) => { if (ctx.navigation && ctx.navigation.navigate) ctx.navigation.navigate('ResultEntry', { exam: r }); } },
       // teacher submits their entered results; only an admin approves + publishes

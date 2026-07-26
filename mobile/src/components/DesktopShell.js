@@ -29,8 +29,10 @@ import SimulatorScreen from '../screens/SimulatorScreen';
 import { AttendanceRoute, ExamsRoute, FinanceRoute, IncidentsRoute, ReportsRoute } from '../screens/phase5/liveRoutes';
 import TimetableScreen from '../screens/phase5/TimetableScreen';
 import AssignmentsScreen from '../screens/phase5/AssignmentsScreen';
+import AssignmentSubmissionsScreen from '../screens/phase5/AssignmentSubmissionsScreen';
 import ExamsResultsScreen from '../screens/phase5/ExamsResultsScreen';
 import ResultEntryScreen from '../screens/phase5/ResultEntryScreen';
+import ExamScheduleScreen from '../screens/phase5/ExamScheduleScreen';
 import NotificationsScreen from '../screens/phase5/NotificationsScreen';
 import ProvisioningScreen from '../screens/phase5/ProvisioningScreen';
 const { normalizeSchoolRoute, resolveSchoolScreen, canAccessLiveRoute } = require('../domain/navigationPolicy');
@@ -61,8 +63,10 @@ const SCREENS = {
   // ---- Phase 5 ----
   Jadwal: TimetableScreen,
   Assignments: AssignmentsScreen,
+  AssignmentSubmissions: AssignmentSubmissionsScreen,
   Results: ExamsResultsScreen,
   ResultEntry: ResultEntryScreen,
+  ExamSchedule: ExamScheduleScreen,
   Notifications: NotificationsScreen,
   Provisioning: ProvisioningScreen,
 };
