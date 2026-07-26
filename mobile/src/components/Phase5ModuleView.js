@@ -87,6 +87,7 @@ export default function Phase5ModuleView({ module, navigation }) {
     module.fields.forEach((f) => {
       let v = (values[f.key] || '').trim();
       if (v === '') { row[f.key] = f.required ? v : null; return; }
+      if (f.bool) { row[f.key] = v === 'true'; return; }
       row[f.key] = f.number ? Number(v) : v;
     });
     setSaving(true);

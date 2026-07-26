@@ -178,6 +178,13 @@ ok('reports include teacher-load and results families beyond enrol+fees',
 ok('reports export the live figures to CSV (real download, no fake data)',
   /Soo dejiso CSV/.test(reportsSrc) && /text\/csv/.test(reportsSrc) && !/AsyncStorage/.test(reportsSrc));
 
+/* ---------- 9h. timetable periods + school-days editors are wired (§7) ---------- */
+const ttSrc = read('src/screens/phase5/TimetableScreen.js');
+ok('timetable wires the periods editor (createTimetablePeriod)', /createTimetablePeriod/.test(ttSrc));
+ok('timetable wires the school-days editor (upsertSchoolDay)', /upsertSchoolDay/.test(ttSrc));
+ok('the module view coerces real booleans for boolean fields',
+  /if \(f\.bool\) \{ row\[f\.key\] = v === 'true'; return; \}/.test(moduleView));
+
 /* ---------- 10. correction pass: provisioning email + one-time credentials ---------- */
 const provSrc = read('src/screens/phase5/ProvisioningScreen.js');
 ok('provisioning lets the admin enter/correct an email before inviting', /inviteEmail/.test(provSrc) && /EMAIL_RE/.test(provSrc));
