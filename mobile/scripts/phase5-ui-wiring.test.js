@@ -185,6 +185,11 @@ ok('timetable wires the school-days editor (upsertSchoolDay)', /upsertSchoolDay/
 ok('the module view coerces real booleans for boolean fields',
   /if \(f\.bool\) \{ row\[f\.key\] = v === 'true'; return; \}/.test(moduleView));
 
+/* ---------- 9i. finance can generate invoices (finance staff only) ---------- */
+const finSrc = read('src/screens/phase5/FinanceLiveScreen.js');
+ok('finance wires generateInvoice behind a finance-staff-only control',
+  /generateInvoice/.test(finSrc) && /Samee biil/.test(finSrc) && /canRecordPayment \?/.test(finSrc));
+
 /* ---------- 10. correction pass: provisioning email + one-time credentials ---------- */
 const provSrc = read('src/screens/phase5/ProvisioningScreen.js');
 ok('provisioning lets the admin enter/correct an email before inviting', /inviteEmail/.test(provSrc) && /EMAIL_RE/.test(provSrc));

@@ -4,7 +4,7 @@
    rolls the invoice balance forward atomically). No fake totals; "La bixiyay"
    only ever reflects a real recorded payment. */
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, TextInput, ActivityIndicator, ScrollView } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import useActiveSchoolId from '../../hooks/useActiveSchoolId';
@@ -12,7 +12,7 @@ import { ModuleScreenFrame, useAsyncData, SaveButton, ErrorNote, SuccessNote } f
 import Phase5ModuleView from '../../components/Phase5ModuleView';
 import Icon from '../../components/Icon';
 import { p4List } from '../../services/phase4';
-import { listFeeStructures, createFeeStructure, listInvoices, recordPayment, p5FriendlyError } from '../../services/phase5';
+import { listFeeStructures, createFeeStructure, listInvoices, recordPayment, generateInvoice, p5FriendlyError } from '../../services/phase5';
 const { canRecordPayment: canRecordPaymentRole } = require('../../domain/phase5Access');
 
 function InvoicesSection() {
@@ -28,6 +28,38 @@ function InvoicesSection() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
   const [success, setSuccess] = useState('');
+
+  // generate-invoice state (finance staff only)
+  const [genOpen, setGenOpen] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [structs, setStructs] = useState([]);
+  const [genStudent, setGenStudent] = useState('');
+  const [genStruct, setGenStruct] = useState('');
+  const [genDue, setGenDue] = useState('');
+  const [genSaving, setGenSaving] = useState(false);
+  const [genErr, setGenErr] = useState(null);
+
+  const openGen = async () => {
+    setGenErr(null); setGenStudent(''); setGenStruct(''); setGenDue(''); setGenOpen(true);
+    try {
+      const [st, fs] = await Promise.all([p4List('students', schoolId), listFeeStructures(schoolId)]);
+      setStudents(st); setStructs(fs);
+    } catch (e) { setGenErr(p5FriendlyError(e)); }
+  };
+  const submitGen = async () => {
+    if (genSaving) return;
+    setGenErr(null);
+    if (!genStudent) { setGenErr('Dooro arday.'); return; }
+    if (!genStruct) { setGenErr('Dooro qaab-lacageed.'); return; }
+    if (genDue.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(genDue.trim())) { setGenErr('Taariikhda: qaabka waa YYYY-MM-DD.'); return; }
+    setGenSaving(true);
+    try {
+      await generateInvoice(schoolId, { studentId: genStudent, feeStructureId: genStruct, dueDate: genDue.trim() || null });
+      setGenOpen(false); setSuccess('Biilka waa la sameeyay.');
+      await reload();
+    } catch (e) { setGenErr(p5FriendlyError(e)); }
+    finally { setGenSaving(false); }
+  };
 
   const rows = data || [];
   const submit = async () => {
@@ -46,7 +78,15 @@ function InvoicesSection() {
 
   return (
     <View style={{ marginTop: 22 }}>
-      <Text style={[styles.section, { color: c.ink }]}>Biilasha ({rows.length})</Text>
+      <View style={styles.secHead}>
+        <Text style={[styles.section, { color: c.ink, marginBottom: 0 }]}>Biilasha ({rows.length})</Text>
+        {canRecordPayment ? (
+          <TouchableOpacity onPress={openGen} style={[styles.genBtn, { backgroundColor: c.blue }]}>
+            <Icon name="plus" size={14} color="#fff" strokeWidth={2.5} />
+            <Text style={styles.genTxt}>Samee biil</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
       <SuccessNote text={success} />
       {loading ? <View style={[styles.box, { backgroundColor: c.surface, borderColor: c.line }]}><ActivityIndicator color={c.blue} /></View>
       : error ? (
@@ -78,6 +118,47 @@ function InvoicesSection() {
           ))}
         </View>
       )}
+
+      <Modal visible={genOpen} transparent animationType="fade" onRequestClose={() => setGenOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setGenOpen(false)}>
+          <Pressable style={[styles.sheet, { backgroundColor: c.surface }]} onPress={() => {}}>
+            <Text style={[styles.sheetTitle, { color: c.ink }]}>Samee Biil</Text>
+            <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <Text style={[styles.lbl, { color: c.muted }]}>ARDAYGA</Text>
+            <View style={styles.pickRow}>
+              {students.length === 0 ? <Text style={[styles.boxSub, { color: c.muted2, textAlign: 'left' }]}>Arday lama helin.</Text>
+              : students.slice(0, 30).map((s) => {
+                const on = genStudent === s.id;
+                return (
+                  <TouchableOpacity key={s.id} onPress={() => setGenStudent(on ? '' : s.id)}
+                    style={[styles.pick, { borderColor: on ? c.blue : c.line2, backgroundColor: on ? c.blueSoft : c.surface }]}>
+                    <Text style={[styles.pickTxt, { color: on ? c.blue : c.muted }]} numberOfLines={1}>{s.full_name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={[styles.lbl, { color: c.muted }]}>QAAB-LACAGEEDKA</Text>
+            <View style={styles.pickRow}>
+              {structs.length === 0 ? <Text style={[styles.boxSub, { color: c.muted2, textAlign: 'left' }]}>Qaab-lacageed lama helin — marka hore samee.</Text>
+              : structs.map((f) => {
+                const on = genStruct === f.id;
+                return (
+                  <TouchableOpacity key={f.id} onPress={() => setGenStruct(on ? '' : f.id)}
+                    style={[styles.pick, { borderColor: on ? c.blue : c.line2, backgroundColor: on ? c.blueSoft : c.surface }]}>
+                    <Text style={[styles.pickTxt, { color: on ? c.blue : c.muted }]} numberOfLines={1}>{f.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={[styles.lbl, { color: c.muted }]}>TAARIIKHDA DHAMMAADKA (ikhtiyaari)</Text>
+            <TextInput value={genDue} onChangeText={setGenDue} placeholder="2026-12-01" placeholderTextColor={c.muted2}
+              style={[styles.input, { backgroundColor: c.bg, borderColor: c.line2, color: c.ink }]} />
+            <ErrorNote text={genErr} />
+            <SaveButton onPress={submitGen} saving={genSaving} label="Samee biil" />
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal visible={!!pay} transparent animationType="fade" onRequestClose={() => setPay(null)}>
         <Pressable style={styles.overlay} onPress={() => setPay(null)}>
@@ -126,6 +207,12 @@ export default function FinanceLiveScreen() {
 
 const styles = StyleSheet.create({
   section: { fontSize: 15, fontWeight: '800', marginBottom: 12 },
+  secHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  genBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12 },
+  genTxt: { color: '#fff', fontSize: 12.5, fontWeight: '800' },
+  pickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 6 },
+  pick: { borderWidth: 1.5, borderRadius: 10, paddingVertical: 7, paddingHorizontal: 11, maxWidth: '100%' },
+  pickTxt: { fontSize: 12, fontWeight: '700' },
   box: { borderRadius: 16, borderWidth: 1, padding: 22, alignItems: 'center', gap: 6 },
   boxSub: { fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 19 },
   list: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
