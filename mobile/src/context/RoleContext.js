@@ -1,0 +1,126 @@
+/* Current-role provider. Switching role changes the dashboard, the visible
+   tabs and the data scope. For the Teacher, the School-Admin-granted
+   permissions (persisted in AsyncStorage) are merged into the profile and
+   used to filter the teacher's navigation — so toggling a permission updates
+   the teacher's UI immediately and survives an app restart. */
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ROLES } from '../data/roles';
+import { setCurrentProfile } from '../data/access';
+import { getTeacherPermissions, saveTeacherPermissions, DEFAULT_TEACHER_PERMISSIONS } from '../services/permissionStorage';
+
+const KEY = 'kobciye_role';
+export const TEACHER_ID = 'teacher';
+
+/* nav item -> permission required for the Teacher to see it. Items not listed
+   are always visible (dashboard, classes, lessons, settings). */
+const NAV_PERMISSION = {
+  attendance: 'attendance_view',
+  exams: 'results_view',
+  incidents: 'incidents_view',
+  messages: 'messages_send',
+  reports: 'class_reports_view',
+};
+
+function teacherNav(perms) {
+  return ROLES.teacher.nav.filter((k) => {
+    const need = NAV_PERMISSION[k];
+    return !need || perms[need] === true;
+  });
+}
+
+const RoleContext = createContext({
+  role: 'schooladmin', profile: ROLES.schooladmin, setRole: () => {},
+  teacherPerms: DEFAULT_TEACHER_PERMISSIONS, setTeacherPermission: () => {},
+  setLiveIdentity: () => {},
+});
+
+export function RoleProvider({ children }) {
+  const [role, setRoleState] = useState('schooladmin');
+  const [teacherPerms, setTeacherPerms] = useState(DEFAULT_TEACHER_PERMISSIONS);
+  // Phase 3: in live (real Supabase) mode this holds the real user's identity
+  // (name, real school_id, school label). null in demo/preview mode. When set,
+  // it overrides the static preview identity so an authenticated user never
+  // shows the Dugsiga Hidaayada demo name/school.
+  const [liveIdentity, setLiveIdentityState] = useState(null);
+  const liveIdentityRef = useRef(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(KEY).then((v) => {
+      // A late demo-role read must never overwrite the authenticated database
+      // role that the live bridge has already installed.
+      if (!liveIdentityRef.current && v && ROLES[v]) setRoleState(v);
+    });
+    getTeacherPermissions(TEACHER_ID).then(setTeacherPerms);
+  }, []);
+
+  const setRole = useCallback((r, options = {}) => {
+    if (!ROLES[r]) return;
+    setRoleState(r);
+    // Persist only an explicit demo/preview role. The authenticated role is
+    // re-derived from the database profile on every launch and must not leak
+    // into a later signed-out demo session on this device.
+    if (options.persist !== false) AsyncStorage.setItem(KEY, r).catch(() => {});
+  }, []);
+
+  // set (pass identity object) or clear (pass null) the live identity override
+  const setLiveIdentity = useCallback((identity) => {
+    const next = identity || null;
+    liveIdentityRef.current = next;
+    setLiveIdentityState(next);
+  }, []);
+
+  // School Admin toggles one teacher permission — persist + update live state
+  const setTeacherPermission = (permKey, enabled) => {
+    setTeacherPerms((prev) => {
+      const next = { ...prev, [permKey]: !!enabled };
+      saveTeacherPermissions(TEACHER_ID, next).catch(() => {});
+      return next;
+    });
+  };
+
+  // the active profile; the Teacher gets merged permissions + filtered nav.
+  // In live mode the real identity (name / school_id / school label) is merged
+  // over the preview base so nav/labels stay intact but data scope is real.
+  const profile = useMemo(() => {
+    const base = ROLES[role];
+    let p = base;
+    if (role === 'teacher') {
+      // AsyncStorage permissions belong to the explicit demo prototype only.
+      // A real teacher's LIVE navigation is constrained by the central
+      // Phase 1–4 navigation policy + database RLS, never by local preview
+      // toggles left on this device.
+      p = liveIdentity
+        ? { ...base, permissions: [], nav: base.nav }
+        : { ...base, permissions: teacherPerms, nav: teacherNav(teacherPerms) };
+    }
+    if (liveIdentity) {
+      p = {
+        ...p,
+        live: true,
+        name: liveIdentity.name || p.name,
+        sub: liveIdentity.sub || p.sub,
+        // LIVE mode: the real DB school_id is authoritative — even when it is
+        // null (a Super Admin has platform scope, no single school). It must
+        // NEVER fall back to the demo base's '*' sentinel, which would then be
+        // sent to a uuid Supabase column and crash with
+        // `invalid input syntax for type uuid: "*"`. Super Admin picks a real
+        // school via SchoolContext.activeSchoolId instead.
+        school_id: liveIdentity.school_id != null ? liveIdentity.school_id : null,
+        profile_id: liveIdentity.profile_id || p.profile_id,
+      };
+    }
+    return p;
+  }, [role, teacherPerms, liveIdentity]);
+
+  // register the active profile so non-React modules (access.js) can read it
+  useEffect(() => { setCurrentProfile(profile); }, [profile]);
+
+  return (
+    <RoleContext.Provider value={{ role, profile, setRole, teacherPerms, setTeacherPermission, setLiveIdentity }}>
+      {children}
+    </RoleContext.Provider>
+  );
+}
+
+export const useRole = () => useContext(RoleContext);

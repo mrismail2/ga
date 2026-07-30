@@ -1,0 +1,10 @@
+{
+  "//": "Kobciye Edge Functions (Deno / Supabase Edge runtime). supabase-js is imported via the jsr: specifier directly in each function, so no import map is required. This file pins lint/fmt settings for the functions workspace.",
+  "lint": {
+    "rules": { "tags": ["recommended"] }
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "semiColons": true
+  }
+}

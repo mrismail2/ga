@@ -1,0 +1,85 @@
+# Kobciye — Supabase project config (supabase CLI)
+# Local dev: `supabase start` … hosted: `supabase link --project-ref <ref>` then `supabase db push`
+project_id = "kobciye"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:8081"
+# Phase 3: invite / password-set / reset links must redirect back to one of
+# these. The mobile deep link uses the "kobciye" scheme (see mobile/app.json);
+# the web build uses the /set-password and /reset-password paths.
+additional_redirect_urls = [
+  "exp://127.0.0.1:8081",
+  "http://localhost:19006",
+  "http://localhost:8081/set-password",
+  "http://localhost:8081/reset-password",
+  "kobciye://set-password",
+  "kobciye://reset-password",
+]
+jwt_expiry = 3600
+# Kobciye is INVITE-ONLY: schools + their first admin are created only by the
+# super_admin through the Edge Functions (admin invite). Public self-signup is
+# disabled. This does NOT affect inviteUserByEmail, password recovery, or the
+# one-time super_admin bootstrap (SQL Editor) — those are admin/service paths.
+# In the hosted project set the matching switch: Authentication → Providers →
+# Email → "Allow new users to sign up" = OFF.
+enable_signup = false
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = false
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+# ---------- Phase 3: Edge Functions ----------
+# verify_jwt = true means the platform rejects requests without a valid JWT
+# before our code runs; each function ALSO re-checks the caller's real role
+# from the database (defense in depth). Secrets (SUPABASE_SERVICE_ROLE_KEY is
+# provided automatically; KOBCIYE_INVITE_REDIRECT_URL, KOBCIYE_ALLOWED_ORIGINS
+# are set with `supabase secrets set …`) — see supabase/functions/.env.example.
+[functions.create-school-and-invite-admin]
+verify_jwt = true
+
+[functions.resend-school-admin-invite]
+verify_jwt = true
+
+[functions.cancel-school-invite]
+verify_jwt = true
+
+[functions.accept-school-invite]
+verify_jwt = true
+
+# Public authentication/recovery functions perform their own validation,
+# anti-enumeration and rate limiting; they must be callable before sign-in.
+[functions.identifier-login]
+verify_jwt = false
+
+[functions.request-password-reset]
+verify_jwt = false
+
+[functions.request-identifier-password-reset]
+verify_jwt = false
+
+[functions.verify-identifier-password-reset]
+verify_jwt = false
+
+[functions.provision-account]
+verify_jwt = true

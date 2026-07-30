@@ -1,0 +1,155 @@
+import React, { useState } from 'react';
+import { Modal, View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import Icon from './Icon';
+import { p4CreateClassCanonical, p4FriendlyError } from '../services/phase4';
+
+const GRADES = ['Dugsi Hoose', 'Dugsi Dhexe', 'Dugsi Sare'];
+const LEVEL_TYPES = ['primary', 'middle', 'secondary']; // canonical level per grade chip
+const COLORS = ['#5B5BD6', '#16A34A', '#CFAD5E', '#2F6BF0', '#0891B2', '#7C3AED', '#E5484D', '#B45309'];
+
+function Field({ label, value, onChangeText, placeholder, keyboardType }) {
+  const { c } = useTheme();
+  return (
+    <View style={styles.field}>
+      <Text style={[styles.fLabel, { color: c.muted }]}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={c.muted2}
+        keyboardType={keyboardType}
+        style={[styles.input, { backgroundColor: c.bg, borderColor: c.line, color: c.ink }]}
+      />
+    </View>
+  );
+}
+
+/* Real add-class form — name, grade, teacher, capacity and colour.
+
+   DEMO mode: on save it appends a new class row to the grid (unchanged
+   Phase 1/2 behaviour).
+
+   LIVE mode: the SAME form saves through the canonical repository
+   (p4CreateClassCanonical) — School Admin only, profile.school_id, the
+   active academic year, the selected school level, duplicate-name
+   protection and a stable DB id. The class then appears in Fasallada,
+   Maamulka Dugsiga, Admissions and teacher assignments because they all
+   read the same canonical rows. Teacher/colour inputs are hidden live:
+   teachers are linked through teacher_assignments, never a text field. */
+export default function AddClassModal({ visible, onClose, onAdd, onSaved, schoolId }) {
+  const { c } = useTheme();
+  const { isLive, roleKey, profile } = useAuth();
+  const [name, setName] = useState('');
+  const [teacher, setTeacher] = useState('');
+  const [grade, setGrade] = useState(0);
+  const [cap, setCap] = useState('40');
+  const [color, setColor] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const reset = () => { setName(''); setTeacher(''); setGrade(0); setCap('40'); setColor(0); setErr(null); };
+
+  const save = async () => {
+    if (!name.trim() || saving) return; // saving guard = no duplicate submissions
+    if (isLive) {
+      setSaving(true); setErr(null);
+      try {
+        const row = await p4CreateClassCanonical({
+          profile, roleKey,
+          // the RESOLVED active school (own school for School Admin, the
+          // picked school for Super Admin) — never a raw, possibly-null
+          // profile.school_id.
+          schoolId,
+          name, capacity: parseInt(cap, 10) || 40,
+          levelType: LEVEL_TYPES[grade],
+        });
+        if (onSaved) onSaved(row);
+        reset();
+        onClose();
+      } catch (e) { setErr(p4FriendlyError(e)); }
+      finally { setSaving(false); }
+      return;
+    }
+    // demo store — [name, grade, teacher, students, capacity, color, attendance%]
+    onAdd([name.trim(), GRADES[grade], teacher.trim() || 'Macalin', 0, parseInt(cap, 10) || 40, COLORS[color], 100]);
+    reset();
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity style={[styles.sheet, { backgroundColor: c.surface }]} activeOpacity={1}>
+          <View style={[styles.head, { borderBottomColor: c.line }]}>
+            <Text style={[styles.title, { color: c.ink }]}>Fasal Cusub Ku Dar</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={10}>
+              <Icon name="close" size={20} color={c.muted} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+            <Field label="MAGACA FASALKA" value={name} onChangeText={setName} placeholder="tusaale: Form 7B" />
+            {!isLive ? (
+              <Field label="MACALINKA" value={teacher} onChangeText={setTeacher} placeholder="Magaca macalinka" />
+            ) : null}
+            <Field label="QADKA ARDAYDA (CAPACITY)" value={cap} onChangeText={setCap} placeholder="40" keyboardType="number-pad" />
+
+            <Text style={[styles.fLabel, { color: c.muted }]}>HEERKA</Text>
+            <View style={styles.seg}>
+              {GRADES.map((g, i) => (
+                <TouchableOpacity key={g} onPress={() => setGrade(i)} style={[styles.segBtn, { borderColor: c.line, backgroundColor: grade === i ? c.blue : 'transparent' }]}>
+                  <Text style={[styles.segTxt, { color: grade === i ? '#fff' : c.ink2 }]}>{g}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {!isLive ? (
+              <>
+                <Text style={[styles.fLabel, { color: c.muted, marginTop: 14 }]}>MIDABKA</Text>
+                <View style={styles.colors}>
+                  {COLORS.map((col, i) => (
+                    <TouchableOpacity key={col} onPress={() => setColor(i)} style={[styles.swatch, { backgroundColor: col, borderWidth: color === i ? 3 : 0, borderColor: c.ink }]} />
+                  ))}
+                </View>
+              </>
+            ) : null}
+
+            {err ? <Text style={[styles.err, { color: c.rose }]}>{err}</Text> : null}
+
+            <View style={styles.foot}>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: c.bg, borderColor: c.line, borderWidth: 1 }]} onPress={onClose}>
+                <Text style={[styles.btnTxt, { color: c.ink2 }]}>Jooji</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.btn, { backgroundColor: name.trim() && !saving ? c.blue : c.muted2 }]} onPress={save} disabled={!name.trim() || saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Icon name="check" size={16} color="#fff" strokeWidth={2.2} />}
+                <Text style={[styles.btnTxt, { color: '#fff' }]}>Kaydi Fasalka</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(10,27,45,.45)', justifyContent: 'flex-end' },
+  sheet: { maxHeight: '90%', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1 },
+  title: { fontSize: 18, fontWeight: '800' },
+  body: { padding: 20, paddingBottom: 36 },
+  field: { marginBottom: 14 },
+  fLabel: { fontSize: 11.5, fontWeight: '700', letterSpacing: 0.3, marginBottom: 6 },
+  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, height: 46, fontSize: 14 },
+  seg: { flexDirection: 'row', gap: 8 },
+  segBtn: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 11, alignItems: 'center' },
+  segTxt: { fontSize: 12, fontWeight: '700' },
+  colors: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  swatch: { width: 38, height: 38, borderRadius: 19 },
+  err: { fontSize: 12.5, fontWeight: '700', marginTop: 14, lineHeight: 18 },
+  foot: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12 },
+  btnTxt: { fontSize: 14.5, fontWeight: '700' },
+});

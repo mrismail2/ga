@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Kobciye",
+    "slug": "kobciye-mobile",
+    "version": "1.0.0",
+    "scheme": "kobciye",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/kobciye-mark-white.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A2E6B"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kobciye.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A2E6B"
+      },
+      "package": "com.kobciye.mobile"
+    },
+    "web": {
+      "name": "Kobciye School Management",
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
