@@ -1,1 +1,5 @@
-dist-demo
+# Delivery artifacts built from files already tracked here — not committed.
+*.zip
+
+# Editor / OS noise
+.DS_Store
