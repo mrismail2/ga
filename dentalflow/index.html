@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="DentalFlow Pro — smart dental clinic management platform: patients, appointments, odontogram, billing, inventory and analytics in one place." />
+  <meta name="theme-color" content="#061436" />
+  <title>DentalFlow Pro — Dental Clinic Management System</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='19' font-size='19'>🦷</text></svg>" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="scrim" onclick="document.body.classList.remove('drawer')"></div>
+    <div class="main">
+      <header class="topbar" id="topbar"></header>
+      <main class="page" id="view"></main>
+    </div>
+  </div>
+  <div class="toasts" id="toasts"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
