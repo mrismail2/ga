@@ -66,14 +66,20 @@ export function ageOf(patient: { date_of_birth: string | null; age_years: number
   return patient.age_years != null ? `${patient.age_years} yrs` : '—';
 }
 
+const TITLES = ['dr.', 'dr', 'mr.', 'mrs.', 'ms.', 'prof.'];
+
+/** Drops honorifics so "Dr. Amina Warsame" initials as AW, not DA. */
 export function initials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  return nameParts(name).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function nameParts(name: string): string[] {
+  return name.split(' ').filter((w) => w && !TITLES.includes(w.toLowerCase()));
+}
+
+/** First name for greetings, ignoring any title. */
+export function firstName(name: string | null | undefined): string {
+  return name ? (nameParts(name)[0] ?? name) : '';
 }
 
 export function titleCase(value: string): string {

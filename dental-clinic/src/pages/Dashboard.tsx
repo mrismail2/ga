@@ -4,7 +4,7 @@ import { getDashboardSummary } from '@/services/admin';
 import { listAppointments } from '@/services/appointments';
 import { listPayments, listOutstanding } from '@/services/finance';
 import { listMedicineStock } from '@/services/pharmacy';
-import { money, isoDate, timeOnly, relative, titleCase } from '@/lib/format';
+import { money, isoDate, timeOnly, relative, titleCase, firstName } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Avatar, Badge, Card, EmptyState, PaymentBadge, QueryBoundary, StatCard,
@@ -52,7 +52,7 @@ export default function Dashboard() {
     <>
       <div className="page__head">
         <div>
-          <h1>Good day, {profile?.full_name?.split(' ')[0]}</h1>
+          <h1>Good day, {firstName(profile?.full_name)}</h1>
           <p>Everything happening in the clinic today, {new Date().toLocaleDateString('en-GB', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.</p>
         </div>

@@ -36,6 +36,19 @@ cp .env.example .env.local     # add your Supabase URL + anon key
 npm run dev
 ```
 
+### Try it without a backend
+
+```bash
+npm run demo      # http://localhost:5173
+```
+
+The demo build swaps the Supabase client for an in-memory one in `src/demo`,
+so every screen works with realistic sample data — useful for a walkthrough or
+for the screenshots in `screenshots/`. `npm run dev` and `npm run build` are
+unaffected and always use the real Supabase client.
+
+---
+
 Apply the database in the Supabase SQL editor (or `supabase db push`), in order:
 
 ```
@@ -159,6 +172,7 @@ dental-clinic/
 │   ├── migrations/          schema, functions, RLS, reference data
 │   └── test/                local Supabase stub + business-rule tests
 └── src/
+    ├── demo/                in-memory client + sample data for `npm run demo`
     ├── lib/                 supabase client, permissions, formatting
     ├── types/database.ts    types mirroring the SQL schema
     ├── services/            one module per domain; all queries live here

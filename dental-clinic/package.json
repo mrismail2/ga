@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "demo": "vite --config vite.demo.config.ts",
+    "build:demo": "vite build --config vite.demo.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

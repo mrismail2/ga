@@ -70,7 +70,7 @@ export default function AppShell() {
       label: 'Finance',
       items: [
         { to: '/payments', label: 'Payments', icon: 'payment', permission: 'finance.read' },
-        { to: '/outstanding', label: 'Outstanding balances', icon: 'balance', permission: 'finance.read',
+        { to: '/outstanding', label: 'Outstanding', icon: 'balance', permission: 'finance.read',
           badge: summary.data?.outstanding_patients, alert: (summary.data?.outstanding_patients ?? 0) > 0 },
         { to: '/expenses', label: 'Expenses', icon: 'expense', permission: 'finance.read' },
       ],
