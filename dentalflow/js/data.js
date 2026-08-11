@@ -144,19 +144,19 @@ const DF_DATA = (() => {
   ];
 
   const activity = [
-    { icon: 'check', color: '#10b981', text: 'Sara Fatima — Teeth Cleaning completed', time: '12 min ago' },
-    { icon: 'invoice', color: '#2563eb', text: 'Invoice INV-2406 generated for Ismail Abdi', time: '38 min ago' },
-    { icon: 'alert', color: '#f59e0b', text: 'Low stock alert: X-Ray Film (4 packs left)', time: '1 hr ago' },
-    { icon: 'user', color: '#8b5cf6', text: 'New patient registered: Ismail Abdi', time: '2 hrs ago' },
-    { icon: 'xray', color: '#06b6d4', text: 'X-Ray uploaded for Ali Raza (tooth 26)', time: '3 hrs ago' },
-    { icon: 'calendar', color: '#ec4899', text: 'Appointment rescheduled: Hamza Sheikh', time: '5 hrs ago' }
+    { icon: 'check',    tone: 'ok',     text: 'Sara Fatima — Teeth Cleaning completed', time: '12 min ago' },
+    { icon: 'invoice',  tone: 'brand',  text: 'Invoice INV-2406 generated for Ismail Abdi', time: '38 min ago' },
+    { icon: 'alert',    tone: 'warn',   text: 'Low stock alert: X-Ray Film (4 packs left)', time: '1 hr ago' },
+    { icon: 'user',     tone: 'violet', text: 'New patient registered: Ismail Abdi', time: '2 hrs ago' },
+    { icon: 'xray',     tone: 'teal',   text: 'X-Ray uploaded for Ali Raza (tooth 26)', time: '3 hrs ago' },
+    { icon: 'calendar', tone: 'pink',   text: 'Appointment rescheduled: Hamza Sheikh', time: '5 hrs ago' }
   ];
 
   const treatmentMix = [
-    { label: 'Completed', value: 72, color: '#10b981' },
-    { label: 'Ongoing', value: 28, color: '#2563eb' },
-    { label: 'Upcoming', value: 18, color: '#f59e0b' },
-    { label: 'Cancelled', value: 10, color: '#ef4444' }
+    { label: 'Completed', value: 72, color: '#0f9d6f' },
+    { label: 'Ongoing',   value: 28, color: '#2f6bf0' },
+    { label: 'Upcoming',  value: 18, color: '#c2820b' },
+    { label: 'Cancelled', value: 10, color: '#d33c3c' }
   ];
 
   const topServices = [
