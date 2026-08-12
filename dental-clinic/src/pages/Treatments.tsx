@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createTreatment, listAllTreatments, listTreatmentTypes, updateTreatment,
 } from '@/services/clinical';
-import { listDentists } from '@/services/admin';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
 import { dateOnly, money } from '@/lib/format';
@@ -17,6 +16,7 @@ import {
 import { Icon } from '@/components/ui/Icon';
 import RecordPaymentModal from '@/components/finance/RecordPaymentModal';
 import { useI18n } from '@/i18n';
+import { useDentists, useSoleDentist } from '@/hooks/useDentists';
 
 const STATUSES: (TreatmentStatus | 'all')[] = ['all', 'planned', 'approved', 'in_progress', 'completed', 'cancelled'];
 const PAGE_SIZE = 25;
@@ -169,7 +169,8 @@ export function NewTreatmentModal({
   const [error, setError] = useState<string | null>(null);
 
   const types = useQuery({ queryKey: ['treatment-types'], queryFn: () => listTreatmentTypes() });
-  const dentists = useQuery({ queryKey: ['dentists'], queryFn: listDentists });
+  const dentists = useDentists();
+  useSoleDentist(dentists.data, dentistId, setDentistId);
   const results = useQuery({
     queryKey: ['quick-search', term],
     queryFn: () => quickSearchPatients(term),

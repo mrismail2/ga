@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   checkIn, createAppointment, listAppointments, updateAppointmentStatus,
 } from '@/services/appointments';
-import { listDentists } from '@/services/admin';
 import { listTreatmentTypes } from '@/services/clinical';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
@@ -17,6 +16,7 @@ import {
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { useI18n } from '@/i18n';
+import { useDentists, useSoleDentist } from '@/hooks/useDentists';
 
 const STATUS_TONE: Record<AppointmentStatus, 'ok' | 'warn' | 'danger' | 'info' | 'muted'> = {
   scheduled: 'muted', confirmed: 'info', checked_in: 'info', waiting: 'warn',
@@ -58,7 +58,7 @@ export default function Appointments() {
     queryKey: ['appointments', from, to, dentistId],
     queryFn: () => listAppointments({ from, to, dentistId: dentistId || undefined }),
   });
-  const dentists = useQuery({ queryKey: ['dentists'], queryFn: listDentists });
+  const dentists = useDentists();
 
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: AppointmentStatus }) =>
@@ -198,7 +198,8 @@ function BookingModal({ open, onClose }: { open: boolean; onClose: () => void })
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const dentists = useQuery({ queryKey: ['dentists'], queryFn: listDentists });
+  const dentists = useDentists();
+  useSoleDentist(dentists.data, dentistId, setDentistId);
   const types = useQuery({ queryKey: ['treatment-types'], queryFn: () => listTreatmentTypes() });
   const results = useQuery({
     queryKey: ['quick-search', term],

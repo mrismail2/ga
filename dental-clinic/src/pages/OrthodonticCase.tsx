@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createOrthoVisit, getOrthoCase, listOrthoVisits, listTreatmentBalances, updateOrthoCase,
 } from '@/services/clinical';
-import { listDentists } from '@/services/admin';
 import { readableError } from '@/lib/supabase';
 import { dateOnly, isoDate, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +16,7 @@ import { Icon } from '@/components/ui/Icon';
 import RecordPaymentModal from '@/components/finance/RecordPaymentModal';
 import Receipt from '@/components/finance/Receipt';
 import { useI18n } from '@/i18n';
+import { useDentists, useSoleDentist } from '@/hooks/useDentists';
 
 /** Stored in English so the clinical record stays stable across languages. */
 const COMPLIANCE = ['Excellent', 'Good', 'Fair', 'Poor'];
@@ -203,7 +203,7 @@ function VisitModal({ caseId, open, onClose }: { caseId: string; open: boolean; 
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const { t, label } = useI18n();
-  const dentists = useQuery({ queryKey: ['dentists'], queryFn: listDentists });
+  const dentists = useDentists();
 
   const [form, setForm] = useState({
     visit_date: isoDate(),
@@ -217,6 +217,8 @@ function VisitModal({ caseId, open, onClose }: { caseId: string; open: boolean; 
     notes: '',
   });
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  useSoleDentist(dentists.data, form.dentist_id, (id) => set('dentist_id', id));
 
   const create = useMutation({
     mutationFn: createOrthoVisit,

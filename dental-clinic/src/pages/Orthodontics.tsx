@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createOrthoCase, listOrthoCases, listTreatmentBalances } from '@/services/clinical';
-import { listDentists } from '@/services/admin';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
 import { dateOnly, isoDate, money } from '@/lib/format';
@@ -13,6 +12,7 @@ import {
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { useI18n } from '@/i18n';
+import { useDentists, useSoleDentist } from '@/hooks/useDentists';
 
 /** Stored in English so the clinical record stays stable across languages. */
 const BRACES_TYPES = ['Metal fixed', 'Ceramic fixed', 'Self-ligating', 'Lingual', 'Clear aligners'];
@@ -132,7 +132,8 @@ function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => void })
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const dentists = useQuery({ queryKey: ['dentists'], queryFn: listDentists });
+  const dentists = useDentists();
+  useSoleDentist(dentists.data, dentistId, setDentistId);
   const results = useQuery({
     queryKey: ['quick-search', term],
     queryFn: () => quickSearchPatients(term),

@@ -170,6 +170,31 @@ reads from the database — there are no hardcoded numbers and no dead buttons.
 
 ---
 
+## The service list is the dentist's own
+
+**Settings → Services & prices** is the clinic's menu, editable by the admin at
+any time. Adding a service asks for a **name and a price** — nothing else is
+required. The internal code (`SCALING`, `RCT`) that receipts and exports use is
+generated from the name, deduplicated against the existing ones, and shown
+read-only afterwards.
+
+A service that the clinic does not offer is **switched off, never deleted**:
+
+- it disappears from the treatment and appointment pickers immediately;
+- it stays visible (greyed) in Settings so it can be switched back on;
+- treatments already recorded against it keep working, and keep the price they
+  were created with — changing a price here only affects new treatments.
+
+`0004_reference_data.sql` seeds the common dental services as a starting point.
+A clinic that does something different keeps the ones it does, switches off the
+rest, and adds its own — no migration, no developer.
+
+Because the clinic runs with a **single dentist**, the dentist field on
+bookings, treatments and braces visits fills itself in when exactly one active
+dentist exists. Add a second one and the choice comes back automatically.
+
+---
+
 ## Data integrity guarantees
 
 Enforced in PostgreSQL, verified by the test suite:

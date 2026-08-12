@@ -13,9 +13,66 @@ export async function listTreatmentTypes(activeOnly = true) {
   return (data ?? []) as TreatmentType[];
 }
 
-export async function upsertTreatmentType(input: Partial<TreatmentType> & { name: string; code: string }) {
+/**
+ * Codes are only there so receipts and exports read the same in either
+ * language — the dentist should never have to invent one, so we derive it from
+ * the name and add a numeric suffix until it is free.
+ */
+function slugCode(name: string, taken: string[]): string {
+  const words = name.trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .split(' ').filter(Boolean);
+
+  // Whole words only — a code cut mid-word ("BAARITAAN-XANJO-OO-G") is worse
+  // than a shorter one.
+  let base = '';
+  for (const word of words) {
+    const next = base ? `${base}-${word}` : word;
+    if (next.length > 24) break;
+    base = next;
+  }
+  if (!base) base = words[0]?.slice(0, 24) || 'ADEEG';
+  if (!taken.includes(base)) return base;
+  for (let n = 2; ; n += 1) {
+    const candidate = `${base}-${n}`;
+    if (!taken.includes(candidate)) return candidate;
+  }
+}
+
+export async function createTreatmentType(input: {
+  name: string; category: string; default_price: number;
+  is_active: boolean; code?: string;
+}) {
+  // Read the existing list so a new service lands at the end of the menu with
+  // a code that cannot collide with — and silently overwrite — another one.
+  const existing = await listTreatmentTypes(false);
+  const code = input.code?.trim()
+    ? slugCode(input.code, existing.map((t) => t.code))
+    : slugCode(input.name, existing.map((t) => t.code));
+  const sortOrder = Math.max(0, ...existing.map((t) => t.sort_order)) + 10;
+
   const { data, error } = await supabase
-    .from('treatment_types').upsert(input, { onConflict: 'code' }).select('*').single();
+    .from('treatment_types')
+    .insert({
+      code,
+      name: input.name,
+      category: input.category,
+      default_price: input.default_price,
+      is_active: input.is_active,
+      sort_order: sortOrder,
+    })
+    .select('*').single();
+  if (error) throw error;
+  return data as TreatmentType;
+}
+
+export async function updateTreatmentType(id: string, patch: Partial<TreatmentType>) {
+  const { data, error } = await supabase
+    .from('treatment_types')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*').single();
   if (error) throw error;
   return data as TreatmentType;
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSettings, updateSettings } from '@/services/admin';
-import { listTreatmentTypes, upsertTreatmentType } from '@/services/clinical';
+import { createTreatmentType, listTreatmentTypes, updateTreatmentType } from '@/services/clinical';
 import { readableError } from '@/lib/supabase';
 import { money } from '@/lib/format';
 import type { ClinicSettings, TreatmentType } from '@/types/database';
@@ -180,6 +180,11 @@ function TreatmentPrices() {
           <Icon name="plus" /> {t('set.addTreatment')}
         </Button>}
       >
+        <div className="alert tone-brand" style={{ margin: 14, display: 'block' }}>
+          <b className="text-sm">{t('set.serviceMenuTitle')}</b>
+          <p className="text-xs mt-8">{t('set.serviceMenuIntro')}</p>
+        </div>
+
         <QueryBoundary
           query={types}
           skeletonRows={8}
@@ -190,18 +195,21 @@ function TreatmentPrices() {
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
-                  <tr><th>{t('set.code')}</th><th>{t('common.treatment')}</th><th>{t('common.category')}</th>
-                    <th className="right">{t('set.defaultPrice')}</th><th>{t('common.status')}</th><th /></tr>
+                  <tr><th>{t('set.serviceName')}</th><th>{t('common.category')}</th>
+                    <th className="right">{t('set.defaultPrice')}</th>
+                    <th>{t('set.offeredHere')}</th><th /></tr>
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.id}>
-                      <td className="bold">{row.code}</td>
-                      <td>{row.name}</td>
+                    <tr key={row.id} className={row.is_active ? undefined : 'faint'}>
+                      <td>
+                        <b>{row.name}</b>
+                        <div className="text-2xs faint">{row.code}</div>
+                      </td>
                       <td>{label('tcat', row.category)}</td>
-                      <td className="right">{money(row.default_price)}</td>
+                      <td className="right bold">{money(row.default_price)}</td>
                       <td><Badge tone={row.is_active ? 'ok' : 'muted'}>
-                        {row.is_active ? t('pur.active') : t('pur.inactive')}
+                        {row.is_active ? t('set.offered') : t('set.notOffered')}
                       </Badge></td>
                       <td className="right">
                         <Button size="sm" onClick={() => setEditing(row)}>{t('common.edit')}</Button>
@@ -249,14 +257,19 @@ function TreatmentTypeModal({
   }
 
   const save = useMutation({
-    mutationFn: () => upsertTreatmentType({
-      ...(existing ? { id: existing.id } : {}),
-      code: form.code.trim().toUpperCase(),
-      name: form.name.trim(),
-      category: form.category,
-      default_price: Number(form.default_price),
-      is_active: form.is_active === 'true',
-    }),
+    mutationFn: () => (existing
+      ? updateTreatmentType(existing.id, {
+        name: form.name.trim(),
+        category: form.category,
+        default_price: Number(form.default_price),
+        is_active: form.is_active === 'true',
+      })
+      : createTreatmentType({
+        name: form.name.trim(),
+        category: form.category,
+        default_price: Number(form.default_price),
+        is_active: form.is_active === 'true',
+      })),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['treatment-types'] });
       notify(isNew ? t('set.typeAdded') : t('set.typeUpdated'));
@@ -276,7 +289,6 @@ function TreatmentTypeModal({
           <Button variant="primary" loading={save.isPending}
             onClick={() => {
               setError(null);
-              if (!form.code.trim()) { setError(t('set.errCode')); return; }
               if (!form.name.trim()) { setError(t('set.errName')); return; }
               save.mutate();
             }}>
@@ -287,30 +299,34 @@ function TreatmentTypeModal({
     >
       {error && <div className="login__error" role="alert">{error}</div>}
       <div className="form-grid">
-        <Field label={t('set.code')} required hint={t('set.codeHint')}>
-          <Input value={form.code} disabled={Boolean(existing)}
-            onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} />
+        <div className="full">
+          <Field label={t('set.serviceName')} required hint={t('set.serviceNameHint')}>
+            <Input value={form.name} autoFocus placeholder={t('set.serviceNamePlaceholder')}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          </Field>
+        </div>
+        <Field label={t('set.defaultPrice')} required hint={t('set.defaultPriceHint')}>
+          <Input type="number" min={0} step="0.01" value={form.default_price}
+            onChange={(e) => setForm((f) => ({ ...f, default_price: e.target.value }))} />
         </Field>
-        <Field label={t('common.name')} required>
-          <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-        </Field>
-        <Field label={t('common.category')}>
+        <Field label={t('common.category')} hint={t('set.categoryHint')}>
           <Select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
             {TREATMENT_CATEGORIES.map((c) => (
               <option key={c} value={c}>{label('tcat', c)}</option>
             ))}
           </Select>
         </Field>
-        <Field label={t('set.defaultPrice')} required>
-          <Input type="number" min={0} step="0.01" value={form.default_price}
-            onChange={(e) => setForm((f) => ({ ...f, default_price: e.target.value }))} />
-        </Field>
-        <Field label={t('common.status')}>
+        <Field label={t('common.status')} hint={t('set.statusHint')}>
           <Select value={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.value }))}>
-            <option value="true">{t('pur.active')}</option>
-            <option value="false">{t('pur.inactive')}</option>
+            <option value="true">{t('set.offered')}</option>
+            <option value="false">{t('set.notOffered')}</option>
           </Select>
         </Field>
+        {existing && (
+          <Field label={t('set.code')} hint={t('set.codeReadOnlyHint')}>
+            <Input value={existing.code} disabled />
+          </Field>
+        )}
       </div>
       <p className="text-2xs faint mt-12">{t('set.typeFootnote')}</p>
     </Modal>
