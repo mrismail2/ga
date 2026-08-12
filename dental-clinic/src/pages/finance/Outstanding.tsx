@@ -13,14 +13,15 @@ import { Icon } from '@/components/ui/Icon';
 import RecordPaymentModal from '@/components/finance/RecordPaymentModal';
 import Receipt from '@/components/finance/Receipt';
 import { listTreatmentBalances } from '@/services/clinical';
+import { useI18n } from '@/i18n';
 
 const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'unpaid', label: 'Unpaid' },
-  { id: 'partial', label: 'Partial' },
-  { id: 'overdue', label: 'Overdue' },
-  { id: 'braces', label: 'Braces' },
-  { id: 'other', label: 'Other treatments' },
+  { id: 'all', key: 'common.all' },
+  { id: 'unpaid', key: 'out.filterUnpaid' },
+  { id: 'partial', key: 'out.filterPartial' },
+  { id: 'overdue', key: 'out.filterOverdue' },
+  { id: 'braces', key: 'out.filterBraces' },
+  { id: 'other', key: 'out.filterOther' },
 ] as const;
 
 const PAGE_SIZE = 25;
@@ -31,6 +32,7 @@ const PAGE_SIZE = 25;
  */
 export default function Outstanding() {
   const { can } = useAuth();
+  const { t } = useI18n();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all');
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -61,36 +63,36 @@ export default function Outstanding() {
     <>
       <div className="page__head">
         <div>
-          <h1>Outstanding balances</h1>
-          <p>Patients paying in installments and anyone who still owes the clinic money.</p>
+          <h1>{t('out.title')}</h1>
+          <p>{t('out.subtitle')}</p>
         </div>
       </div>
 
       <div className="grid grid--4 mb-16">
-        <StatCard tone="brand" label="Total billed"
+        <StatCard tone="brand" label={t('out.totalBilled')}
           value={totals.data ? money(totals.data.billed) : '…'}
-          hint="Across unsettled treatments" />
-        <StatCard tone="ok" label="Collected"
+          hint={t('out.totalBilledHint')} />
+        <StatCard tone="ok" label={t('out.collected')}
           value={totals.data ? money(totals.data.collected) : '…'} />
-        <StatCard tone="danger" label="Still outstanding"
+        <StatCard tone="danger" label={t('out.stillOutstanding')}
           value={totals.data ? money(totals.data.outstanding) : '…'} />
-        <StatCard tone="warn" label="Open balances"
+        <StatCard tone="warn" label={t('out.openBalances')}
           value={totals.data ? totals.data.count : '…'}
-          hint="Treatments not fully paid" />
+          hint={t('out.openBalancesHint')} />
       </div>
 
       <Card padded={false}>
         <div className="toolbar">
           <Input
             value={search}
-            placeholder="Search name, patient ID or phone…"
+            placeholder={t('patients.searchPlaceholder')}
             onChange={(e) => setSearch(e.target.value)}
           />
           <div className="segmented">
             {FILTERS.map((f) => (
               <button key={f.id} className={cx(filter === f.id && 'is-active')}
                 onClick={() => { setFilter(f.id); setPage(1); }}>
-                {f.label}
+                {t(f.key)}
               </button>
             ))}
           </div>
@@ -99,18 +101,18 @@ export default function Outstanding() {
         <QueryBoundary
           query={{ ...query, data: query.data?.rows }}
           skeletonRows={8}
-          empty={<EmptyState title="Nothing outstanding"
-            description="Every treatment in this filter is fully paid." />}
+          empty={<EmptyState title={t('out.empty')}
+            description={t('out.emptyHint')} />}
         >
           {(rows) => (
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>Patient</th><th>Treatment</th>
-                    <th className="right">Total</th><th className="right">Paid</th>
-                    <th className="right">Balance</th><th>Status</th>
-                    <th>Last payment</th><th>Next appointment</th><th />
+                    <th>{t('common.patient')}</th><th>{t('common.treatment')}</th>
+                    <th className="right">{t('common.total')}</th><th className="right">{t('common.paid')}</th>
+                    <th className="right">{t('common.balance')}</th><th>{t('common.status')}</th>
+                    <th>{t('out.lastPayment')}</th><th>{t('out.nextAppointment')}</th><th />
                   </tr>
                 </thead>
                 <tbody>
@@ -126,9 +128,9 @@ export default function Outstanding() {
                         </Link>
                       </td>
                       <td>
-                        <b>{row.treatment_name ?? 'Treatment'}</b>
+                        <b>{row.treatment_name ?? t('common.treatment')}</b>
                         {row.is_orthodontic && (
-                          <div><Badge tone="violet">Braces</Badge></div>
+                          <div><Badge tone="violet">{t('out.braces')}</Badge></div>
                         )}
                       </td>
                       <td className="right">{money(row.final_cost)}</td>
@@ -138,17 +140,17 @@ export default function Outstanding() {
                       <td>
                         {row.last_payment_at
                           ? <span title={dateOnly(row.last_payment_at)}>{relative(row.last_payment_at)}</span>
-                          : <span className="faint">Never</span>}
+                          : <span className="faint">{t('out.never')}</span>}
                       </td>
                       <td>
                         {row.next_appointment_at
                           ? smartDate(row.next_appointment_at)
-                          : <span className="faint">None booked</span>}
+                          : <span className="faint">{t('out.noneBooked')}</span>}
                       </td>
                       <td className="right">
                         {can('finance.write') && (
                           <Button size="sm" variant="primary" onClick={() => setPayRow(row)}>
-                            <Icon name="payment" /> Payment
+                            <Icon name="payment" /> {t('profile.payment')}
                           </Button>
                         )}
                       </td>

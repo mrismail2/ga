@@ -7,7 +7,7 @@ import {
 import { listDentists } from '@/services/admin';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
-import { dateOnly, money, titleCase } from '@/lib/format';
+import { dateOnly, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { TreatmentBalance, TreatmentStatus } from '@/types/database';
 import {
@@ -16,12 +16,14 @@ import {
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import RecordPaymentModal from '@/components/finance/RecordPaymentModal';
+import { useI18n } from '@/i18n';
 
 const STATUSES: (TreatmentStatus | 'all')[] = ['all', 'planned', 'approved', 'in_progress', 'completed', 'cancelled'];
 const PAGE_SIZE = 25;
 
 export default function Treatments() {
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const [status, setStatus] = useState<TreatmentStatus | 'all'>('all');
@@ -39,7 +41,7 @@ export default function Treatments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['treatments'] });
       queryClient.invalidateQueries({ queryKey: ['treatment-balances'] });
-      notify('Treatment updated');
+      notify(t('treat.updated'));
     },
     onError: (e) => notify(readableError(e), 'danger'),
   });
@@ -48,13 +50,13 @@ export default function Treatments() {
     <>
       <div className="page__head">
         <div>
-          <h1>Dental treatments</h1>
-          <p>Every treatment recorded in the clinic, with its cost and what is still owed.</p>
+          <h1>{t('treat.title')}</h1>
+          <p>{t('treat.subtitle')}</p>
         </div>
         {can('clinical.write') && (
           <div className="page__actions">
             <Button variant="primary" onClick={() => setCreating(true)}>
-              <Icon name="plus" /> New treatment
+              <Icon name="plus" /> {t('treat.new')}
             </Button>
           </div>
         )}
@@ -66,7 +68,7 @@ export default function Treatments() {
             {STATUSES.map((s) => (
               <button key={s} className={cx(status === s && 'is-active')}
                 onClick={() => { setStatus(s); setPage(1); }}>
-                {s === 'all' ? 'All' : titleCase(s)}
+                {s === 'all' ? t('common.all') : label('status', s)}
               </button>
             ))}
           </div>
@@ -75,52 +77,57 @@ export default function Treatments() {
         <QueryBoundary
           query={{ ...query, data: query.data?.rows }}
           skeletonRows={8}
-          empty={<EmptyState title="No treatments recorded"
-            description="Create a treatment from a patient's chart or with the button above." />}
+          empty={<EmptyState title={t('treat.empty')}
+            description={t('treat.emptyHint')} />}
         >
           {(rows) => (
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>Patient</th><th>Treatment</th><th>Tooth</th><th>Status</th>
-                    <th className="right">Cost</th><th className="right">Paid</th>
-                    <th className="right">Balance</th><th>Payment</th><th />
+                    <th>{t('common.patient')}</th><th>{t('common.treatment')}</th>
+                    <th>{t('common.tooth')}</th><th>{t('common.status')}</th>
+                    <th className="right">{t('common.cost')}</th><th className="right">{t('common.paid')}</th>
+                    <th className="right">{t('common.balance')}</th><th>{t('profile.payment')}</th><th />
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((t) => (
-                    <tr key={t.treatment_id}>
+                  {rows.map((row) => (
+                    <tr key={row.treatment_id}>
                       <td>
-                        <Link to={`/patients/${t.patient_id}`} className="cell-user">
-                          <Avatar name={t.treatment_name ?? 'T'} size="sm" />
+                        <Link to={`/patients/${row.patient_id}`} className="cell-user">
+                          <Avatar name={row.treatment_name ?? 'T'} size="sm" />
                           <div>
-                            <b>Open patient</b>
-                            <small>{dateOnly(t.created_at)}</small>
+                            <b>{t('treat.openPatient')}</b>
+                            <small>{dateOnly(row.created_at)}</small>
                           </div>
                         </Link>
                       </td>
-                      <td><b>{t.treatment_name ?? 'Treatment'}</b></td>
-                      <td>{t.tooth_numbers?.length ? t.tooth_numbers.join(', ') : <span className="faint">—</span>}</td>
+                      <td><b>{row.treatment_name ?? t('common.treatment')}</b></td>
+                      <td>{row.tooth_numbers?.length
+                        ? row.tooth_numbers.join(', ')
+                        : <span className="faint">—</span>}</td>
                       <td>
-                        <Badge tone={t.status === 'completed' ? 'ok' : t.status === 'cancelled' ? 'danger' : 'info'}>
-                          {titleCase(t.status)}
+                        <Badge tone={row.status === 'completed' ? 'ok' : row.status === 'cancelled' ? 'danger' : 'info'}>
+                          {label('status', row.status)}
                         </Badge>
                       </td>
-                      <td className="right">{money(t.final_cost)}</td>
-                      <td className="right">{money(t.amount_paid)}</td>
-                      <td className={cx('right bold', t.balance > 0 && 'danger-text')}>{money(t.balance)}</td>
-                      <td><PaymentBadge status={t.payment_status} /></td>
+                      <td className="right">{money(row.final_cost)}</td>
+                      <td className="right">{money(row.amount_paid)}</td>
+                      <td className={cx('right bold', row.balance > 0 && 'danger-text')}>{money(row.balance)}</td>
+                      <td><PaymentBadge status={row.payment_status} /></td>
                       <td className="right">
                         <div className="row row--sm" style={{ justifyContent: 'flex-end' }}>
-                          {can('clinical.write') && t.status !== 'completed' && t.status !== 'cancelled' && (
+                          {can('clinical.write') && row.status !== 'completed' && row.status !== 'cancelled' && (
                             <Button size="sm"
-                              onClick={() => advance.mutate({ id: t.treatment_id, next: 'completed' })}>
-                              Complete
+                              onClick={() => advance.mutate({ id: row.treatment_id, next: 'completed' })}>
+                              {t('treat.complete')}
                             </Button>
                           )}
-                          {can('finance.write') && t.balance > 0 && (
-                            <Button size="sm" variant="primary" onClick={() => setPayFor(t)}>Payment</Button>
+                          {can('finance.write') && row.balance > 0 && (
+                            <Button size="sm" variant="primary" onClick={() => setPayFor(row)}>
+                              {t('profile.payment')}
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -150,6 +157,7 @@ export function NewTreatmentModal({
 }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t } = useI18n();
   const [term, setTerm] = useState('');
   const [patient, setPatient] = useState(presetPatient ?? null);
   const [typeId, setTypeId] = useState('');
@@ -174,7 +182,7 @@ export function NewTreatmentModal({
       queryClient.invalidateQueries({ queryKey: ['treatments'] });
       queryClient.invalidateQueries({ queryKey: ['treatment-balances'] });
       queryClient.invalidateQueries({ queryKey: ['outstanding'] });
-      notify('Treatment created');
+      notify(t('treat.created'));
       setCost(''); setTeeth(''); setNotes('');
       onClose();
     },
@@ -183,24 +191,24 @@ export function NewTreatmentModal({
 
   function pickType(id: string) {
     setTypeId(id);
-    const chosen = types.data?.find((t) => t.id === id);
+    const chosen = types.data?.find((type) => type.id === id);
     if (chosen && !cost) setCost(String(chosen.default_price));
   }
 
   function submit() {
     setError(null);
-    if (!patient) { setError('Select a patient.'); return; }
-    if (!typeId) { setError('Choose the treatment.'); return; }
+    if (!patient) { setError(t('common.selectPatient')); return; }
+    if (!typeId) { setError(t('treat.errType')); return; }
     const costValue = Number(cost);
     const discountValue = Number(discount || 0);
-    if (!Number.isFinite(costValue) || costValue < 0) { setError('Enter a valid cost.'); return; }
-    if (discountValue > costValue) { setError('Discount cannot be more than the cost.'); return; }
+    if (!Number.isFinite(costValue) || costValue < 0) { setError(t('treat.errCost')); return; }
+    if (discountValue > costValue) { setError(t('treat.errDiscount')); return; }
 
     create.mutate({
       patient_id: patient.id,
       treatment_type_id: typeId,
       dentist_id: dentistId || null,
-      tooth_numbers: teeth.split(',').map((t) => Number(t.trim())).filter((n) => Number.isInteger(n) && n > 0),
+      tooth_numbers: teeth.split(',').map((n) => Number(n.trim())).filter((n) => Number.isInteger(n) && n > 0),
       estimated_cost: costValue,
       discount: discountValue,
       status: 'in_progress',
@@ -214,28 +222,28 @@ export function NewTreatmentModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="New treatment"
+      title={t('treat.new')}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={create.isPending} onClick={submit}>Create treatment</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" loading={create.isPending} onClick={submit}>{t('treat.create')}</Button>
         </>
       }
     >
       {error && <div className="login__error" role="alert">{error}</div>}
 
       {!presetPatient && (
-        <Field label="Patient" required>
+        <Field label={t('common.patient')} required>
           {patient ? (
             <div className="row">
               <Avatar name={patient.full_name} size="sm" />
               <b className="text-sm">{patient.full_name}</b>
               <span className="text-xs faint">{patient.patient_code}</span>
-              <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>Change</Button>
+              <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>{t('common.change')}</Button>
             </div>
           ) : (
             <>
-              <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search patient…" />
+              <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder={t('common.searchPatient')} />
               <div className="col mt-8" style={{ gap: 4 }}>
                 {results.data?.map((p) => (
                   <button key={p.id} type="button" className="gsearch__item"
@@ -252,34 +260,34 @@ export function NewTreatmentModal({
       )}
 
       <div className="form-grid mt-16">
-        <Field label="Treatment" required>
+        <Field label={t('common.treatment')} required>
           <Select value={typeId} onChange={(e) => pickType(e.target.value)}>
-            <option value="">Choose…</option>
-            {types.data?.map((t) => (
-              <option key={t.id} value={t.id}>{t.name} — {money(t.default_price)}</option>
+            <option value="">{t('treat.choose')}</option>
+            {types.data?.map((type) => (
+              <option key={type.id} value={type.id}>{type.name} — {money(type.default_price)}</option>
             ))}
           </Select>
         </Field>
-        <Field label="Dentist">
+        <Field label={t('common.dentist')}>
           <Select value={dentistId} onChange={(e) => setDentistId(e.target.value)}>
-            <option value="">Unassigned</option>
+            <option value="">{t('common.unassigned')}</option>
             {dentists.data?.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
           </Select>
         </Field>
-        <Field label="Tooth numbers (FDI)" hint="Comma separated, e.g. 16, 26">
+        <Field label={t('treat.toothNumbers')} hint={t('treat.teethHint')}>
           <Input value={teeth} onChange={(e) => setTeeth(e.target.value)} placeholder="16, 26" />
         </Field>
-        <Field label="Cost" required>
+        <Field label={t('common.cost')} required>
           <Input type="number" min={0} step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
         </Field>
-        <Field label="Discount">
+        <Field label={t('common.discount')}>
           <Input type="number" min={0} step="0.01" value={discount} onChange={(e) => setDiscount(e.target.value)} />
         </Field>
-        <Field label="Final cost">
+        <Field label={t('treat.finalCost')}>
           <Input value={money(finalCost)} disabled />
         </Field>
         <div className="full">
-          <Field label="Notes">
+          <Field label={t('common.notes')}>
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
         </div>

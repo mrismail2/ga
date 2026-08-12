@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createSale, listMedicineStock, listSales } from '@/services/pharmacy';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
-import { dateTime, isoDate, money, titleCase } from '@/lib/format';
+import { dateTime, isoDate, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { PaymentMethod } from '@/types/database';
 import {
@@ -11,11 +11,13 @@ import {
   Select, StatCard, useToast,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
 
 const METHODS: PaymentMethod[] = ['cash', 'evc_plus', 'zaad', 'edahab', 'bank', 'other'];
 
 export default function Sales() {
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const [from, setFrom] = useState(isoDate(new Date(Date.now() - 7 * 86_400_000)));
   const [to, setTo] = useState(isoDate());
   const [selling, setSelling] = useState(false);
@@ -28,20 +30,20 @@ export default function Sales() {
     <>
       <div className="page__head">
         <div>
-          <h1>Pharmacy sales</h1>
-          <p>Walk-in and patient-linked medicine sales. Stock is deducted automatically.</p>
+          <h1>{t('sale.title')}</h1>
+          <p>{t('sale.subtitle')}</p>
         </div>
         {can('pharmacy.write') && (
           <div className="page__actions">
-            <Button variant="primary" onClick={() => setSelling(true)}><Icon name="plus" /> New sale</Button>
+            <Button variant="primary" onClick={() => setSelling(true)}><Icon name="plus" /> {t('sale.new')}</Button>
           </div>
         )}
       </div>
 
       <div className="grid grid--3 mb-16">
-        <StatCard tone="ok" label="Sales in this period" value={money(total)} />
-        <StatCard tone="brand" label="Transactions" value={(sales.data ?? []).length} />
-        <StatCard tone="warn" label="Period" value={`${from} → ${to}`} />
+        <StatCard tone="ok" label={t('sale.statSales')} value={money(total)} />
+        <StatCard tone="brand" label={t('sale.statTransactions')} value={(sales.data ?? []).length} />
+        <StatCard tone="warn" label={t('common.period')} value={`${from} → ${to}`} />
       </div>
 
       <Card padded={false}>
@@ -53,23 +55,24 @@ export default function Sales() {
         <QueryBoundary
           query={sales}
           skeletonRows={7}
-          empty={<EmptyState title="No sales in this period"
-            description="Record a sale to see it here and in the financial reports." />}
+          empty={<EmptyState title={t('sale.empty')}
+            description={t('sale.emptyHint')} />}
         >
           {(rows) => (
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
-                  <tr><th>Sale</th><th>When</th><th>Patient</th><th>Method</th>
-                    <th>Sold by</th><th className="right">Total</th></tr>
+                  <tr><th>{t('sale.colSale')}</th><th>{t('common.when')}</th>
+                    <th>{t('common.patient')}</th><th>{t('common.method')}</th>
+                    <th>{t('sale.soldBy')}</th><th className="right">{t('common.total')}</th></tr>
                 </thead>
                 <tbody>
                   {rows.map((s) => (
                     <tr key={s.id}>
                       <td className="bold">{s.sale_number}</td>
                       <td>{dateTime(s.sold_at)}</td>
-                      <td>{s.patient?.full_name ?? <span className="faint">Walk-in</span>}</td>
-                      <td>{titleCase(s.payment_method)}</td>
+                      <td>{s.patient?.full_name ?? <span className="faint">{t('sale.walkIn')}</span>}</td>
+                      <td>{label('method', s.payment_method)}</td>
                       <td>{s.sold_by_profile?.full_name ?? '—'}</td>
                       <td className="right bold">{money(s.total_amount)}</td>
                     </tr>
@@ -91,6 +94,7 @@ interface Line { medicine_id: string; name: string; quantity: number; unit_price
 function SaleModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t, label } = useI18n();
   const stock = useQuery({ queryKey: ['stock'], queryFn: () => listMedicineStock({}) });
 
   const [lines, setLines] = useState<Line[]>([]);
@@ -118,7 +122,7 @@ function SaleModal({ open, onClose }: { open: boolean; onClose: () => void }) {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['stock'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      notify(`Sale ${sale.sale_number} recorded — ${money(sale.total_amount)}`);
+      notify(`${t('sale.recorded', { number: sale.sale_number })} — ${money(sale.total_amount)}`);
       tokenRef.current = crypto.randomUUID();
       setLines([]); setPatient(null); setTerm('');
       onClose();
@@ -147,19 +151,22 @@ function SaleModal({ open, onClose }: { open: boolean; onClose: () => void }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="New pharmacy sale"
+      title={t('sale.modalTitle')}
       wide
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" loading={sell.isPending}
             onClick={() => {
               setError(null);
-              if (!lines.length) { setError('Add at least one medicine.'); return; }
-              if (overStock) { setError(`Only ${overStock.available} of ${overStock.name} in stock.`); return; }
+              if (!lines.length) { setError(t('sale.errItems')); return; }
+              if (overStock) {
+                setError(t('sale.errStock', { available: overStock.available, name: overStock.name }));
+                return;
+              }
               sell.mutate();
             }}>
-            Record sale · {money(total)}
+            {t('sale.submit')} · {money(total)}
           </Button>
         </>
       }
@@ -167,32 +174,32 @@ function SaleModal({ open, onClose }: { open: boolean; onClose: () => void }) {
       {error && <div className="login__error" role="alert">{error}</div>}
 
       <div className="form-grid mb-16">
-        <Field label="Medicine" hint="Only medicines with usable stock can be sold">
+        <Field label={t('rx.medicine')} hint={t('sale.medicineHint')}>
           <Select value={pick} onChange={(e) => addLine(e.target.value)}>
-            <option value="">Add a medicine…</option>
+            <option value="">{t('sale.addMedicine')}</option>
             {stock.data?.filter((m) => m.usable_quantity > 0).map((m) => (
               <option key={m.medicine_id} value={m.medicine_id}>
-                {m.name} {m.strength} — {m.usable_quantity} in stock · {money(m.selling_price)}
+                {m.name} {m.strength} — {m.usable_quantity} {t('rx.inStock')} · {money(m.selling_price)}
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Payment method">
+        <Field label={t('pay.methodLabel')}>
           <Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
-            {METHODS.map((m) => <option key={m} value={m}>{titleCase(m)}</option>)}
+            {METHODS.map((m) => <option key={m} value={m}>{label('method', m)}</option>)}
           </Select>
         </Field>
         <div className="full">
-          <Field label="Patient (optional)" hint="Leave empty for a walk-in customer">
+          <Field label={t('sale.patientOptional')} hint={t('sale.patientHint')}>
             {patient ? (
               <div className="row">
                 <Avatar name={patient.full_name} size="sm" />
                 <b className="text-sm">{patient.full_name}</b>
-                <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>Clear</Button>
+                <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>{t('sale.clear')}</Button>
               </div>
             ) : (
               <>
-                <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search patient…" />
+                <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder={t('common.searchPatient')} />
                 <div className="col mt-8" style={{ gap: 4 }}>
                   {results.data?.map((p) => (
                     <button key={p.id} type="button" className="gsearch__item"
@@ -210,13 +217,14 @@ function SaleModal({ open, onClose }: { open: boolean; onClose: () => void }) {
       </div>
 
       {lines.length === 0 ? (
-        <EmptyState title="No items yet" description="Choose a medicine above to start the sale." />
+        <EmptyState title={t('sale.noItems')} description={t('sale.noItemsHint')} />
       ) : (
         <div className="table-wrap">
           <table className="tbl">
             <thead>
-              <tr><th>Medicine</th><th className="right">In stock</th><th>Quantity</th>
-                <th>Unit price</th><th className="right">Line total</th><th /></tr>
+              <tr><th>{t('rx.medicine')}</th><th className="right">{t('med.colInStock')}</th>
+                <th>{t('common.quantity')}</th><th>{t('sale.unitPrice')}</th>
+                <th className="right">{t('sale.lineTotal')}</th><th /></tr>
             </thead>
             <tbody>
               {lines.map((l, i) => (
@@ -238,13 +246,13 @@ function SaleModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <td className="right bold">{money(l.quantity * l.unit_price)}</td>
                   <td className="right">
                     <Button size="sm" onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))}>
-                      Remove
+                      {t('common.remove')}
                     </Button>
                   </td>
                 </tr>
               ))}
               <tr>
-                <td colSpan={4} className="right bold">Total</td>
+                <td colSpan={4} className="right bold">{t('common.total')}</td>
                 <td className="right bold">{money(total)}</td>
                 <td />
               </tr>

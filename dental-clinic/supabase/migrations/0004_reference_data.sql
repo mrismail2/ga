@@ -9,28 +9,31 @@
 
 insert into clinic_settings (id) values (true) on conflict (id) do nothing;
 
+-- Names are in Af-Soomaali because that is the language the clinic works in.
+-- The codes stay in English so they read the same in exports and receipts, and
+-- every name can be edited from Settings → Treatments & prices.
 insert into treatment_types (code, name, category, default_price, sort_order) values
-  ('CONSULT',    'Consultation',              'general',       5,   10),
-  ('EXAM',       'Dental examination',        'general',       5,   20),
-  ('SCALING',    'Scaling / cleaning',        'preventive',    20,  30),
-  ('FILLING',    'Filling',                   'restorative',   25,  40),
-  ('EXTRACT',    'Tooth extraction',          'surgical',      15,  50),
-  ('EXTRACT_S',  'Surgical extraction',       'surgical',      40,  60),
-  ('RCT',        'Root canal treatment',      'endodontic',    120, 70),
-  ('CROWN',      'Crown',                     'prosthetic',    150, 80),
-  ('BRIDGE',     'Bridge',                    'prosthetic',    300, 90),
-  ('IMPLANT',    'Implant',                   'surgical',      600, 100),
-  ('DENTURE',    'Denture',                   'prosthetic',    250, 110),
-  ('WHITENING',  'Teeth whitening',           'cosmetic',      80,  120),
-  ('ORTHO',      'Orthodontics / braces',     'orthodontic',   500, 130),
-  ('ORTHO_ADJ',  'Braces adjustment',         'orthodontic',   10,  140),
-  ('RETAINER',   'Retainer',                  'orthodontic',   90,  150),
-  ('PEDO',       'Pediatric dental treatment','pediatric',     20,  160),
-  ('GUM',        'Gum treatment',             'periodontal',   35,  170),
-  ('OTHER',      'Other',                     'general',       0,   999)
+  ('CONSULT',    'La-talin',                     'general',       5,   10),
+  ('EXAM',       'Baaritaan ilkeed',             'general',       5,   20),
+  ('SCALING',    'Nadiifin ilkeed',              'preventive',    20,  30),
+  ('FILLING',    'Buuxin ilig',                  'restorative',   25,  40),
+  ('EXTRACT',    'Siibid ilig',                  'surgical',      15,  50),
+  ('EXTRACT_S',  'Siibid qalliin ah',            'surgical',      40,  60),
+  ('RCT',        'Daaweynta xididka iliga',      'endodontic',    120, 70),
+  ('CROWN',      'Koron (dhar ilig)',            'prosthetic',    150, 80),
+  ('BRIDGE',     'Buundo ilkeed',                'prosthetic',    300, 90),
+  ('IMPLANT',    'Ilig la beero',                'surgical',      600, 100),
+  ('DENTURE',    'Ilko rakiban',                 'prosthetic',    250, 110),
+  ('WHITENING',  'Caddeynta ilkaha',             'cosmetic',      80,  120),
+  ('ORTHO',      'Qalinka ilkaha',               'orthodontic',   500, 130),
+  ('ORTHO_ADJ',  'Hagaajinta qalinka',           'orthodontic',   10,  140),
+  ('RETAINER',   'Hayaha ilkaha',                'orthodontic',   90,  150),
+  ('PEDO',       'Daaweynta ilkaha carruurta',   'pediatric',     20,  160),
+  ('GUM',        'Daaweynta xanjada',            'periodontal',   35,  170),
+  ('OTHER',      'Kale',                         'general',       0,   999)
 on conflict (code) do nothing;
 
 insert into medicine_categories (name) values
-  ('Antibiotic'), ('Analgesic'), ('Anaesthetic'), ('Anti-inflammatory'),
-  ('Antiseptic / mouthwash'), ('Fluoride / preventive'), ('Disposable'), ('Other')
+  ('Antibiyootig'), ('Xanuun-joojiye'), ('Suuxin'), ('Barar-joojiye'),
+  ('Antiseptig / af-dhaqe'), ('Fluoride / ka-hortag'), ('Hal-mar isticmaal'), ('Kale')
 on conflict (name) do nothing;

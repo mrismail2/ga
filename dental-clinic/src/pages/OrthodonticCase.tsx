@@ -6,7 +6,7 @@ import {
 } from '@/services/clinical';
 import { listDentists } from '@/services/admin';
 import { readableError } from '@/lib/supabase';
-import { dateOnly, isoDate, money, titleCase } from '@/lib/format';
+import { dateOnly, isoDate, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { OrthoStatus, TreatmentBalance } from '@/types/database';
 import {
@@ -16,10 +16,15 @@ import {
 import { Icon } from '@/components/ui/Icon';
 import RecordPaymentModal from '@/components/finance/RecordPaymentModal';
 import Receipt from '@/components/finance/Receipt';
+import { useI18n } from '@/i18n';
+
+/** Stored in English so the clinical record stays stable across languages. */
+const COMPLIANCE = ['Excellent', 'Good', 'Fair', 'Poor'];
 
 export default function OrthodonticCase() {
   const { id = '' } = useParams();
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const [visitOpen, setVisitOpen] = useState(false);
@@ -39,15 +44,15 @@ export default function OrthodonticCase() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ortho-case', id] });
       queryClient.invalidateQueries({ queryKey: ['ortho-cases'] });
-      notify('Case updated');
+      notify(t('ortho.caseUpdated'));
     },
     onError: (e) => notify(readableError(e), 'danger'),
   });
 
   if (caseQuery.isPending) return <Skeleton rows={8} />;
   if (caseQuery.isError || !caseQuery.data) {
-    return <EmptyState title="Case not found"
-      action={<Link className="btn btn--sm" to="/orthodontics">Back to cases</Link>} />;
+    return <EmptyState title={t('ortho.caseNotFound')}
+      action={<Link className="btn btn--sm" to="/orthodontics">{t('ortho.backToCases')}</Link>} />;
   }
 
   const c = caseQuery.data;
@@ -58,7 +63,7 @@ export default function OrthodonticCase() {
   return (
     <>
       <div className="crumbs">
-        <Link to="/orthodontics">Orthodontics</Link>
+        <Link to="/orthodontics">{t('nav.orthodontics')}</Link>
         <Icon name="chevronRight" size={12} />
         <span>{c.patient?.full_name}</span>
       </div>
@@ -66,47 +71,48 @@ export default function OrthodonticCase() {
       <div className="page__head">
         <div>
           <h1>{c.patient?.full_name}</h1>
-          <p>{c.braces_type} · started {dateOnly(c.start_date)} · {c.patient?.patient_code}</p>
+          <p>{label('braces', c.braces_type)} · {t('profile.started')} {dateOnly(c.start_date)} · {c.patient?.patient_code}</p>
         </div>
         <div className="page__actions">
           <Link className="btn" to={`/patients/${c.patient_id}`}>
-            <Icon name="patients" /> Patient record
+            <Icon name="patients" /> {t('ortho.patientRecord')}
           </Link>
           {can('clinical.write') && (
-            <Button onClick={() => setVisitOpen(true)}><Icon name="plus" /> Record visit</Button>
+            <Button onClick={() => setVisitOpen(true)}><Icon name="plus" /> {t('ortho.recordVisit')}</Button>
           )}
           {can('finance.write') && balance && balance.balance > 0 && (
             <Button variant="primary" onClick={() => setPayOpen(true)}>
-              <Icon name="payment" /> Record payment
+              <Icon name="payment" /> {t('pay.title')}
             </Button>
           )}
         </div>
       </div>
 
       <div className="grid grid--4 mb-16">
-        <StatCard tone="brand" label="Total cost" value={balance ? money(balance.final_cost) : '…'} />
-        <StatCard tone="ok" label="Paid so far" value={balance ? money(balance.amount_paid) : '…'}
-          hint={balance ? `${balance.payment_count ?? 0} payment(s)` : undefined} />
-        <StatCard tone="danger" label="Remaining balance" value={balance ? money(balance.balance) : '…'}
-          hint={balance?.payment_status ? titleCase(balance.payment_status) : undefined} />
-        <StatCard tone="violet" label="Next visit"
-          value={nextVisit ? dateOnly(nextVisit) : 'Not set'}
-          hint={`${visits.data?.length ?? 0} visits recorded`} />
+        <StatCard tone="brand" label={t('ortho.statTotal')} value={balance ? money(balance.final_cost) : '…'} />
+        <StatCard tone="ok" label={t('ortho.statPaid')} value={balance ? money(balance.amount_paid) : '…'}
+          hint={balance ? `${balance.payment_count ?? 0} ${t('ortho.payments')}` : undefined} />
+        <StatCard tone="danger" label={t('ortho.statRemaining')} value={balance ? money(balance.balance) : '…'}
+          hint={balance?.payment_status ? label('status', balance.payment_status) : undefined} />
+        <StatCard tone="violet" label={t('ortho.statNextVisit')}
+          value={nextVisit ? dateOnly(nextVisit) : t('common.notSet')}
+          hint={`${visits.data?.length ?? 0} ${t('ortho.visitsRecorded')}`} />
       </div>
 
       <div className="grid grid--wide">
-        <Card title="Adjustment history" subtitle="Every visit is kept permanently" padded={false}>
+        <Card title={t('ortho.adjustmentHistory')} subtitle={t('ortho.adjustmentHistoryHint')} padded={false}>
           <QueryBoundary
             query={visits}
-            empty={<EmptyState title="No visits recorded yet"
-              description="Record the first adjustment when the patient comes back." />}
+            empty={<EmptyState title={t('ortho.noVisits')}
+              description={t('ortho.noVisitsHint')} />}
           >
             {(rows) => (
               <div className="table-wrap">
                 <table className="tbl">
                   <thead>
-                    <tr><th>Date</th><th>Dentist</th><th>Adjustment</th><th>Archwire</th>
-                      <th>Compliance</th><th>Next visit</th></tr>
+                    <tr><th>{t('common.date')}</th><th>{t('common.dentist')}</th>
+                      <th>{t('ortho.colAdjustment')}</th><th>{t('ortho.colArchwire')}</th>
+                      <th>{t('ortho.colCompliance')}</th><th>{t('ortho.colNextVisit')}</th></tr>
                   </thead>
                   <tbody>
                     {rows.map((v) => (
@@ -118,7 +124,7 @@ export default function OrthodonticCase() {
                           {v.observation && <div className="text-2xs faint">{v.observation}</div>}
                         </td>
                         <td>{v.archwire_change ?? '—'}</td>
-                        <td>{v.compliance ?? '—'}</td>
+                        <td>{v.compliance ? label('comp', v.compliance) : '—'}</td>
                         <td>{v.next_visit_date ? dateOnly(v.next_visit_date) : '—'}</td>
                       </tr>
                     ))}
@@ -130,9 +136,9 @@ export default function OrthodonticCase() {
         </Card>
 
         <div className="col" style={{ gap: 16 }}>
-          <Card title="Case details" actions={
+          <Card title={t('ortho.caseDetails')} actions={
             <Badge tone={c.status === 'active' ? 'info' : c.status === 'completed' ? 'ok' : 'muted'}>
-              {titleCase(c.status)}
+              {label('status', c.status)}
             </Badge>
           }>
             <div className="row mb-16">
@@ -143,38 +149,38 @@ export default function OrthodonticCase() {
               </div>
             </div>
             <div className="kv">
-              <div><small>Braces type</small><b>{c.braces_type}</b></div>
-              <div><small>Arches</small>
-                <b>{[c.upper_arch && 'Upper', c.lower_arch && 'Lower'].filter(Boolean).join(' + ')}</b></div>
-              <div><small>Start date</small><b>{dateOnly(c.start_date)}</b></div>
-              <div><small>Estimated</small><b>{c.estimated_months ?? '—'} months</b></div>
-              <div><small>Dentist</small><b>{c.dentist?.full_name ?? '—'}</b></div>
-              <div><small>Stage</small><b>{c.current_stage ?? 'Not set'}</b></div>
+              <div><small>{t('ortho.bracesType')}</small><b>{label('braces', c.braces_type)}</b></div>
+              <div><small>{t('ortho.arches')}</small>
+                <b>{[c.upper_arch && t('ortho.upper'), c.lower_arch && t('ortho.lower')]
+                  .filter(Boolean).join(' + ')}</b></div>
+              <div><small>{t('ortho.startDate')}</small><b>{dateOnly(c.start_date)}</b></div>
+              <div><small>{t('ortho.estimated')}</small>
+                <b>{c.estimated_months ?? '—'} {t('common.months')}</b></div>
+              <div><small>{t('common.dentist')}</small><b>{c.dentist?.full_name ?? '—'}</b></div>
+              <div><small>{t('ortho.stage')}</small><b>{c.current_stage ?? t('common.notSet')}</b></div>
             </div>
             {c.notes && <p className="text-xs muted mt-16">{c.notes}</p>}
 
             {can('clinical.write') && c.status === 'active' && (
               <Button className="w-full mt-16" loading={setStatus.isPending}
                 onClick={() => setStatus.mutate('completed')}>
-                Mark case completed
+                {t('ortho.markCompleted')}
               </Button>
             )}
           </Card>
 
           {balance && (
-            <Card title="Installment progress">
+            <Card title={t('ortho.installmentProgress')}>
               <div className="row between text-sm bold mb-8">
-                <span>{money(balance.amount_paid)} of {money(balance.final_cost)}</span>
+                <span>{money(balance.amount_paid)} / {money(balance.final_cost)}</span>
                 <span className={balance.balance > 0 ? 'danger-text' : 'ok-text'}>
-                  {money(balance.balance)} left
+                  {money(balance.balance)} {t('ortho.left')}
                 </span>
               </div>
               <div className="progress">
                 <i style={{ width: `${balance.final_cost ? Math.min(100, (balance.amount_paid / balance.final_cost) * 100) : 0}%` }} />
               </div>
-              <p className="text-2xs faint mt-12">
-                The remaining balance is calculated from the recorded payments — it is never typed in by hand.
-              </p>
+              <p className="text-2xs faint mt-12">{t('ortho.derivedNote')}</p>
             </Card>
           )}
         </div>
@@ -196,6 +202,7 @@ export default function OrthodonticCase() {
 function VisitModal({ caseId, open, onClose }: { caseId: string; open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t, label } = useI18n();
   const dentists = useQuery({ queryKey: ['dentists'], queryFn: listDentists });
 
   const [form, setForm] = useState({
@@ -215,7 +222,7 @@ function VisitModal({ caseId, open, onClose }: { caseId: string; open: boolean; 
     mutationFn: createOrthoVisit,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ortho-visits', caseId] });
-      notify('Visit recorded');
+      notify(t('ortho.visitRecorded'));
       onClose();
     },
     onError: (e) => notify(readableError(e), 'danger'),
@@ -225,10 +232,10 @@ function VisitModal({ caseId, open, onClose }: { caseId: string; open: boolean; 
     <Modal
       open={open}
       onClose={onClose}
-      title="Record adjustment visit"
+      title={t('ortho.visitTitle')}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" loading={create.isPending}
             onClick={() => create.mutate({
               case_id: caseId,
@@ -242,56 +249,53 @@ function VisitModal({ caseId, open, onClose }: { caseId: string; open: boolean; 
               next_visit_date: form.next_visit_date || null,
               notes: form.notes.trim() || null,
             })}>
-            Save visit
+            {t('ortho.saveVisit')}
           </Button>
         </>
       }
     >
       <div className="form-grid">
-        <Field label="Visit date" required>
+        <Field label={t('ortho.visitDate')} required>
           <Input type="date" value={form.visit_date} onChange={(e) => set('visit_date', e.target.value)} />
         </Field>
-        <Field label="Dentist">
+        <Field label={t('common.dentist')}>
           <Select value={form.dentist_id} onChange={(e) => set('dentist_id', e.target.value)}>
-            <option value="">Unassigned</option>
+            <option value="">{t('common.unassigned')}</option>
             {dentists.data?.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
           </Select>
         </Field>
-        <Field label="Adjustment performed">
+        <Field label={t('ortho.adjustmentDone')}>
           <Input value={form.adjustment} onChange={(e) => set('adjustment', e.target.value)}
-            placeholder="Tightened upper arch…" />
+            placeholder={t('ortho.adjustmentPlaceholder')} />
         </Field>
-        <Field label="Archwire change">
+        <Field label={t('ortho.archwireChange')}>
           <Input value={form.archwire_change} onChange={(e) => set('archwire_change', e.target.value)}
             placeholder="0.016 NiTi → 0.018 SS" />
         </Field>
-        <Field label="Elastics">
+        <Field label={t('ortho.elastics')}>
           <Input value={form.elastics} onChange={(e) => set('elastics', e.target.value)} />
         </Field>
-        <Field label="Patient compliance">
+        <Field label={t('ortho.patientCompliance')}>
           <Select value={form.compliance} onChange={(e) => set('compliance', e.target.value)}>
-            {['Excellent', 'Good', 'Fair', 'Poor'].map((c) => <option key={c}>{c}</option>)}
+            {COMPLIANCE.map((c) => <option key={c} value={c}>{label('comp', c)}</option>)}
           </Select>
         </Field>
-        <Field label="Next visit">
+        <Field label={t('ortho.colNextVisit')}>
           <Input type="date" value={form.next_visit_date}
             onChange={(e) => set('next_visit_date', e.target.value)} />
         </Field>
         <div className="full">
-          <Field label="Clinical observation">
+          <Field label={t('ortho.observation')}>
             <Textarea rows={2} value={form.observation} onChange={(e) => set('observation', e.target.value)} />
           </Field>
         </div>
         <div className="full">
-          <Field label="Notes">
+          <Field label={t('common.notes')}>
             <Textarea rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} />
           </Field>
         </div>
       </div>
-      <p className="text-2xs faint mt-12">
-        Record any payment collected at this visit with the “Record payment” button on the case —
-        it is added to the same installment balance.
-      </p>
+      <p className="text-2xs faint mt-12">{t('ortho.visitFootnote')}</p>
     </Modal>
   );
 }

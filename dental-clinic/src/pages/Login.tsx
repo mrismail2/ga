@@ -4,9 +4,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button, Field, Input, useToast } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { isSupabaseConfigured, readableError } from '@/lib/supabase';
+import { useI18n } from '@/i18n';
 
 export default function Login() {
   const { session, signIn, resetPassword, loading } = useAuth();
+  const { t, lang, setLang } = useI18n();
   const location = useLocation();
   const { notify } = useToast();
 
@@ -37,12 +39,12 @@ export default function Login() {
 
   async function onForgot() {
     if (!email.trim()) {
-      setError('Enter your email address first, then choose "Forgot password".');
+      setError(t('login.forgotFirst'));
       return;
     }
     try {
       await resetPassword(email.trim());
-      notify('Password reset link sent. Check your email.');
+      notify(t('login.resetSent'));
     } catch (err) {
       setError(readableError(err));
     }
@@ -53,25 +55,26 @@ export default function Login() {
       <form className="login__card" onSubmit={onSubmit}>
         <div className="login__brand">
           <span className="brand__mark"><Icon name="tooth" size={16} /></span>
-          <div>
-            <div className="login__title">Dental Clinic</div>
-            <div className="text-2xs faint">Management system</div>
+          <div className="grow">
+            <div className="login__title">{t('app.name')}</div>
+            <div className="text-2xs faint">{t('app.subtitle')}</div>
+          </div>
+          <div className="seg-toggle">
+            <button type="button" className={lang === 'so' ? 'on' : ''} onClick={() => setLang('so')}>SO</button>
+            <button type="button" className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')}>EN</button>
           </div>
         </div>
 
-        <h1 className="login__title">Sign in</h1>
-        <p className="login__sub">Use the account your clinic administrator created for you.</p>
+        <h1 className="login__title">{t('login.title')}</h1>
+        <p className="login__sub">{t('login.subtitle')}</p>
 
         {!isSupabaseConfigured && (
-          <div className="login__error">
-            Supabase is not configured. Copy <code>.env.example</code> to <code>.env.local</code> and
-            add your project URL and anon key.
-          </div>
+          <div className="login__error">{t('login.notConfigured')}</div>
         )}
         {error && <div className="login__error" role="alert">{error}</div>}
 
         <div className="col" style={{ gap: 14 }}>
-          <Field label="Email" required>
+          <Field label={t('common.email')} required>
             <Input
               type="email"
               autoComplete="username"
@@ -82,7 +85,7 @@ export default function Login() {
             />
           </Field>
 
-          <Field label="Password" required>
+          <Field label={t('login.password')} required>
             <div className="login__pw">
               <Input
                 type={showPassword ? 'text' : 'password'}
@@ -93,17 +96,17 @@ export default function Login() {
                 placeholder="••••••••"
               />
               <button type="button" onClick={() => setShowPassword((v) => !v)}>
-                {showPassword ? 'HIDE' : 'SHOW'}
+                {showPassword ? t('login.hide') : t('login.show')}
               </button>
             </div>
           </Field>
 
           <Button type="submit" variant="primary" loading={busy} disabled={!isSupabaseConfigured}>
-            Sign in
+            {t('login.title')}
           </Button>
 
           <button type="button" className="text-xs muted" onClick={onForgot} style={{ fontWeight: 600 }}>
-            Forgot password?
+            {t('login.forgot')}
           </button>
         </div>
       </form>

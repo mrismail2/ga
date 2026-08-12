@@ -3,7 +3,8 @@ import { getPatient } from '@/services/patients';
 import { listTreatmentBalances } from '@/services/clinical';
 import { listPayments } from '@/services/finance';
 import { getSettings } from '@/services/admin';
-import { dateOnly, dateTime, money, titleCase } from '@/lib/format';
+import { dateOnly, dateTime, money } from '@/lib/format';
+import { useI18n } from '@/i18n';
 import { Button, Modal, Skeleton } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 
@@ -11,6 +12,7 @@ import { Icon } from '@/components/ui/Icon';
 export default function PatientStatement({
   patientId, open, onClose,
 }: { patientId: string; open: boolean; onClose: () => void }) {
+  const { t, label } = useI18n();
   const patient = useQuery({ queryKey: ['patient', patientId], queryFn: () => getPatient(patientId), enabled: open });
   const treatments = useQuery({
     queryKey: ['treatment-balances', patientId], queryFn: () => listTreatmentBalances(patientId), enabled: open,
@@ -34,12 +36,12 @@ export default function PatientStatement({
     <Modal
       open={open}
       onClose={onClose}
-      title="Patient statement"
+      title={t('statement.title')}
       wide
       footer={
         <>
-          <Button onClick={onClose}>Close</Button>
-          <Button variant="primary" onClick={() => window.print()}><Icon name="print" /> Print</Button>
+          <Button onClick={onClose}>{t('common.close')}</Button>
+          <Button variant="primary" onClick={() => window.print()}><Icon name="print" /> {t('common.print')}</Button>
         </>
       }
     >
@@ -54,40 +56,41 @@ export default function PatientStatement({
               <div className="text-xs">{settings.data?.phone}</div>
             </div>
             <div className="right">
-              <b>Patient statement</b>
-              <div className="text-xs">Issued {dateOnly(new Date())}</div>
+              <b>{t('statement.title')}</b>
+              <div className="text-xs">{t('statement.issued')} {dateOnly(new Date())}</div>
             </div>
           </div>
 
           <table>
             <tbody>
-              <tr><th style={{ width: '30%' }}>Patient</th><td>{patient.data?.full_name}</td></tr>
-              <tr><th>Patient ID</th><td>{patient.data?.patient_code}</td></tr>
-              <tr><th>Phone</th><td>{patient.data?.phone}</td></tr>
+              <tr><th style={{ width: '30%' }}>{t('common.patient')}</th><td>{patient.data?.full_name}</td></tr>
+              <tr><th>{t('receipt.patientId')}</th><td>{patient.data?.patient_code}</td></tr>
+              <tr><th>{t('common.phone')}</th><td>{patient.data?.phone}</td></tr>
             </tbody>
           </table>
 
-          <h3 className="text-sm bold mt-16">Treatments</h3>
+          <h3 className="text-sm bold mt-16">{t('statement.treatments')}</h3>
           <table>
             <thead>
-              <tr><th>Treatment</th><th>Date</th><th>Cost</th><th>Paid</th><th>Balance</th><th>Status</th></tr>
+              <tr><th>{t('common.treatment')}</th><th>{t('common.date')}</th><th>{t('common.cost')}</th>
+                <th>{t('common.paid')}</th><th>{t('common.balance')}</th><th>{t('common.status')}</th></tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={6}>No treatments recorded.</td></tr>
-              ) : rows.map((t) => (
-                <tr key={t.treatment_id}>
-                  <td>{t.treatment_name ?? 'Treatment'}
-                    {t.tooth_numbers?.length ? ` (tooth ${t.tooth_numbers.join(', ')})` : ''}</td>
-                  <td>{dateOnly(t.created_at)}</td>
-                  <td>{money(t.final_cost)}</td>
-                  <td>{money(t.amount_paid)}</td>
-                  <td>{money(t.balance)}</td>
-                  <td>{titleCase(t.payment_status)}</td>
+                <tr><td colSpan={6}>{t('statement.noTreatments')}</td></tr>
+              ) : rows.map((row) => (
+                <tr key={row.treatment_id}>
+                  <td>{row.treatment_name ?? t('common.treatment')}
+                    {row.tooth_numbers?.length ? ` (${t('common.tooth')} ${row.tooth_numbers.join(', ')})` : ''}</td>
+                  <td>{dateOnly(row.created_at)}</td>
+                  <td>{money(row.final_cost)}</td>
+                  <td>{money(row.amount_paid)}</td>
+                  <td>{money(row.balance)}</td>
+                  <td>{label('status', row.payment_status)}</td>
                 </tr>
               ))}
               <tr className="total-row">
-                <td colSpan={2}>Totals</td>
+                <td colSpan={2}>{t('statement.totals')}</td>
                 <td>{money(totals.cost)}</td>
                 <td>{money(totals.paid)}</td>
                 <td>{money(totals.balance)}</td>
@@ -96,17 +99,18 @@ export default function PatientStatement({
             </tbody>
           </table>
 
-          <h3 className="text-sm bold mt-16">Payment history</h3>
+          <h3 className="text-sm bold mt-16">{t('statement.paymentHistory')}</h3>
           <table>
-            <thead><tr><th>Receipt</th><th>Date</th><th>Method</th><th>Amount</th></tr></thead>
+            <thead><tr><th>{t('common.receipt')}</th><th>{t('common.date')}</th>
+              <th>{t('common.method')}</th><th>{t('common.amount')}</th></tr></thead>
             <tbody>
               {(payments.data?.rows ?? []).filter((p) => !p.voided_at).length === 0 ? (
-                <tr><td colSpan={4}>No payments recorded.</td></tr>
+                <tr><td colSpan={4}>{t('statement.noPayments')}</td></tr>
               ) : (payments.data?.rows ?? []).filter((p) => !p.voided_at).map((p) => (
                 <tr key={p.id}>
                   <td>{p.receipt_number}</td>
                   <td>{dateTime(p.paid_at)}</td>
-                  <td>{titleCase(p.method)}</td>
+                  <td>{label('method', p.method)}</td>
                   <td>{money(p.amount)}</td>
                 </tr>
               ))}

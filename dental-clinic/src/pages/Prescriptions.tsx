@@ -6,22 +6,24 @@ import {
 } from '@/services/pharmacy';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
-import { dateTime, titleCase } from '@/lib/format';
+import { dateTime } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Avatar, Badge, Button, Card, EmptyState, Field, Input, Modal, QueryBoundary,
   Select, Textarea, useToast, cx,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
 
 const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'open', label: 'Awaiting pharmacy' },
-  { id: 'dispensed', label: 'Dispensed' },
+  { id: 'all', key: 'common.all' },
+  { id: 'open', key: 'rx.filterOpen' },
+  { id: 'dispensed', key: 'rx.filterDispensed' },
 ] as const;
 
 export default function Prescriptions() {
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all');
   const [writing, setWriting] = useState(false);
 
@@ -34,13 +36,13 @@ export default function Prescriptions() {
     <>
       <div className="page__head">
         <div>
-          <h1>Prescriptions</h1>
-          <p>Written by dentists and sent straight to the clinic pharmacy.</p>
+          <h1>{t('rx.title')}</h1>
+          <p>{t('rx.subtitle')}</p>
         </div>
         {can('clinical.write') && (
           <div className="page__actions">
             <Button variant="primary" onClick={() => setWriting(true)}>
-              <Icon name="plus" /> Write prescription
+              <Icon name="plus" /> {t('rx.write')}
             </Button>
           </div>
         )}
@@ -51,20 +53,20 @@ export default function Prescriptions() {
           <div className="segmented">
             {FILTERS.map((f) => (
               <button key={f.id} className={cx(filter === f.id && 'is-active')} onClick={() => setFilter(f.id)}>
-                {f.label}
+                {t(f.key)}
               </button>
             ))}
           </div>
           <Link className="btn ml-auto" to="/pharmacy/prescriptions">
-            <Icon name="pharmacy" /> Pharmacy dispensing
+            <Icon name="pharmacy" /> {t('rx.pharmacyDispensing')}
           </Link>
         </div>
 
         <QueryBoundary
           query={query}
           skeletonRows={6}
-          empty={<EmptyState title="No prescriptions"
-            description="Write a prescription from here or from the patient's record." />}
+          empty={<EmptyState title={t('rx.empty')}
+            description={t('rx.emptyHint')} />}
         >
           {(rows) => (
             <div className="col">
@@ -78,21 +80,21 @@ export default function Prescriptions() {
                           <b className="text-sm">{rx.patient?.full_name}</b>
                         </Link>
                         <span className="text-2xs faint">{rx.patient?.patient_code}</span>
-                        {rx.patient?.allergies && <Badge tone="danger">Allergy: {rx.patient.allergies}</Badge>}
+                        {rx.patient?.allergies && <Badge tone="danger">{t('rx.allergy')}: {rx.patient.allergies}</Badge>}
                       </div>
                       <div className="text-2xs faint">
                         {rx.prescription_number} · {dateTime(rx.prescribed_at)} · {rx.dentist?.full_name ?? '—'}
                       </div>
                     </div>
                     <Badge tone={rx.status === 'dispensed' ? 'ok' : rx.status === 'cancelled' ? 'danger' : 'warn'}>
-                      {titleCase(rx.status)}
+                      {label('status', rx.status)}
                     </Badge>
                   </div>
                   <ul className="mt-8">
                     {rx.items?.map((item) => (
                       <li key={item.id} className="text-sm muted">
                         • <b>{item.medicine_name}</b> {item.strength} — {item.dose} {item.frequency},
-                        {' '}{item.duration} · qty {item.quantity}
+                        {' '}{item.duration} · {t('rx.qty')} {item.quantity}
                         {item.instructions && <span className="faint"> — {item.instructions}</span>}
                       </li>
                     ))}
@@ -113,6 +115,7 @@ function WriteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
   const { notify } = useToast();
+  const { t } = useI18n();
   const stock = useQuery({ queryKey: ['stock'], queryFn: () => listMedicineStock({}) });
 
   const [term, setTerm] = useState('');
@@ -139,7 +142,7 @@ function WriteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
-      notify('Prescription sent to the pharmacy');
+      notify(t('rx.sent'));
       setItems([]); setPatient(null); setTerm(''); setNotes('');
       onClose();
     },
@@ -153,11 +156,11 @@ function WriteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
       medicine_id: m.medicine_id,
       medicine_name: m.name,
       strength: m.strength,
-      dose: '1 tablet',
-      frequency: '3 times a day',
-      duration: '5 days',
+      dose: t('rx.defaultDose'),
+      frequency: t('rx.defaultFrequency'),
+      duration: t('rx.defaultDuration'),
       quantity: 15,
-      instructions: 'After food',
+      instructions: t('rx.defaultInstructions'),
     }]);
     setPick('');
   }
@@ -176,38 +179,38 @@ function WriteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Write prescription"
+      title={t('rx.write')}
       wide
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" loading={create.isPending}
             onClick={() => {
               setError(null);
-              if (!patient) { setError('Select a patient.'); return; }
-              if (!items.length) { setError('Add at least one medicine.'); return; }
-              if (items.some((i) => !i.medicine_name.trim())) { setError('Every line needs a medicine name.'); return; }
-              if (items.some((i) => i.quantity <= 0)) { setError('Quantities must be greater than zero.'); return; }
+              if (!patient) { setError(t('common.selectPatient')); return; }
+              if (!items.length) { setError(t('rx.errItems')); return; }
+              if (items.some((i) => !i.medicine_name.trim())) { setError(t('rx.errName')); return; }
+              if (items.some((i) => i.quantity <= 0)) { setError(t('rx.errQuantity')); return; }
               create.mutate();
             }}>
-            Send to pharmacy
+            {t('rx.send')}
           </Button>
         </>
       }
     >
       {error && <div className="login__error" role="alert">{error}</div>}
 
-      <Field label="Patient" required>
+      <Field label={t('common.patient')} required>
         {patient ? (
           <div className="row">
             <Avatar name={patient.full_name} size="sm" />
             <b className="text-sm">{patient.full_name}</b>
             <span className="text-xs faint">{patient.patient_code}</span>
-            <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>Change</Button>
+            <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>{t('common.change')}</Button>
           </div>
         ) : (
           <>
-            <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search patient…" />
+            <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder={t('common.searchPatient')} />
             <div className="col mt-8" style={{ gap: 4 }}>
               {results.data?.map((p) => (
                 <button key={p.id} type="button" className="gsearch__item"
@@ -224,46 +227,46 @@ function WriteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
       <div className="row mt-16 mb-12">
         <Select value={pick} onChange={(e) => addItem(e.target.value)} style={{ maxWidth: 320 }}>
-          <option value="">Add from pharmacy stock…</option>
+          <option value="">{t('rx.addFromStock')}</option>
           {stock.data?.map((m) => (
             <option key={m.medicine_id} value={m.medicine_id}>
-              {m.name} {m.strength} — {m.usable_quantity} in stock
+              {m.name} {m.strength} — {m.usable_quantity} {t('rx.inStock')}
             </option>
           ))}
         </Select>
-        <Button size="sm" onClick={addFreeText}>Add other medicine</Button>
+        <Button size="sm" onClick={addFreeText}>{t('rx.addOther')}</Button>
       </div>
 
       {items.length === 0 ? (
-        <EmptyState title="No medicines added"
-          description="Choose from stock so the pharmacy can dispense directly, or add a medicine the clinic does not keep." />
+        <EmptyState title={t('rx.noMedicines')}
+          description={t('rx.noMedicinesHint')} />
       ) : (
         <div className="col" style={{ gap: 12 }}>
           {items.map((item, i) => (
             <div key={i} className="card" style={{ padding: 12 }}>
               <div className="form-grid">
-                <Field label="Medicine" required>
+                <Field label={t('rx.medicine')} required>
                   <Input value={item.medicine_name} disabled={Boolean(item.medicine_id)}
                     onChange={(e) => update(i, { medicine_name: e.target.value })} />
                 </Field>
-                <Field label="Strength">
+                <Field label={t('rx.strength')}>
                   <Input value={item.strength ?? ''} onChange={(e) => update(i, { strength: e.target.value })} />
                 </Field>
-                <Field label="Dose">
+                <Field label={t('rx.dose')}>
                   <Input value={item.dose ?? ''} onChange={(e) => update(i, { dose: e.target.value })} />
                 </Field>
-                <Field label="Frequency">
+                <Field label={t('rx.frequency')}>
                   <Input value={item.frequency ?? ''} onChange={(e) => update(i, { frequency: e.target.value })} />
                 </Field>
-                <Field label="Duration">
+                <Field label={t('rx.durationLabel')}>
                   <Input value={item.duration ?? ''} onChange={(e) => update(i, { duration: e.target.value })} />
                 </Field>
-                <Field label="Quantity" required>
+                <Field label={t('common.quantity')} required>
                   <Input type="number" min={1} value={item.quantity}
                     onChange={(e) => update(i, { quantity: Math.max(1, Number(e.target.value)) })} />
                 </Field>
                 <div className="full">
-                  <Field label="Instructions">
+                  <Field label={t('rx.instructions')}>
                     <Input value={item.instructions ?? ''}
                       onChange={(e) => update(i, { instructions: e.target.value })} />
                   </Field>
@@ -271,14 +274,14 @@ function WriteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               </div>
               <Button size="sm" className="mt-12"
                 onClick={() => setItems((prev) => prev.filter((_, idx) => idx !== i))}>
-                Remove medicine
+                {t('rx.removeMedicine')}
               </Button>
             </div>
           ))}
         </div>
       )}
 
-      <Field label="Notes to the pharmacy">
+      <Field label={t('rx.notesToPharmacy')}>
         <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </Field>
     </Modal>

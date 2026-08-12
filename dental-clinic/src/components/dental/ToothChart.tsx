@@ -8,6 +8,7 @@ import {
   Button, EmptyState, Field, Modal, QueryBoundary, Select, Textarea, useToast, cx,
 } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
+import { useI18n } from '@/i18n';
 
 /** FDI permanent dentition, drawn in anatomical order. */
 const QUADRANTS = {
@@ -17,20 +18,21 @@ const QUADRANTS = {
   lowerLeft: [31, 32, 33, 34, 35, 36, 37, 38],
 };
 
-export const CONDITIONS: Record<ToothCondition, { label: string; fill: string; stroke: string }> = {
-  healthy: { label: 'Healthy', fill: 'var(--surface)', stroke: 'var(--line-2)' },
-  caries: { label: 'Caries', fill: '#fbd5d5', stroke: '#cf3a3a' },
-  filling: { label: 'Filling', fill: '#c9daff', stroke: '#2f6bf0' },
-  crown: { label: 'Crown', fill: '#f8e2b4', stroke: '#b8790a' },
-  bridge: { label: 'Bridge', fill: '#ffd9b0', stroke: '#b96a12' },
-  root_canal: { label: 'Root canal', fill: '#ded3f8', stroke: '#7455d8' },
-  implant: { label: 'Implant', fill: '#b6e6d3', stroke: '#0f9d6f' },
-  extraction_planned: { label: 'Extraction planned', fill: '#ffe0e0', stroke: '#cf3a3a' },
-  extracted: { label: 'Extracted', fill: 'var(--surface-3)', stroke: 'var(--text-3)' },
-  missing: { label: 'Missing', fill: 'var(--surface-3)', stroke: 'var(--text-3)' },
-  fractured: { label: 'Fractured', fill: '#ffd6ef', stroke: '#c94f86' },
-  sensitive: { label: 'Sensitive', fill: '#c4ecf2', stroke: '#0e8f9e' },
-  other: { label: 'Other', fill: '#e8e8ef', stroke: '#7c8698' },
+/** Colours only — the labels come from the `tooth.*` translation keys. */
+export const CONDITIONS: Record<ToothCondition, { fill: string; stroke: string }> = {
+  healthy: { fill: 'var(--surface)', stroke: 'var(--line-2)' },
+  caries: { fill: '#fbd5d5', stroke: '#cf3a3a' },
+  filling: { fill: '#c9daff', stroke: '#2f6bf0' },
+  crown: { fill: '#f8e2b4', stroke: '#b8790a' },
+  bridge: { fill: '#ffd9b0', stroke: '#b96a12' },
+  root_canal: { fill: '#ded3f8', stroke: '#7455d8' },
+  implant: { fill: '#b6e6d3', stroke: '#0f9d6f' },
+  extraction_planned: { fill: '#ffe0e0', stroke: '#cf3a3a' },
+  extracted: { fill: 'var(--surface-3)', stroke: 'var(--text-3)' },
+  missing: { fill: 'var(--surface-3)', stroke: 'var(--text-3)' },
+  fractured: { fill: '#ffd6ef', stroke: '#c94f86' },
+  sensitive: { fill: '#c4ecf2', stroke: '#0e8f9e' },
+  other: { fill: '#e8e8ef', stroke: '#7c8698' },
 };
 
 const TOOTH_PATH =
@@ -39,7 +41,7 @@ const TOOTH_PATH =
 function Tooth({
   number, condition, selected, onClick,
 }: { number: number; condition: ToothCondition; selected: boolean; onClick: () => void }) {
-  const style = CONDITIONS[condition];
+  const { t, label } = useI18n();
   const upper = number < 30;
   const crossed = condition === 'missing' || condition === 'extracted' || condition === 'extraction_planned';
   return (
@@ -47,8 +49,8 @@ function Tooth({
       type="button"
       className={cx('tooth', selected && 'is-selected')}
       onClick={onClick}
-      title={`Tooth ${number} — ${style.label}`}
-      aria-label={`Tooth ${number}, ${style.label}`}
+      title={`${t('chart.toothLabel')} ${number} — ${label('tooth', condition)}`}
+      aria-label={`${t('chart.toothLabel')} ${number}, ${label('tooth', condition)}`}
     >
       {upper && <ToothGlyph condition={condition} upper crossed={crossed} />}
       <span>{number}</span>
@@ -74,6 +76,7 @@ function ToothGlyph({
 
 export default function ToothChart({ patientId }: { patientId: string }) {
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const [selected, setSelected] = useState<number | null>(null);
@@ -108,7 +111,7 @@ export default function ToothChart({ patientId }: { patientId: string }) {
     mutationFn: recordToothCondition,
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tooth-records', patientId] });
-      notify(`Tooth ${variables.tooth_number} updated`);
+      notify(`${t('chart.toothLabel')} ${variables.tooth_number} ${t('chart.updated')}`);
       setSelected(null);
     },
     onError: (error) => notify(readableError(error), 'danger'),
@@ -153,7 +156,7 @@ export default function ToothChart({ patientId }: { patientId: string }) {
               {Object.entries(CONDITIONS).map(([key, style]) => (
                 <div key={key}>
                   <i style={{ background: style.fill, borderColor: style.stroke }} />
-                  {style.label}
+                  {label('tooth', key)}
                   {counts.get(key as ToothCondition)
                     ? <b>({counts.get(key as ToothCondition)})</b> : null}
                 </div>
@@ -198,6 +201,7 @@ function ToothDialog({
   const [surface, setSurface] = useState('');
   const [notes, setNotes] = useState('');
   const [loadedFor, setLoadedFor] = useState<number | null>(null);
+  const { t, label } = useI18n();
 
   // Reset the form when a different tooth is opened.
   if (tooth !== null && loadedFor !== tooth) {
@@ -213,14 +217,14 @@ function ToothDialog({
     <Modal
       open={tooth !== null}
       onClose={onClose}
-      title={tooth ? `Tooth ${tooth}` : ''}
+      title={tooth ? `${t('chart.toothLabel')} ${tooth}` : ''}
       wide
       footer={
         readOnly ? (
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>{t('common.close')}</Button>
         ) : (
           <>
-            <Button onClick={onClose}>Cancel</Button>
+            <Button onClick={onClose}>{t('common.cancel')}</Button>
             <Button
               variant="primary"
               loading={busy}
@@ -232,7 +236,7 @@ function ToothDialog({
                 notes: notes.trim() || null,
               })}
             >
-              Save tooth record
+              {t('chart.save')}
             </Button>
           </>
         )
@@ -240,53 +244,53 @@ function ToothDialog({
     >
       <div className="grid grid--2">
         <div className="col" style={{ gap: 14 }}>
-          <Field label="Condition" required>
+          <Field label={t('chart.condition')} required>
             <Select value={condition} disabled={readOnly}
               onChange={(e) => setCondition(e.target.value as ToothCondition)}>
-              {Object.entries(CONDITIONS).map(([key, style]) => (
-                <option key={key} value={key}>{style.label}</option>
+              {Object.keys(CONDITIONS).map((key) => (
+                <option key={key} value={key}>{label('tooth', key)}</option>
               ))}
             </Select>
           </Field>
-          <Field label="Surface" hint="Mesial, distal, occlusal, buccal, lingual…">
+          <Field label={t('chart.surface')} hint={t('chart.surfaceHint')}>
             <input className="input" value={surface} disabled={readOnly}
               onChange={(e) => setSurface(e.target.value)} />
           </Field>
-          <Field label="Existing treatment">
+          <Field label={t('chart.existing')}>
             <input className="input" value={existing} disabled={readOnly}
               onChange={(e) => setExisting(e.target.value)} />
           </Field>
-          <Field label="Proposed treatment">
+          <Field label={t('chart.proposed')}>
             <input className="input" value={proposed} disabled={readOnly}
               onChange={(e) => setProposed(e.target.value)} />
           </Field>
-          <Field label="Clinical note">
+          <Field label={t('chart.clinicalNote')}>
             <Textarea rows={3} value={notes} disabled={readOnly}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder={`Observation for tooth ${tooth ?? ''}…`} />
+              placeholder={`${t('chart.notePlaceholder')} ${tooth ?? ''}…`} />
           </Field>
           {!readOnly && (
             <p className="text-2xs faint">
-              Saving adds a new entry. Previous records are kept — nothing is overwritten.
+              {t('chart.appendOnly')}
             </p>
           )}
         </div>
 
         <div>
-          <div className="eyebrow mb-8">History for this tooth</div>
+          <div className="eyebrow mb-8">{t('chart.history')}</div>
           {history.length === 0 ? (
-            <EmptyState title="No history yet"
-              description="Every change to this tooth will be listed here with the date and the dentist." />
+            <EmptyState title={t('chart.noHistory')}
+              description={t('chart.noHistoryHint')} />
           ) : (
             <ul className="timeline">
               {history.map((rec) => (
                 <li key={rec.id} className={`tone-${rec.is_current ? 'brand' : 'muted'}`}>
-                  <b>{CONDITIONS[rec.condition].label}</b>
+                  <b>{label('tooth', rec.condition)}</b>
                   <small>
                     {dateTime(rec.recorded_at)}
                     {rec.recorded_by_profile ? ` · ${rec.recorded_by_profile.full_name}` : ''}
                   </small>
-                  {rec.proposed_treatment && <div className="text-xs muted">Proposed: {rec.proposed_treatment}</div>}
+                  {rec.proposed_treatment && <div className="text-xs muted">{t('profile.proposed')}: {rec.proposed_treatment}</div>}
                   {rec.notes && <div className="text-xs muted">{rec.notes}</div>}
                 </li>
               ))}

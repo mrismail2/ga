@@ -5,15 +5,9 @@ import { readableError } from '@/lib/supabase';
 import { money } from '@/lib/format';
 import type { PaymentMethod, TreatmentBalance } from '@/types/database';
 import { Button, Field, Input, Modal, Select, Textarea, useToast } from '@/components/ui';
+import { useI18n } from '@/i18n';
 
-const METHODS: { value: PaymentMethod; label: string }[] = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'evc_plus', label: 'EVC Plus' },
-  { value: 'zaad', label: 'Zaad' },
-  { value: 'edahab', label: 'eDahab' },
-  { value: 'bank', label: 'Bank' },
-  { value: 'other', label: 'Other' },
-];
+const METHODS: PaymentMethod[] = ['cash', 'evc_plus', 'zaad', 'edahab', 'bank', 'other'];
 
 /**
  * The installment ("hafto") entry point. The amount is validated against the
@@ -31,6 +25,7 @@ export default function RecordPaymentModal({
 }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t, label } = useI18n();
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [reference, setReference] = useState('');
@@ -55,7 +50,7 @@ export default function RecordPaymentModal({
       queryClient.invalidateQueries({ queryKey: ['outstanding'] });
       queryClient.invalidateQueries({ queryKey: ['patient-balance'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      notify(`Payment ${money(payment.amount)} recorded — receipt ${payment.receipt_number}`);
+      notify(t('pay.recorded', { amount: money(payment.amount), receipt: payment.receipt_number }));
       tokenRef.current = crypto.randomUUID();
       setAmount(''); setReference(''); setNotes('');
       onRecorded?.(payment.id);
@@ -68,11 +63,11 @@ export default function RecordPaymentModal({
     setError(null);
     if (!treatment) return;
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      setError('Enter an amount greater than zero.');
+      setError(t('pay.errAmount'));
       return;
     }
     if (parsed > balance) {
-      setError(`The remaining balance is ${money(balance)}. Enter that or less.`);
+      setError(t('pay.errTooMuch', { balance: money(balance) }));
       return;
     }
     mutation.mutate({
@@ -92,49 +87,48 @@ export default function RecordPaymentModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Record payment"
+      title={t('pay.title')}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" loading={mutation.isPending} onClick={submit}>
-            Record payment
+            {t('pay.title')}
           </Button>
         </>
       }
     >
       <div className="alert tone-brand mb-16" style={{ display: 'block' }}>
-        <b>{treatment.treatment_name ?? 'Treatment'}</b>
+        <b>{treatment.treatment_name ?? t('common.treatment')}</b>
         <div className="row wrap mt-8 text-sm">
-          <span>Total <b>{money(treatment.final_cost)}</b></span>
-          <span>Paid <b>{money(treatment.amount_paid)}</b></span>
-          <span>Remaining <b className="danger-text">{money(balance)}</b></span>
+          <span>{t('common.total')} <b>{money(treatment.final_cost)}</b></span>
+          <span>{t('common.paid')} <b>{money(treatment.amount_paid)}</b></span>
+          <span>{t('ortho.remaining')} <b className="danger-text">{money(balance)}</b></span>
         </div>
       </div>
 
       {error && <div className="login__error" role="alert">{error}</div>}
 
       <div className="form-grid">
-        <Field label="Amount received" required
-          hint={`Maximum ${money(balance)} — partial payments are expected.`}>
+        <Field label={t('pay.amount')} required hint={t('pay.amountHint', { max: money(balance) })}>
           <Input
             type="number" min={0} step="0.01" value={amount} autoFocus
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
           />
         </Field>
-        <Field label="Payment method" required>
+        <Field label={t('pay.methodLabel')} required>
           <Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
-            {METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            {METHODS.map((m) => <option key={m} value={m}>{label('method', m)}</option>)}
           </Select>
         </Field>
-        <Field label="Reference" hint="Mobile money or bank transaction number">
+        <Field label={t('common.reference')} hint={t('pay.referenceHint')}>
           <Input value={reference} onChange={(e) => setReference(e.target.value)} />
         </Field>
-        <Field label="Balance after this payment">
+        <Field label={t('pay.balanceAfter')}>
           <Input value={money(remainingAfter)} disabled />
         </Field>
         <div className="full">
-          <Field label="Notes">
+          <Field label={t('common.notes')}>
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
         </div>
@@ -144,7 +138,7 @@ export default function RecordPaymentModal({
         {[0.25, 0.5, 1].map((fraction) => (
           <Button key={fraction} size="sm" type="button"
             onClick={() => setAmount(String(Math.round(balance * fraction * 100) / 100))}>
-            {fraction === 1 ? 'Full balance' : `${fraction * 100}%`} · {money(balance * fraction)}
+            {fraction === 1 ? t('pay.fullBalance') : `${fraction * 100}%`} · {money(balance * fraction)}
           </Button>
         ))}
       </div>

@@ -9,32 +9,34 @@ import { listOrthoCases, listTreatmentBalances } from '@/services/clinical';
 import { listAppointments, nextAppointmentFor } from '@/services/appointments';
 import { listPayments } from '@/services/finance';
 import { listPrescriptions } from '@/services/pharmacy';
-import { ageOf, dateOnly, dateTime, money, smartDate, titleCase } from '@/lib/format';
+import { ageOf, dateOnly, dateTime, money, smartDate } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Avatar, Badge, Button, Card, EmptyState, PaymentBadge, QueryBoundary, Skeleton, Tabs,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
-import ToothChart, { CONDITIONS } from '@/components/dental/ToothChart';
+import ToothChart from '@/components/dental/ToothChart';
 import RecordPaymentModal from '@/components/finance/RecordPaymentModal';
 import Receipt from '@/components/finance/Receipt';
 import PatientStatement from '@/components/finance/PatientStatement';
 import type { TreatmentBalance } from '@/types/database';
+import { useI18n } from '@/i18n';
 
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'chart', label: 'Dental chart' },
-  { id: 'treatments', label: 'Treatments' },
-  { id: 'notes', label: 'Clinical notes' },
-  { id: 'payments', label: 'Payments' },
-  { id: 'appointments', label: 'Appointments' },
-  { id: 'prescriptions', label: 'Prescriptions' },
-  { id: 'documents', label: 'Documents' },
-];
+const TAB_KEYS = [
+  ['overview', 'profile.tabOverview'],
+  ['chart', 'profile.tabChart'],
+  ['treatments', 'profile.tabTreatments'],
+  ['notes', 'profile.tabNotes'],
+  ['payments', 'profile.tabPayments'],
+  ['appointments', 'profile.tabAppointments'],
+  ['prescriptions', 'profile.tabPrescriptions'],
+  ['documents', 'profile.tabDocuments'],
+] as const;
 
 export default function PatientProfile() {
   const { id = '' } = useParams();
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const [tab, setTab] = useState('overview');
   const [payFor, setPayFor] = useState<TreatmentBalance | null>(null);
   const [receiptId, setReceiptId] = useState<string | null>(null);
@@ -49,9 +51,9 @@ export default function PatientProfile() {
 
   if (patient.isPending) return <Skeleton rows={8} />;
   if (patient.isError || !patient.data) {
-    return <EmptyState title="Patient not found"
-      description="This record may have been archived."
-      action={<Link className="btn btn--sm" to="/patients">Back to patients</Link>} />;
+    return <EmptyState title={t('profile.notFound')}
+      description={t('profile.notFoundHint')}
+      action={<Link className="btn btn--sm" to="/patients">{t('profile.backToPatients')}</Link>} />;
   }
 
   const p = patient.data;
@@ -59,7 +61,7 @@ export default function PatientProfile() {
   return (
     <>
       <div className="crumbs">
-        <Link to="/patients">Patients</Link>
+        <Link to="/patients">{t('patients.title')}</Link>
         <Icon name="chevronRight" size={12} />
         <span>{p.full_name}</span>
       </div>
@@ -67,14 +69,14 @@ export default function PatientProfile() {
       <div className="page__head">
         <div>
           <h1>{p.full_name}</h1>
-          <p>{p.patient_code} · {ageOf(p)} · {titleCase(p.gender)} · {p.phone}</p>
+          <p>{p.patient_code} · {ageOf(p)} · {label('gender', p.gender)} · {p.phone}</p>
         </div>
         <div className="page__actions">
           {can('finance.read') && (
-            <Button onClick={() => setStatementOpen(true)}><Icon name="print" /> Statement</Button>
+            <Button onClick={() => setStatementOpen(true)}><Icon name="print" /> {t('profile.statement')}</Button>
           )}
           {can('appointments.write') && (
-            <Link className="btn" to="/appointments"><Icon name="calendar" /> Book appointment</Link>
+            <Link className="btn" to="/appointments"><Icon name="calendar" /> {t('dash.bookAppointment')}</Link>
           )}
         </div>
       </div>
@@ -82,7 +84,7 @@ export default function PatientProfile() {
       {p.allergies && (
         <div className="alert tone-danger mb-16">
           <Icon name="alert" />
-          <span><b>Allergy on file:</b> {p.allergies}. Check before prescribing or anaesthetising.</span>
+          <span><b>{t('profile.allergyWarning')}:</b> {p.allergies}. {t('profile.allergyWarningHint')}</span>
         </div>
       )}
 
@@ -92,36 +94,36 @@ export default function PatientProfile() {
           <div className="grow">
             <div className="row row--sm">
               <b className="text-md">{p.full_name}</b>
-              <Badge tone={p.status === 'active' ? 'ok' : 'muted'}>{titleCase(p.status)}</Badge>
+              <Badge tone={p.status === 'active' ? 'ok' : 'muted'}>{label('status', p.status)}</Badge>
             </div>
             <div className="text-xs faint mt-8">
-              Registered {dateOnly(p.registered_at)} · {p.address ?? 'No address on file'}
+              {t('profile.registeredOn')} {dateOnly(p.registered_at)} · {p.address ?? t('profile.noAddress')}
             </div>
           </div>
           <div className="row row--lg wrap">
             <div>
-              <div className="eyebrow">Outstanding</div>
+              <div className="eyebrow">{t('profile.outstanding')}</div>
               <b className={`text-md ${Number(balance.data?.total_balance ?? 0) > 0 ? 'danger-text' : ''}`}>
                 {balance.isPending ? '…' : money(balance.data?.total_balance ?? 0)}
               </b>
             </div>
             <div>
-              <div className="eyebrow">Total paid</div>
+              <div className="eyebrow">{t('profile.totalPaid')}</div>
               <b className="text-md">{balance.isPending ? '…' : money(balance.data?.total_paid ?? 0)}</b>
             </div>
             <div>
-              <div className="eyebrow">Next appointment</div>
+              <div className="eyebrow">{t('profile.nextAppointment')}</div>
               <b className="text-md">
-                {nextAppt.isPending ? '…' : nextAppt.data ? smartDate(nextAppt.data.scheduled_at) : 'None booked'}
+                {nextAppt.isPending ? '…' : nextAppt.data ? smartDate(nextAppt.data.scheduled_at) : t('profile.noneBooked')}
               </b>
             </div>
           </div>
         </div>
-        <Tabs tabs={TABS} value={tab} onChange={setTab} />
+        <Tabs tabs={TAB_KEYS.map(([id, key]) => ({ id, label: t(key) }))} value={tab} onChange={setTab} />
       </Card>
 
       {tab === 'overview' && <Overview patientId={id} patient={p} treatments={treatments} />}
-      {tab === 'chart' && <Card title="Dental chart" subtitle="FDI numbering · click a tooth to record its condition"><ToothChart patientId={id} /></Card>}
+      {tab === 'chart' && <Card title={t('chart.title')} subtitle={t('chart.subtitle')}><ToothChart patientId={id} /></Card>}
       {tab === 'treatments' && (
         <TreatmentsTab patientId={id} treatments={treatments} onPay={setPayFor} canPay={can('finance.write')} />
       )}
@@ -157,51 +159,52 @@ function Overview({
   });
   const ortho = useQuery({ queryKey: ['ortho-cases', patientId], queryFn: () => listOrthoCases(patientId) });
 
-  const flagged = (teeth.data ?? []).filter((t) => t.condition !== 'healthy');
-  const active = (treatments.data ?? []).filter((t) => t.status === 'in_progress' || t.status === 'planned');
+  const { t, label } = useI18n();
+  const flagged = (teeth.data ?? []).filter((x) => x.condition !== 'healthy');
+  const active = (treatments.data ?? []).filter((x) => x.status === 'in_progress' || x.status === 'planned');
 
   return (
     <div className="grid grid--3">
-      <Card title="Medical record">
+      <Card title={t('profile.medicalRecord')}>
         <div className="kv">
-          <div><small>Gender</small><b>{titleCase(patient.gender)}</b></div>
-          <div><small>Age</small><b>{ageOf(patient)}</b></div>
-          <div><small>Phone</small><b>{patient.phone}</b></div>
-          <div><small>Alt phone</small><b>{patient.alt_phone ?? '—'}</b></div>
-          <div><small>Emergency contact</small>
+          <div><small>{t('register.gender')}</small><b>{label('gender', patient.gender)}</b></div>
+          <div><small>{t('register.age')}</small><b>{ageOf(patient)}</b></div>
+          <div><small>{t('common.phone')}</small><b>{patient.phone}</b></div>
+          <div><small>{t('profile.altPhone')}</small><b>{patient.alt_phone ?? '—'}</b></div>
+          <div><small>{t('profile.emergencyContact')}</small>
             <b>{patient.emergency_contact_name ?? '—'}{patient.emergency_contact_phone ? ` · ${patient.emergency_contact_phone}` : ''}</b></div>
-          <div><small>Registered</small><b>{dateOnly(patient.registered_at)}</b></div>
+          <div><small>{t('profile.registeredOn')}</small><b>{dateOnly(patient.registered_at)}</b></div>
         </div>
         <div className="col mt-16" style={{ gap: 10 }}>
           <div>
-            <div className="eyebrow">Allergies</div>
+            <div className="eyebrow">{t('register.allergies')}</div>
             <div className={`text-sm ${patient.allergies ? 'danger-text bold' : 'faint'}`}>
-              {patient.allergies ?? 'None recorded'}
+              {patient.allergies ?? t('patients.noneRecorded')}
             </div>
           </div>
           <div>
-            <div className="eyebrow">Medical conditions</div>
-            <div className="text-sm muted">{patient.medical_conditions ?? 'None recorded'}</div>
+            <div className="eyebrow">{t('profile.conditions')}</div>
+            <div className="text-sm muted">{patient.medical_conditions ?? t('patients.noneRecorded')}</div>
           </div>
           <div>
-            <div className="eyebrow">Current medications</div>
-            <div className="text-sm muted">{patient.current_medications ?? 'None recorded'}</div>
+            <div className="eyebrow">{t('profile.medications')}</div>
+            <div className="text-sm muted">{patient.current_medications ?? t('patients.noneRecorded')}</div>
           </div>
         </div>
       </Card>
 
-      <Card title="Teeth needing attention" subtitle={`${flagged.length} recorded`}>
+      <Card title={t('profile.teethAttention')} subtitle={`${flagged.length} ${t('profile.recorded')}`}>
         <QueryBoundary
           query={{ ...teeth, data: flagged }}
-          empty={<EmptyState title="Chart is clear" description="No tooth has been flagged yet." />}
+          empty={<EmptyState title={t('profile.chartClear')} description={t('profile.chartClearHint')} />}
         >
           {(rows) => (
             <ul className="timeline">
-              {rows.map((t) => (
-                <li key={t.id} className="tone-warn">
-                  <b>Tooth {t.tooth_number} — {CONDITIONS[t.condition].label}</b>
-                  <small>{dateOnly(t.recorded_at)}{t.recorded_by_profile ? ` · ${t.recorded_by_profile.full_name}` : ''}</small>
-                  {t.proposed_treatment && <div className="text-xs muted">Proposed: {t.proposed_treatment}</div>}
+              {rows.map((row) => (
+                <li key={row.id} className="tone-warn">
+                  <b>{t('chart.toothLabel')} {row.tooth_number} — {label('tooth', row.condition)}</b>
+                  <small>{dateOnly(row.recorded_at)}{row.recorded_by_profile ? ` · ${row.recorded_by_profile.full_name}` : ''}</small>
+                  {row.proposed_treatment && <div className="text-xs muted">{t('profile.proposed')}: {row.proposed_treatment}</div>}
                 </li>
               ))}
             </ul>
@@ -209,32 +212,32 @@ function Overview({
         </QueryBoundary>
       </Card>
 
-      <Card title="Active treatment" subtitle={`${active.length} in progress or planned`}>
+      <Card title={t('profile.activeTreatment')} subtitle={`${active.length} ${t('profile.activeTreatmentHint')}`}>
         <QueryBoundary
           query={{ ...treatments, data: active }}
-          empty={<EmptyState title="No active treatment" />}
+          empty={<EmptyState title={t('profile.noActive')} />}
         >
           {(rows) => (
             <div className="col" style={{ gap: 12 }}>
-              {rows.map((t) => (
-                <div key={t.treatment_id}>
+              {rows.map((row) => (
+                <div key={row.treatment_id}>
                   <div className="row between text-sm bold">
-                    <span>{t.treatment_name ?? 'Treatment'}</span>
-                    <span>{money(t.amount_paid)} / {money(t.final_cost)}</span>
+                    <span>{row.treatment_name ?? t('common.treatment')}</span>
+                    <span>{money(row.amount_paid)} / {money(row.final_cost)}</span>
                   </div>
                   <div className="progress mt-8">
-                    <i style={{ width: `${t.final_cost ? Math.min(100, (t.amount_paid / t.final_cost) * 100) : 0}%` }} />
+                    <i style={{ width: `${row.final_cost ? Math.min(100, (row.amount_paid / row.final_cost) * 100) : 0}%` }} />
                   </div>
                   <div className="row between text-2xs faint mt-8">
-                    <span>{t.tooth_numbers?.length ? `Tooth ${t.tooth_numbers.join(', ')}` : 'No tooth recorded'}</span>
-                    <PaymentBadge status={t.payment_status} />
+                    <span>{row.tooth_numbers?.length ? `${t('chart.toothLabel')} ${row.tooth_numbers.join(', ')}` : t('profile.noToothRecorded')}</span>
+                    <PaymentBadge status={row.payment_status} />
                   </div>
                 </div>
               ))}
               {(ortho.data ?? []).map((c) => (
                 <Link key={c.id} to={`/orthodontics/${c.id}`} className="alert tone-violet">
                   <Icon name="braces" />
-                  <span className="grow">Braces case — {c.braces_type}, started {dateOnly(c.start_date)}</span>
+                  <span className="grow">{t('profile.bracesCase')} — {label('braces', c.braces_type)}, {t('profile.started')} {dateOnly(c.start_date)}</span>
                   <Icon name="chevronRight" />
                 </Link>
               ))}
@@ -252,43 +255,44 @@ function TreatmentsTab({
 }: {
   patientId: string;
   treatments: ReturnType<typeof useQuery<TreatmentBalance[]>>;
-  onPay: (t: TreatmentBalance) => void;
+  onPay: (row: TreatmentBalance) => void;
   canPay: boolean;
 }) {
+  const { t, label } = useI18n();
   return (
-    <Card title="Treatment history" subtitle="Every treatment, its cost and what is still owed" padded={false}>
+    <Card title={t('profile.treatmentHistory')} subtitle={t('profile.treatmentHistoryHint')} padded={false}>
       <QueryBoundary
         query={treatments}
-        empty={<EmptyState title="No treatments recorded"
-          description="Treatments created for this patient will appear here with their payment status." />}
+        empty={<EmptyState title={t('profile.noTreatments')}
+          description={t('profile.noTreatmentsHint')} />}
       >
         {(rows) => (
           <div className="table-wrap">
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Treatment</th><th>Tooth</th><th>Status</th>
-                  <th className="right">Total</th><th className="right">Paid</th>
-                  <th className="right">Balance</th><th>Payment</th><th />
+                  <th>{t('common.treatment')}</th><th>{t('common.tooth')}</th><th>{t('common.status')}</th>
+                  <th className="right">{t('common.total')}</th><th className="right">{t('common.paid')}</th>
+                  <th className="right">{t('common.balance')}</th><th>{t('profile.payment')}</th><th />
                 </tr>
               </thead>
               <tbody>
-                {rows.map((t) => (
-                  <tr key={t.treatment_id}>
+                {rows.map((row) => (
+                  <tr key={row.treatment_id}>
                     <td>
-                      <b>{t.treatment_name ?? 'Treatment'}</b>
-                      <div className="text-2xs faint">Created {dateOnly(t.created_at)}</div>
+                      <b>{row.treatment_name ?? t('common.treatment')}</b>
+                      <div className="text-2xs faint">{t('profile.created')} {dateOnly(row.created_at)}</div>
                     </td>
-                    <td>{t.tooth_numbers?.length ? t.tooth_numbers.join(', ') : <span className="faint">—</span>}</td>
-                    <td><Badge tone={t.status === 'completed' ? 'ok' : t.status === 'cancelled' ? 'danger' : 'info'}>
-                      {titleCase(t.status)}</Badge></td>
-                    <td className="right">{money(t.final_cost)}</td>
-                    <td className="right">{money(t.amount_paid)}</td>
-                    <td className={`right bold ${t.balance > 0 ? 'danger-text' : ''}`}>{money(t.balance)}</td>
-                    <td><PaymentBadge status={t.payment_status} /></td>
+                    <td>{row.tooth_numbers?.length ? row.tooth_numbers.join(', ') : <span className="faint">—</span>}</td>
+                    <td><Badge tone={row.status === 'completed' ? 'ok' : row.status === 'cancelled' ? 'danger' : 'info'}>
+                      {label('status', row.status)}</Badge></td>
+                    <td className="right">{money(row.final_cost)}</td>
+                    <td className="right">{money(row.amount_paid)}</td>
+                    <td className={`right bold ${row.balance > 0 ? 'danger-text' : ''}`}>{money(row.balance)}</td>
+                    <td><PaymentBadge status={row.payment_status} /></td>
                     <td className="right">
-                      {canPay && t.balance > 0 && (
-                        <Button size="sm" variant="primary" onClick={() => onPay(t)}>Record payment</Button>
+                      {canPay && row.balance > 0 && (
+                        <Button size="sm" variant="primary" onClick={() => onPay(row)}>{t('profile.recordPayment')}</Button>
                       )}
                     </td>
                   </tr>
@@ -307,22 +311,23 @@ function NotesTab({ patientId }: { patientId: string }) {
   const exams = useQuery({
     queryKey: ['examinations', patientId], queryFn: () => listExaminations(patientId),
   });
+  const { t } = useI18n();
   return (
-    <Card title="Clinical notes and examinations">
+    <Card title={t('profile.notesTitle')}>
       <QueryBoundary
         query={exams}
-        empty={<EmptyState title="No examinations recorded"
-          description="Examination findings, diagnosis and recommendations will be listed here." />}
+        empty={<EmptyState title={t('profile.noExams')}
+          description={t('profile.noExamsHint')} />}
       >
         {(rows) => (
           <ul className="timeline">
             {rows.map((e) => (
               <li key={e.id} className="tone-brand">
-                <b>{e.diagnosis || e.chief_complaint || 'Examination'}</b>
+                <b>{e.diagnosis || e.chief_complaint || t('profile.examination')}</b>
                 <small>{dateOnly(e.exam_date)}{e.dentist ? ` · ${e.dentist.full_name}` : ''}</small>
-                {e.chief_complaint && <div className="text-sm mt-8"><b>Complaint:</b> {e.chief_complaint}</div>}
-                {e.findings && <div className="text-sm"><b>Findings:</b> {e.findings}</div>}
-                {e.recommended_treatment && <div className="text-sm"><b>Recommended:</b> {e.recommended_treatment}</div>}
+                {e.chief_complaint && <div className="text-sm mt-8"><b>{t('profile.complaint')}:</b> {e.chief_complaint}</div>}
+                {e.findings && <div className="text-sm"><b>{t('profile.findings')}:</b> {e.findings}</div>}
+                {e.recommended_treatment && <div className="text-sm"><b>{t('profile.recommended')}:</b> {e.recommended_treatment}</div>}
                 {e.notes && <div className="text-xs muted mt-8">{e.notes}</div>}
               </li>
             ))}
@@ -335,21 +340,23 @@ function NotesTab({ patientId }: { patientId: string }) {
 
 /* -------------------------------------------------------------------------- */
 function PaymentsTab({ patientId, onReceipt }: { patientId: string; onReceipt: (id: string) => void }) {
+  const { t, label } = useI18n();
   const payments = useQuery({
     queryKey: ['payments', patientId], queryFn: () => listPayments({ patientId, pageSize: 100 }),
   });
   return (
-    <Card title="Payment history" subtitle="Every installment recorded against this patient" padded={false}>
+    <Card title={t('profile.paymentHistory')} subtitle={t('profile.paymentHistoryHint')} padded={false}>
       <QueryBoundary
         query={{ ...payments, data: payments.data?.rows }}
-        empty={<EmptyState title="No payments yet" />}
+        empty={<EmptyState title={t('profile.noPaymentsYet')} />}
       >
         {(rows) => (
           <div className="table-wrap">
             <table className="tbl">
               <thead>
-                <tr><th>Receipt</th><th>Date</th><th>Treatment</th><th>Method</th>
-                  <th className="right">Amount</th><th>Received by</th><th /></tr>
+                <tr><th>{t('common.receipt')}</th><th>{t('common.date')}</th><th>{t('common.treatment')}</th>
+                  <th>{t('common.method')}</th><th className="right">{t('common.amount')}</th>
+                  <th>{t('profile.receivedBy')}</th><th /></tr>
               </thead>
               <tbody>
                 {rows.map((p) => (
@@ -357,13 +364,13 @@ function PaymentsTab({ patientId, onReceipt }: { patientId: string; onReceipt: (
                     <td className="bold">{p.receipt_number}</td>
                     <td>{dateTime(p.paid_at)}</td>
                     <td>{p.treatment?.treatment_type?.name ?? p.treatment?.description ?? '—'}</td>
-                    <td>{titleCase(p.method)}</td>
+                    <td>{label('method', p.method)}</td>
                     <td className="right bold">{money(p.amount)}</td>
                     <td>{p.received_by_profile?.full_name ?? '—'}</td>
                     <td className="right">
                       {p.voided_at
-                        ? <Badge tone="danger">Voided</Badge>
-                        : <Button size="sm" onClick={() => onReceipt(p.id)}>Receipt</Button>}
+                        ? <Badge tone="danger">{t('profile.voided')}</Badge>
+                        : <Button size="sm" onClick={() => onReceipt(p.id)}>{t('common.receipt')}</Button>}
                     </td>
                   </tr>
                 ))}
@@ -378,28 +385,30 @@ function PaymentsTab({ patientId, onReceipt }: { patientId: string; onReceipt: (
 
 /* -------------------------------------------------------------------------- */
 function AppointmentsTab({ patientId }: { patientId: string }) {
+  const { t, label } = useI18n();
   const appts = useQuery({
     queryKey: ['appointments', 'patient', patientId], queryFn: () => listAppointments({ patientId }),
   });
   return (
-    <Card title="Appointment history" padded={false}>
+    <Card title={t('profile.appointmentHistory')} padded={false}>
       <QueryBoundary
         query={appts}
-        empty={<EmptyState title="No appointments" description="Booked visits will appear here." />}
+        empty={<EmptyState title={t('profile.noAppointments')} description={t('profile.noAppointmentsHint')} />}
       >
         {(rows) => (
           <div className="table-wrap">
             <table className="tbl">
-              <thead><tr><th>When</th><th>Dentist</th><th>Treatment</th><th>Duration</th><th>Status</th></tr></thead>
+              <thead><tr><th>{t('common.when')}</th><th>{t('common.dentist')}</th><th>{t('common.treatment')}</th>
+                <th>{t('common.duration')}</th><th>{t('common.status')}</th></tr></thead>
               <tbody>
                 {rows.map((a) => (
                   <tr key={a.id}>
                     <td>{dateTime(a.scheduled_at)}</td>
                     <td>{a.dentist?.full_name ?? '—'}</td>
                     <td>{a.treatment_type?.name ?? '—'}</td>
-                    <td>{a.duration_minutes} min</td>
+                    <td>{a.duration_minutes} {t('common.min')}</td>
                     <td><Badge tone={a.status === 'completed' ? 'ok' : a.status === 'cancelled' || a.status === 'no_show' ? 'danger' : 'info'}>
-                      {titleCase(a.status)}</Badge></td>
+                      {label('status', a.status)}</Badge></td>
                   </tr>
                 ))}
               </tbody>
@@ -413,14 +422,15 @@ function AppointmentsTab({ patientId }: { patientId: string }) {
 
 /* -------------------------------------------------------------------------- */
 function PrescriptionsTab({ patientId }: { patientId: string }) {
+  const { t, label } = useI18n();
   const rx = useQuery({
     queryKey: ['prescriptions', patientId], queryFn: () => listPrescriptions({ patientId }),
   });
   return (
-    <Card title="Prescriptions" padded={false}>
+    <Card title={t('profile.tabPrescriptions')} padded={false}>
       <QueryBoundary
         query={rx}
-        empty={<EmptyState title="No prescriptions" description="Medicines prescribed by a dentist appear here." />}
+        empty={<EmptyState title={t('profile.noPrescriptions')} description={t('profile.noPrescriptionsHint')} />}
       >
         {(rows) => (
           <div className="col">
@@ -431,7 +441,7 @@ function PrescriptionsTab({ patientId }: { patientId: string }) {
                   <span className="text-xs faint">{dateTime(r.prescribed_at)} · {r.dentist?.full_name ?? '—'}</span>
                   <span className="ml-auto">
                     <Badge tone={r.status === 'dispensed' ? 'ok' : r.status === 'cancelled' ? 'danger' : 'warn'}>
-                      {titleCase(r.status)}
+                      {label('status', r.status)}
                     </Badge>
                   </span>
                 </div>
@@ -439,7 +449,7 @@ function PrescriptionsTab({ patientId }: { patientId: string }) {
                   {r.items?.map((item) => (
                     <li key={item.id} className="text-sm muted">
                       • {item.medicine_name} {item.strength} — {item.dose} {item.frequency} for {item.duration}
-                      <span className="faint"> ({item.dispensed_quantity}/{item.quantity} dispensed)</span>
+                      <span className="faint"> ({item.dispensed_quantity}/{item.quantity} {t('profile.dispensed')})</span>
                     </li>
                   ))}
                 </ul>
@@ -454,6 +464,7 @@ function PrescriptionsTab({ patientId }: { patientId: string }) {
 
 /* -------------------------------------------------------------------------- */
 function DocumentsTab({ patientId }: { patientId: string }) {
+  const { t, label } = useI18n();
   const docs = useQuery({ queryKey: ['documents', patientId], queryFn: () => listDocuments(patientId) });
 
   async function openDocument(path: string) {
@@ -462,25 +473,26 @@ function DocumentsTab({ patientId }: { patientId: string }) {
   }
 
   return (
-    <Card title="Documents" subtitle="X-rays, photos, consent forms and lab results" padded={false}>
+    <Card title={t('profile.tabDocuments')} subtitle={t('profile.documentsHint')} padded={false}>
       <QueryBoundary
         query={docs}
-        empty={<EmptyState title="No documents uploaded"
-          description="Files are stored in a private bucket; links expire after a few minutes." />}
+        empty={<EmptyState title={t('profile.noDocuments')}
+          description={t('profile.noDocumentsHint')} />}
       >
         {(rows) => (
           <div className="table-wrap">
             <table className="tbl">
-              <thead><tr><th>Title</th><th>Type</th><th>Uploaded</th><th>By</th><th /></tr></thead>
+              <thead><tr><th>{t('profile.docTitle')}</th><th>{t('profile.docType')}</th>
+                <th>{t('profile.uploaded')}</th><th>{t('profile.uploadedBy')}</th><th /></tr></thead>
               <tbody>
                 {rows.map((d) => (
                   <tr key={d.id}>
                     <td><b>{d.title}</b></td>
-                    <td><Badge tone="info">{titleCase(d.doc_type)}</Badge></td>
+                    <td><Badge tone="info">{label('doctype', d.doc_type)}</Badge></td>
                     <td>{dateTime(d.uploaded_at)}</td>
                     <td>{d.uploaded_by_profile?.full_name ?? '—'}</td>
                     <td className="right">
-                      <Button size="sm" onClick={() => openDocument(d.storage_path)}>Open</Button>
+                      <Button size="sm" onClick={() => openDocument(d.storage_path)}>{t('common.open')}</Button>
                     </td>
                   </tr>
                 ))}

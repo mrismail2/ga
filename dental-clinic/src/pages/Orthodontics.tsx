@@ -5,16 +5,21 @@ import { createOrthoCase, listOrthoCases, listTreatmentBalances } from '@/servic
 import { listDentists } from '@/services/admin';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
-import { dateOnly, isoDate, money, titleCase } from '@/lib/format';
+import { dateOnly, isoDate, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Avatar, Badge, Button, Card, Checkbox, EmptyState, Field, Input, Modal,
   QueryBoundary, Select, Textarea, useToast,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
+
+/** Stored in English so the clinical record stays stable across languages. */
+const BRACES_TYPES = ['Metal fixed', 'Ceramic fixed', 'Self-ligating', 'Lingual', 'Clear aligners'];
 
 export default function Orthodontics() {
   const { can } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
   const cases = useQuery({ queryKey: ['ortho-cases'], queryFn: () => listOrthoCases() });
@@ -23,13 +28,13 @@ export default function Orthodontics() {
     <>
       <div className="page__head">
         <div>
-          <h1>Braces / orthodontics</h1>
-          <p>Long-running cases with repeat adjustment visits and installment payments.</p>
+          <h1>{t('ortho.title')}</h1>
+          <p>{t('ortho.subtitle')}</p>
         </div>
         {can('clinical.write') && (
           <div className="page__actions">
             <Button variant="primary" onClick={() => setCreating(true)}>
-              <Icon name="plus" /> New braces case
+              <Icon name="plus" /> {t('ortho.new')}
             </Button>
           </div>
         )}
@@ -38,8 +43,8 @@ export default function Orthodontics() {
       <QueryBoundary
         query={cases}
         skeletonRows={5}
-        empty={<EmptyState title="No orthodontic cases yet"
-          description="Start a case when a patient begins braces treatment. Cost, visits and payments are tracked together." />}
+        empty={<EmptyState title={t('ortho.empty')}
+          description={t('ortho.emptyHint')} />}
       >
         {(rows) => (
           <div className="grid grid--auto">
@@ -61,6 +66,7 @@ function CaseCard({
   caseRow: Awaited<ReturnType<typeof listOrthoCases>>[number];
   onOpen: () => void;
 }) {
+  const { t, label } = useI18n();
   // Balance comes from the treatment the case bills through.
   const balances = useQuery({
     queryKey: ['treatment-balances', caseRow.patient_id],
@@ -72,38 +78,40 @@ function CaseCard({
 
   return (
     <Card
-      title={caseRow.patient?.full_name ?? 'Patient'}
-      subtitle={`${caseRow.braces_type} · started ${dateOnly(caseRow.start_date)}`}
+      title={caseRow.patient?.full_name ?? t('common.patient')}
+      subtitle={`${label('braces', caseRow.braces_type)} · ${t('profile.started')} ${dateOnly(caseRow.start_date)}`}
       actions={<Badge tone={caseRow.status === 'active' ? 'info' : caseRow.status === 'completed' ? 'ok' : 'muted'}>
-        {titleCase(caseRow.status)}
+        {label('status', caseRow.status)}
       </Badge>}
     >
       <div className="kv">
-        <div><small>Patient ID</small><b>{caseRow.patient?.patient_code}</b></div>
-        <div><small>Dentist</small><b>{caseRow.dentist?.full_name ?? '—'}</b></div>
-        <div><small>Arches</small>
-          <b>{[caseRow.upper_arch && 'Upper', caseRow.lower_arch && 'Lower'].filter(Boolean).join(' + ')}</b></div>
-        <div><small>Duration</small><b>{caseRow.estimated_months ?? '—'} months</b></div>
+        <div><small>{t('ortho.patientId')}</small><b>{caseRow.patient?.patient_code}</b></div>
+        <div><small>{t('common.dentist')}</small><b>{caseRow.dentist?.full_name ?? '—'}</b></div>
+        <div><small>{t('ortho.arches')}</small>
+          <b>{[caseRow.upper_arch && t('ortho.upper'), caseRow.lower_arch && t('ortho.lower')]
+            .filter(Boolean).join(' + ')}</b></div>
+        <div><small>{t('ortho.duration')}</small>
+          <b>{caseRow.estimated_months ?? '—'} {t('common.months')}</b></div>
       </div>
 
       <div className="mt-16">
         {balance ? (
           <>
             <div className="row between text-sm bold">
-              <span>{money(balance.amount_paid)} paid</span>
+              <span>{money(balance.amount_paid)} {t('ortho.paidLabel')}</span>
               <span className={balance.balance > 0 ? 'danger-text' : 'ok-text'}>
-                {money(balance.balance)} remaining
+                {money(balance.balance)} {t('ortho.remaining')}
               </span>
             </div>
             <div className="progress mt-8"><i style={{ width: `${progress}%` }} /></div>
-            <div className="text-2xs faint mt-8">Total {money(balance.final_cost)}</div>
+            <div className="text-2xs faint mt-8">{t('common.total')} {money(balance.final_cost)}</div>
           </>
         ) : (
-          <span className="text-xs faint">Loading balance…</span>
+          <span className="text-xs faint">{t('ortho.loadingBalance')}</span>
         )}
       </div>
 
-      <Button className="w-full mt-16" onClick={onOpen}>Open case</Button>
+      <Button className="w-full mt-16" onClick={onOpen}>{t('ortho.openCase')}</Button>
     </Card>
   );
 }
@@ -111,10 +119,11 @@ function CaseCard({
 function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t, label } = useI18n();
   const [term, setTerm] = useState('');
   const [patient, setPatient] = useState<{ id: string; full_name: string; patient_code: string } | null>(null);
   const [dentistId, setDentistId] = useState('');
-  const [bracesType, setBracesType] = useState('Metal fixed');
+  const [bracesType, setBracesType] = useState(BRACES_TYPES[0]);
   const [upper, setUpper] = useState(true);
   const [lower, setLower] = useState(true);
   const [cost, setCost] = useState('500');
@@ -136,7 +145,7 @@ function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => void })
       queryClient.invalidateQueries({ queryKey: ['ortho-cases'] });
       queryClient.invalidateQueries({ queryKey: ['treatment-balances'] });
       queryClient.invalidateQueries({ queryKey: ['outstanding'] });
-      notify('Braces case created');
+      notify(t('ortho.created'));
       setPatient(null); setTerm('');
       onClose();
     },
@@ -145,10 +154,10 @@ function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => void })
 
   function submit() {
     setError(null);
-    if (!patient) { setError('Select a patient.'); return; }
-    if (!upper && !lower) { setError('Choose at least one arch.'); return; }
+    if (!patient) { setError(t('common.selectPatient')); return; }
+    if (!upper && !lower) { setError(t('ortho.errArch')); return; }
     const total = Number(cost);
-    if (!Number.isFinite(total) || total <= 0) { setError('Enter the total treatment cost.'); return; }
+    if (!Number.isFinite(total) || total <= 0) { setError(t('ortho.errCost')); return; }
 
     create.mutate({
       patient_id: patient.id,
@@ -167,27 +176,27 @@ function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => void })
     <Modal
       open={open}
       onClose={onClose}
-      title="New braces case"
+      title={t('ortho.new')}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={create.isPending} onClick={submit}>Create case</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" loading={create.isPending} onClick={submit}>{t('ortho.create')}</Button>
         </>
       }
     >
       {error && <div className="login__error" role="alert">{error}</div>}
 
-      <Field label="Patient" required>
+      <Field label={t('common.patient')} required>
         {patient ? (
           <div className="row">
             <Avatar name={patient.full_name} size="sm" />
             <b className="text-sm">{patient.full_name}</b>
             <span className="text-xs faint">{patient.patient_code}</span>
-            <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>Change</Button>
+            <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>{t('common.change')}</Button>
           </div>
         ) : (
           <>
-            <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search patient…" />
+            <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder={t('common.searchPatient')} />
             <div className="col mt-8" style={{ gap: 4 }}>
               {results.data?.map((p) => (
                 <button key={p.id} type="button" className="gsearch__item"
@@ -203,46 +212,42 @@ function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => void })
       </Field>
 
       <div className="form-grid mt-16">
-        <Field label="Braces type" required>
+        <Field label={t('ortho.bracesType')} required>
           <Select value={bracesType} onChange={(e) => setBracesType(e.target.value)}>
-            {['Metal fixed', 'Ceramic fixed', 'Self-ligating', 'Lingual', 'Clear aligners'].map((t) => (
-              <option key={t}>{t}</option>
+            {BRACES_TYPES.map((type) => (
+              <option key={type} value={type}>{label('braces', type)}</option>
             ))}
           </Select>
         </Field>
-        <Field label="Dentist">
+        <Field label={t('common.dentist')}>
           <Select value={dentistId} onChange={(e) => setDentistId(e.target.value)}>
-            <option value="">Unassigned</option>
+            <option value="">{t('common.unassigned')}</option>
             {dentists.data?.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
           </Select>
         </Field>
-        <Field label="Total treatment cost" required
-          hint="The patient can pay this in installments over the treatment.">
+        <Field label={t('ortho.totalCost')} required hint={t('ortho.totalCostHint')}>
           <Input type="number" min={0} step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
         </Field>
-        <Field label="Estimated duration (months)">
+        <Field label={t('ortho.estMonths')}>
           <Input type="number" min={1} max={60} value={months} onChange={(e) => setMonths(e.target.value)} />
         </Field>
-        <Field label="Start date">
+        <Field label={t('ortho.startDate')}>
           <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
         </Field>
-        <Field label="Arches">
+        <Field label={t('ortho.arches')}>
           <div className="row">
-            <Checkbox label="Upper" checked={upper} onChange={(e) => setUpper(e.target.checked)} />
-            <Checkbox label="Lower" checked={lower} onChange={(e) => setLower(e.target.checked)} />
+            <Checkbox label={t('ortho.upper')} checked={upper} onChange={(e) => setUpper(e.target.checked)} />
+            <Checkbox label={t('ortho.lower')} checked={lower} onChange={(e) => setLower(e.target.checked)} />
           </div>
         </Field>
         <div className="full">
-          <Field label="Notes">
+          <Field label={t('common.notes')}>
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
         </div>
       </div>
 
-      <p className="text-2xs faint mt-12">
-        A billable treatment is created with the case, so payments and the remaining
-        balance are tracked from the first deposit onwards.
-      </p>
+      <p className="text-2xs faint mt-12">{t('ortho.footnote')}</p>
     </Modal>
   );
 }

@@ -8,6 +8,9 @@ could never keep straight.
 Built with **React + TypeScript + Vite** on **Supabase (PostgreSQL, Auth,
 Storage, Row Level Security)**.
 
+The interface is **Af-Soomaali first**. English is available from the `SO / EN`
+switch in the topbar and on the sign-in card — see [Language](#language).
+
 ---
 
 ## Nidaamku maxuu xalliyaa? / What it solves
@@ -66,6 +69,47 @@ from **Staff → Add staff account** inside the app.
 > list, medicine categories and clinic settings. There are **no sample patients,
 > treatments or payments**: the clinic's real records are the only data that
 > should ever exist.
+
+---
+
+## Language
+
+Every screen, dialog, table header, validation message, toast, badge and enum
+label is translated. Somali is the default; the choice is stored in
+`localStorage` under `dc_lang` and survives a reload.
+
+| Piece | Where |
+|---|---|
+| Both dictionaries | `src/i18n/dictionary.ts` |
+| Provider, `t()` and `label()` | `src/i18n/index.tsx` |
+| Dates, durations, ages | `src/lib/format.ts` |
+
+```ts
+const { t, label } = useI18n();
+
+t('pay.amountHint', { max: money(balance) })  // interpolates {max}
+label('status', appointment.status)           // translates a database enum
+```
+
+The English dictionary is declared `as const` and `TranslationKey` is derived
+from it, so `so` is typed `Record<TranslationKey, string>`: **a missing Somali
+string is a TypeScript error**, not a silent fallback at runtime.
+
+Dates are formatted without a date-fns locale — `setFormatLanguage()` is called
+by the provider and `src/lib/format.ts` carries Somali weekday and month names
+(`Arbaco, 12 Agoosto 2026`), relative times (`4 maalmood kahor`) and ages
+(`31 sano`).
+
+Two things stay in the database rather than in the dictionary, because the
+clinic owns them and can edit them from Settings:
+
+- **Treatment names and medicine categories** — seeded in Somali by
+  `0004_reference_data.sql`, with the codes (`RCT`, `FILLING`) left in English
+  so receipts and exports read the same in both languages.
+- **Free-text clinical values** written by staff (braces type, compliance,
+  clinical notes). Fixed choices like `Metal fixed` are stored in English and
+  displayed through `label('braces', …)` / `label('comp', …)`, so switching
+  language never rewrites a patient's record.
 
 ---
 
@@ -173,6 +217,7 @@ dental-clinic/
 │   └── test/                local Supabase stub + business-rule tests
 └── src/
     ├── demo/                in-memory client + sample data for `npm run demo`
+    ├── i18n/                Somali + English dictionaries and the t() provider
     ├── lib/                 supabase client, permissions, formatting
     ├── types/database.ts    types mirroring the SQL schema
     ├── services/            one module per domain; all queries live here

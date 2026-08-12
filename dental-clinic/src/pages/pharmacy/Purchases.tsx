@@ -5,7 +5,7 @@ import {
   listSuppliers, upsertSupplier,
 } from '@/services/pharmacy';
 import { readableError } from '@/lib/supabase';
-import { dateOnly, isoDate, money, titleCase } from '@/lib/format';
+import { dateOnly, isoDate, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { Supplier } from '@/types/database';
 import {
@@ -13,9 +13,11 @@ import {
   Select, Tabs, Textarea, useToast,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
 
 export default function Purchases() {
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const [tab, setTab] = useState('purchases');
@@ -32,7 +34,7 @@ export default function Purchases() {
       queryClient.invalidateQueries({ queryKey: ['stock'] });
       queryClient.invalidateQueries({ queryKey: ['batches'] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      notify(`${purchase.purchase_number} confirmed — stock updated`);
+      notify(`${purchase.purchase_number} ${t('pur.confirmed')}`);
     },
     onError: (e) => notify(readableError(e), 'danger'),
   });
@@ -41,14 +43,14 @@ export default function Purchases() {
     <>
       <div className="page__head">
         <div>
-          <h1>Purchases & suppliers</h1>
-          <p>Bring medicine into stock. Quantities only move when a purchase is confirmed.</p>
+          <h1>{t('pur.title')}</h1>
+          <p>{t('pur.subtitle')}</p>
         </div>
         {can('pharmacy.write') && (
           <div className="page__actions">
-            <Button onClick={() => setSupplierTarget('new')}><Icon name="plus" /> Add supplier</Button>
+            <Button onClick={() => setSupplierTarget('new')}><Icon name="plus" /> {t('pur.addSupplier')}</Button>
             <Button variant="primary" onClick={() => setCreating(true)}>
-              <Icon name="plus" /> New purchase
+              <Icon name="plus" /> {t('pur.new')}
             </Button>
           </div>
         )}
@@ -57,8 +59,8 @@ export default function Purchases() {
       <Card padded={false}>
         <Tabs
           tabs={[
-            { id: 'purchases', label: 'Purchases', count: purchases.data?.length },
-            { id: 'suppliers', label: 'Suppliers', count: suppliers.data?.length },
+            { id: 'purchases', label: t('pur.tabPurchases'), count: purchases.data?.length },
+            { id: 'suppliers', label: t('pur.tabSuppliers'), count: suppliers.data?.length },
           ]}
           value={tab}
           onChange={setTab}
@@ -68,15 +70,16 @@ export default function Purchases() {
           <QueryBoundary
             query={purchases}
             skeletonRows={6}
-            empty={<EmptyState title="No purchases recorded"
-              description="Record a purchase with batch numbers and expiry dates, then confirm it to add the stock." />}
+            empty={<EmptyState title={t('pur.empty')}
+              description={t('pur.emptyHint')} />}
           >
             {(rows) => (
               <div className="table-wrap">
                 <table className="tbl">
                   <thead>
-                    <tr><th>Purchase</th><th>Supplier</th><th>Invoice</th><th>Date</th>
-                      <th className="right">Total</th><th>Status</th><th /></tr>
+                    <tr><th>{t('pur.colPurchase')}</th><th>{t('pur.supplier')}</th>
+                      <th>{t('pur.invoice')}</th><th>{t('common.date')}</th>
+                      <th className="right">{t('common.total')}</th><th>{t('common.status')}</th><th /></tr>
                   </thead>
                   <tbody>
                     {rows.map((p) => (
@@ -88,14 +91,14 @@ export default function Purchases() {
                         <td className="right">{money(p.total_amount)}</td>
                         <td>
                           <Badge tone={p.status === 'confirmed' ? 'ok' : p.status === 'cancelled' ? 'danger' : 'warn'}>
-                            {titleCase(p.status)}
+                            {label('status', p.status)}
                           </Badge>
                         </td>
                         <td className="right">
                           {can('pharmacy.write') && p.status === 'draft' && (
                             <Button size="sm" variant="primary" loading={confirm.isPending}
                               onClick={() => confirm.mutate(p.id)}>
-                              Confirm & add stock
+                              {t('pur.confirm')}
                             </Button>
                           )}
                         </td>
@@ -112,23 +115,26 @@ export default function Purchases() {
           <QueryBoundary
             query={suppliers}
             skeletonRows={5}
-            empty={<EmptyState title="No suppliers yet"
-              description="Add the pharmacies and wholesalers the clinic buys from." />}
+            empty={<EmptyState title={t('pur.noSuppliers')}
+              description={t('pur.noSuppliersHint')} />}
           >
             {(rows) => (
               <div className="table-wrap">
                 <table className="tbl">
-                  <thead><tr><th>Supplier</th><th>Phone</th><th>Address</th><th>Status</th><th /></tr></thead>
+                  <thead><tr><th>{t('pur.supplier')}</th><th>{t('common.phone')}</th>
+                    <th>{t('common.address')}</th><th>{t('common.status')}</th><th /></tr></thead>
                   <tbody>
                     {rows.map((s) => (
                       <tr key={s.id}>
                         <td><b>{s.name}</b>{s.notes && <div className="text-2xs faint">{s.notes}</div>}</td>
                         <td>{s.phone ?? '—'}</td>
                         <td>{s.address ?? '—'}</td>
-                        <td><Badge tone={s.is_active ? 'ok' : 'muted'}>{s.is_active ? 'Active' : 'Inactive'}</Badge></td>
+                        <td><Badge tone={s.is_active ? 'ok' : 'muted'}>
+                          {s.is_active ? t('pur.active') : t('pur.inactive')}
+                        </Badge></td>
                         <td className="right">
                           {can('pharmacy.write') && (
-                            <Button size="sm" onClick={() => setSupplierTarget(s)}>Edit</Button>
+                            <Button size="sm" onClick={() => setSupplierTarget(s)}>{t('common.edit')}</Button>
                           )}
                         </td>
                       </tr>
@@ -155,6 +161,7 @@ interface PurchaseLine {
 function PurchaseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t } = useI18n();
   const suppliers = useQuery({ queryKey: ['suppliers'], queryFn: listSuppliers });
   const stock = useQuery({ queryKey: ['stock'], queryFn: () => listMedicineStock({}) });
 
@@ -180,7 +187,7 @@ function PurchaseModal({ open, onClose }: { open: boolean; onClose: () => void }
     }),
     onSuccess: (purchase) => {
       queryClient.invalidateQueries({ queryKey: ['purchases'] });
-      notify(`${purchase.purchase_number} saved as a draft — confirm it to add the stock`);
+      notify(`${purchase.purchase_number} ${t('pur.savedDraft')}`);
       setLines([]); setInvoice('');
       onClose();
     },
@@ -207,19 +214,19 @@ function PurchaseModal({ open, onClose }: { open: boolean; onClose: () => void }
     <Modal
       open={open}
       onClose={onClose}
-      title="New purchase"
+      title={t('pur.new')}
       wide
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" loading={create.isPending}
             onClick={() => {
               setError(null);
-              if (!lines.length) { setError('Add at least one medicine.'); return; }
-              if (lines.some((l) => l.quantity <= 0)) { setError('Quantities must be greater than zero.'); return; }
+              if (!lines.length) { setError(t('pur.errItems')); return; }
+              if (lines.some((l) => l.quantity <= 0)) { setError(t('pur.errQuantity')); return; }
               create.mutate();
             }}>
-            Save purchase · {money(total)}
+            {t('pur.save')} · {money(total)}
           </Button>
         </>
       }
@@ -227,21 +234,21 @@ function PurchaseModal({ open, onClose }: { open: boolean; onClose: () => void }
       {error && <div className="login__error" role="alert">{error}</div>}
 
       <div className="form-grid mb-16">
-        <Field label="Supplier">
+        <Field label={t('pur.supplier')}>
           <Select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-            <option value="">Not specified</option>
+            <option value="">{t('common.notSpecified')}</option>
             {suppliers.data?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </Field>
-        <Field label="Invoice reference">
+        <Field label={t('pur.invoiceRef')}>
           <Input value={invoice} onChange={(e) => setInvoice(e.target.value)} />
         </Field>
-        <Field label="Purchase date">
+        <Field label={t('pur.purchaseDate')}>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
-        <Field label="Add medicine">
+        <Field label={t('pur.addMedicine')}>
           <Select value={pick} onChange={(e) => addLine(e.target.value)}>
-            <option value="">Choose…</option>
+            <option value="">{t('treat.choose')}</option>
             {stock.data?.map((m) => (
               <option key={m.medicine_id} value={m.medicine_id}>{m.name} {m.strength}</option>
             ))}
@@ -250,20 +257,21 @@ function PurchaseModal({ open, onClose }: { open: boolean; onClose: () => void }
       </div>
 
       {lines.length === 0 ? (
-        <EmptyState title="No items yet" description="Choose a medicine to add it to this purchase." />
+        <EmptyState title={t('pur.noItems')} description={t('pur.noItemsHint')} />
       ) : (
         <div className="table-wrap">
           <table className="tbl">
             <thead>
-              <tr><th>Medicine</th><th>Batch</th><th>Expiry</th><th>Quantity</th>
-                <th>Unit cost</th><th className="right">Total</th><th /></tr>
+              <tr><th>{t('rx.medicine')}</th><th>{t('med.batch')}</th><th>{t('med.expiry')}</th>
+                <th>{t('common.quantity')}</th><th>{t('pur.unitCost')}</th>
+                <th className="right">{t('common.total')}</th><th /></tr>
             </thead>
             <tbody>
               {lines.map((l, i) => (
                 <tr key={`${l.medicine_id}-${i}`}>
                   <td><b>{l.name}</b></td>
                   <td>
-                    <Input style={{ width: 110 }} value={l.batch_number} placeholder="Batch"
+                    <Input style={{ width: 110 }} value={l.batch_number} placeholder={t('med.batch')}
                       onChange={(e) => setLines((p) => p.map((x, idx) =>
                         idx === i ? { ...x, batch_number: e.target.value } : x))} />
                   </td>
@@ -285,7 +293,7 @@ function PurchaseModal({ open, onClose }: { open: boolean; onClose: () => void }
                   <td className="right bold">{money(l.quantity * l.purchase_price)}</td>
                   <td className="right">
                     <Button size="sm" onClick={() => setLines((p) => p.filter((_, idx) => idx !== i))}>
-                      Remove
+                      {t('common.remove')}
                     </Button>
                   </td>
                 </tr>
@@ -295,10 +303,7 @@ function PurchaseModal({ open, onClose }: { open: boolean; onClose: () => void }
         </div>
       )}
 
-      <p className="text-2xs faint mt-12">
-        Saving creates a draft. Stock quantities only change when you confirm the purchase,
-        and each confirmation writes a stock movement entry.
-      </p>
+      <p className="text-2xs faint mt-12">{t('pur.footnote')}</p>
     </Modal>
   );
 }
@@ -308,6 +313,7 @@ function SupplierModal({
 }: { target: Supplier | 'new' | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t } = useI18n();
   const isNew = target === 'new';
   const existing = target !== 'new' ? target : null;
 
@@ -337,7 +343,7 @@ function SupplierModal({
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
-      notify(isNew ? 'Supplier added' : 'Supplier updated');
+      notify(isNew ? t('pur.supplierAdded') : t('pur.supplierUpdated'));
       onClose();
     },
     onError: (e) => setError(readableError(e)),
@@ -347,36 +353,36 @@ function SupplierModal({
     <Modal
       open={target !== null}
       onClose={onClose}
-      title={isNew ? 'Add supplier' : 'Edit supplier'}
+      title={isNew ? t('pur.supplierAddTitle') : t('pur.supplierEditTitle')}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" loading={save.isPending}
             onClick={() => {
               setError(null);
-              if (form.name.trim().length < 2) { setError('Enter the supplier name.'); return; }
+              if (form.name.trim().length < 2) { setError(t('pur.errSupplierName')); return; }
               save.mutate();
             }}>
-            Save
+            {t('common.save')}
           </Button>
         </>
       }
     >
       {error && <div className="login__error" role="alert">{error}</div>}
       <div className="form-grid">
-        <Field label="Name" required>
+        <Field label={t('common.name')} required>
           <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
         </Field>
-        <Field label="Phone">
+        <Field label={t('common.phone')}>
           <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
         </Field>
         <div className="full">
-          <Field label="Address">
+          <Field label={t('common.address')}>
             <Input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} />
           </Field>
         </div>
         <div className="full">
-          <Field label="Notes">
+          <Field label={t('common.notes')}>
             <Textarea rows={2} value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
           </Field>

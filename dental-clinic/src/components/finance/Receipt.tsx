@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { getPayment } from '@/services/finance';
 import { getSettings } from '@/services/admin';
 import { listTreatmentBalances } from '@/services/clinical';
-import { dateTime, money, titleCase } from '@/lib/format';
+import { dateTime, money } from '@/lib/format';
+import { useI18n } from '@/i18n';
 import { Button, Modal, Skeleton } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 
@@ -13,6 +14,7 @@ import { Icon } from '@/components/ui/Icon';
 export default function Receipt({
   paymentId, open, onClose,
 }: { paymentId: string | null; open: boolean; onClose: () => void }) {
+  const { t, label } = useI18n();
   const payment = useQuery({
     queryKey: ['payment', paymentId],
     queryFn: () => getPayment(paymentId!),
@@ -34,12 +36,12 @@ export default function Receipt({
     <Modal
       open={open}
       onClose={onClose}
-      title="Payment receipt"
+      title={t('receipt.title')}
       footer={
         <>
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>{t('common.close')}</Button>
           <Button variant="primary" onClick={() => window.print()}>
-            <Icon name="print" /> Print
+            <Icon name="print" /> {t('common.print')}
           </Button>
         </>
       }
@@ -47,7 +49,7 @@ export default function Receipt({
       {payment.isPending ? (
         <Skeleton rows={6} />
       ) : payment.isError ? (
-        <p className="text-sm danger-text">Could not load this receipt.</p>
+        <p className="text-sm danger-text">{t('receipt.failed')}</p>
       ) : payment.data ? (
         <div className="receipt" id="receipt-print">
           <div className="row between">
@@ -57,7 +59,7 @@ export default function Receipt({
               <div className="text-xs">{settings.data?.phone}</div>
             </div>
             <div className="right">
-              <div className="text-xs">Receipt</div>
+              <div className="text-xs">{t('common.receipt')}</div>
               <b>{payment.data.receipt_number}</b>
               <div className="text-xs">{dateTime(payment.data.paid_at)}</div>
             </div>
@@ -66,34 +68,34 @@ export default function Receipt({
           <table>
             <tbody>
               <tr>
-                <th style={{ width: '40%' }}>Patient</th>
+                <th style={{ width: '40%' }}>{t('common.patient')}</th>
                 <td>{payment.data.patient?.full_name}</td>
               </tr>
-              <tr><th>Patient ID</th><td>{payment.data.patient?.patient_code}</td></tr>
+              <tr><th>{t('receipt.patientId')}</th><td>{payment.data.patient?.patient_code}</td></tr>
               <tr>
-                <th>Treatment</th>
+                <th>{t('common.treatment')}</th>
                 <td>
                   {payment.data.treatment?.treatment_type?.name
                     ?? payment.data.treatment?.description
-                    ?? 'Treatment'}
+                    ?? t('common.treatment')}
                 </td>
               </tr>
-              <tr><th>Payment method</th><td>{titleCase(payment.data.method)}</td></tr>
+              <tr><th>{t('pay.methodLabel')}</th><td>{label('method', payment.data.method)}</td></tr>
               {payment.data.reference && (
-                <tr><th>Reference</th><td>{payment.data.reference}</td></tr>
+                <tr><th>{t('common.reference')}</th><td>{payment.data.reference}</td></tr>
               )}
-              <tr><th>Previous balance</th><td>{money(balanceBefore)}</td></tr>
-              <tr><th>Amount received</th><td><b>{money(amount)}</b></td></tr>
+              <tr><th>{t('receipt.previousBalance')}</th><td>{money(balanceBefore)}</td></tr>
+              <tr><th>{t('receipt.amountReceived')}</th><td><b>{money(amount)}</b></td></tr>
               <tr className="total-row">
-                <td>Remaining balance</td>
+                <td>{t('receipt.remainingBalance')}</td>
                 <td><b>{money(balanceAfter)}</b></td>
               </tr>
             </tbody>
           </table>
 
           <div className="row between text-xs">
-            <span>Received by: {payment.data.received_by_profile?.full_name ?? '—'}</span>
-            <span>Signature: ____________________</span>
+            <span>{t('profile.receivedBy')}: {payment.data.received_by_profile?.full_name ?? '—'}</span>
+            <span>{t('receipt.signature')}: ____________________</span>
           </div>
           <p className="text-xs" style={{ marginTop: 14, textAlign: 'center' }}>
             {settings.data?.receipt_footer}

@@ -4,6 +4,7 @@ import {
   type SelectHTMLAttributes, type TextareaHTMLAttributes,
 } from 'react';
 import { initials, toneFor } from '@/lib/format';
+import { useI18n } from '@/i18n';
 
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(' ');
 
@@ -115,8 +116,8 @@ export function Badge({
 
 const PAYMENT_TONE = { paid: 'ok', partial: 'info', unpaid: 'warn', waived: 'muted' } as const;
 export function PaymentBadge({ status }: { status: keyof typeof PAYMENT_TONE }) {
-  const label = { paid: 'Fully paid', partial: 'Partial', unpaid: 'Unpaid', waived: 'Waived' }[status];
-  return <Badge tone={PAYMENT_TONE[status]}>{label}</Badge>;
+  const { label } = useI18n();
+  return <Badge tone={PAYMENT_TONE[status]}>{label('status', status)}</Badge>;
 }
 
 export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg' }) {
@@ -175,12 +176,13 @@ export function EmptyState({
 }
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const message = error instanceof Error ? error.message : String(error ?? 'Unknown error');
+  const { t } = useI18n();
+  const message = error instanceof Error ? error.message : String(error ?? '');
   return (
     <div className="state state--error" role="alert">
-      <b>Could not load this</b>
+      <b>{t('common.somethingWrong')}</b>
       <p>{message}</p>
-      {onRetry && <div className="state__action"><Button size="sm" onClick={onRetry}>Try again</Button></div>}
+      {onRetry && <div className="state__action"><Button size="sm" onClick={onRetry}>{t('common.tryAgain')}</Button></div>}
     </div>
   );
 }
@@ -228,7 +230,7 @@ export function Modal({
       <div ref={ref} className={cx('modal', wide && 'modal--wide')} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="modal__head">
           <h3 id={titleId}>{title}</h3>
-          <IconButton label="Close" onClick={onClose}>✕</IconButton>
+          <IconButton label="✕" onClick={onClose}>✕</IconButton>
         </header>
         <div className="modal__body">{children}</div>
         {footer && <footer className="modal__foot">{footer}</footer>}
@@ -238,11 +240,12 @@ export function Modal({
 }
 
 export function ConfirmDialog({
-  open, title, message, confirmLabel = 'Confirm', destructive, onConfirm, onCancel, busy,
+  open, title, message, confirmLabel, destructive, onConfirm, onCancel, busy,
 }: {
   open: boolean; title: string; message: string; confirmLabel?: string;
   destructive?: boolean; onConfirm: () => void; onCancel: () => void; busy?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <Modal
       open={open}
@@ -250,9 +253,9 @@ export function ConfirmDialog({
       title={title}
       footer={
         <>
-          <Button onClick={onCancel}>Cancel</Button>
+          <Button onClick={onCancel}>{t('common.cancel')}</Button>
           <Button variant={destructive ? 'danger' : 'primary'} onClick={onConfirm} loading={busy}>
-            {confirmLabel}
+            {confirmLabel ?? t('common.confirm')}
           </Button>
         </>
       }
@@ -268,18 +271,20 @@ export function ConfirmDialog({
 export function Pagination({
   page, pageSize, total, onChange,
 }: { page: number; pageSize: number; total: number; onChange: (page: number) => void }) {
+  const { t } = useI18n();
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
   return (
     <div className="pager">
       <span className="text-xs muted">
-        {total === 0 ? 'No records' : <>Showing <b>{from}–{to}</b> of {total}</>}
+        {total === 0 ? t('common.noRecords')
+          : <>{t('common.showing')} <b>{from}–{to}</b> {t('common.of')} {total}</>}
       </span>
       <div className="pager__buttons">
-        <Button size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>Previous</Button>
-        <span className="text-xs muted">Page {page} of {pages}</span>
-        <Button size="sm" disabled={page >= pages} onClick={() => onChange(page + 1)}>Next</Button>
+        <Button size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>{t('common.previous')}</Button>
+        <span className="text-xs muted">{t('common.page')} {page} / {pages}</span>
+        <Button size="sm" disabled={page >= pages} onClick={() => onChange(page + 1)}>{t('common.next')}</Button>
       </div>
     </div>
   );

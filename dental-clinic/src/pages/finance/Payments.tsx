@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { listPayments, voidPayment } from '@/services/finance';
 import { readableError } from '@/lib/supabase';
-import { dateTime, isoDate, money, titleCase } from '@/lib/format';
+import { dateTime, isoDate, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { PaymentMethod } from '@/types/database';
 import {
@@ -12,12 +12,14 @@ import {
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import Receipt from '@/components/finance/Receipt';
+import { useI18n } from '@/i18n';
 
 const METHODS: (PaymentMethod | 'all')[] = ['all', 'cash', 'evc_plus', 'zaad', 'edahab', 'bank', 'other'];
 const PAGE_SIZE = 25;
 
 export default function Payments() {
   const { profile } = useAuth();
+  const { t, label } = useI18n();
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const [from, setFrom] = useState(isoDate(new Date(Date.now() - 30 * 86_400_000)));
@@ -42,7 +44,7 @@ export default function Payments() {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
       queryClient.invalidateQueries({ queryKey: ['outstanding'] });
       queryClient.invalidateQueries({ queryKey: ['treatment-balances'] });
-      notify('Payment voided — the original entry is kept for the audit trail');
+      notify(t('payments.voided'));
       setVoidId(null); setReason('');
     },
     onError: (e) => notify(readableError(e), 'danger'),
@@ -52,17 +54,17 @@ export default function Payments() {
     <>
       <div className="page__head">
         <div>
-          <h1>Payments</h1>
-          <p>Every receipt issued by the clinic. Payments are never deleted — mistakes are voided.</p>
+          <h1>{t('payments.title')}</h1>
+          <p>{t('payments.subtitle')}</p>
         </div>
       </div>
 
       <div className="grid grid--3 mb-16">
-        <StatCard tone="ok" label="Collected in this period" value={money(total)}
-          hint={`${rows.filter((p) => !p.voided_at).length} payments`} />
-        <StatCard tone="brand" label="Period"
+        <StatCard tone="ok" label={t('payments.collected')} value={money(total)}
+          hint={`${rows.filter((p) => !p.voided_at).length} ${t('payments.count')}`} />
+        <StatCard tone="brand" label={t('common.period')}
           value={`${dateTime(from).split(',')[0]} – ${dateTime(to).split(',')[0]}`} />
-        <StatCard tone="warn" label="Voided in this period"
+        <StatCard tone="warn" label={t('payments.voidedCount')}
           value={rows.filter((p) => p.voided_at).length} />
       </div>
 
@@ -72,23 +74,27 @@ export default function Payments() {
           <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} />
           <Select value={method} onChange={(e) => { setMethod(e.target.value as PaymentMethod | 'all'); setPage(1); }}
             style={{ width: 160 }}>
-            {METHODS.map((m) => <option key={m} value={m}>{m === 'all' ? 'All methods' : titleCase(m)}</option>)}
+            {METHODS.map((m) => (
+              <option key={m} value={m}>{m === 'all' ? t('payments.allMethods') : label('method', m)}</option>
+            ))}
           </Select>
-          <Link className="btn ml-auto" to="/outstanding"><Icon name="balance" /> Outstanding balances</Link>
+          <Link className="btn ml-auto" to="/outstanding"><Icon name="balance" /> {t('out.title')}</Link>
         </div>
 
         <QueryBoundary
           query={{ ...query, data: query.data?.rows }}
           skeletonRows={8}
-          empty={<EmptyState title="No payments in this period"
-            description="Change the date range, or record a payment from a patient's treatment." />}
+          empty={<EmptyState title={t('payments.empty')}
+            description={t('payments.emptyHint')} />}
         >
           {(list) => (
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
-                  <tr><th>Receipt</th><th>Date</th><th>Patient</th><th>Treatment</th>
-                    <th>Method</th><th>Reference</th><th className="right">Amount</th><th /></tr>
+                  <tr><th>{t('common.receipt')}</th><th>{t('common.date')}</th>
+                    <th>{t('common.patient')}</th><th>{t('common.treatment')}</th>
+                    <th>{t('common.method')}</th><th>{t('common.reference')}</th>
+                    <th className="right">{t('common.amount')}</th><th /></tr>
                 </thead>
                 <tbody>
                   {list.map((p) => (
@@ -104,17 +110,17 @@ export default function Payments() {
                           : '—'}
                       </td>
                       <td>{p.treatment?.treatment_type?.name ?? p.treatment?.description ?? '—'}</td>
-                      <td>{titleCase(p.method)}</td>
+                      <td>{label('method', p.method)}</td>
                       <td className="text-xs faint">{p.reference ?? '—'}</td>
                       <td className="right bold">{money(p.amount)}</td>
                       <td className="right">
                         {p.voided_at ? (
-                          <Badge tone="danger">Voided</Badge>
+                          <Badge tone="danger">{t('payments.voidedBadge')}</Badge>
                         ) : (
                           <div className="row row--sm" style={{ justifyContent: 'flex-end' }}>
-                            <Button size="sm" onClick={() => setReceiptId(p.id)}>Receipt</Button>
+                            <Button size="sm" onClick={() => setReceiptId(p.id)}>{t('payments.receiptBtn')}</Button>
                             {profile?.role === 'admin' && (
-                              <Button size="sm" onClick={() => setVoidId(p.id)}>Void</Button>
+                              <Button size="sm" onClick={() => setVoidId(p.id)}>{t('payments.void')}</Button>
                             )}
                           </div>
                         )}
@@ -135,30 +141,27 @@ export default function Payments() {
       <Modal
         open={voidId !== null}
         onClose={() => { setVoidId(null); setReason(''); }}
-        title="Void this payment"
+        title={t('payments.voidTitle')}
         footer={
           <>
-            <Button onClick={() => { setVoidId(null); setReason(''); }}>Cancel</Button>
+            <Button onClick={() => { setVoidId(null); setReason(''); }}>{t('common.cancel')}</Button>
             <Button
               variant="danger"
               loading={doVoid.isPending}
               onClick={() => {
-                if (reason.trim().length < 3) { notify('Enter a reason first.', 'danger'); return; }
+                if (reason.trim().length < 3) { notify(t('payments.voidNeedReason'), 'danger'); return; }
                 doVoid.mutate();
               }}
             >
-              Void payment
+              {t('payments.voidTitle')}
             </Button>
           </>
         }
       >
-        <p className="text-sm muted mb-16">
-          Voiding keeps the original record and restores the treatment balance. The action is
-          written to the audit log with your name.
-        </p>
-        <Field label="Reason" required>
+        <p className="text-sm muted mb-16">{t('payments.voidExplain')}</p>
+        <Field label={t('common.reason')} required>
           <Input autoFocus value={reason} onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. entered twice by mistake" />
+            placeholder={t('payments.voidReasonPlaceholder')} />
         </Field>
       </Modal>
 

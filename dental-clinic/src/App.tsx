@@ -2,6 +2,7 @@ import { Suspense, lazy, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { I18nProvider, useI18n } from '@/i18n';
 import { ToastProvider, Skeleton, EmptyState, Button } from '@/components/ui';
 import type { Permission } from '@/lib/permissions';
 import AppShell from '@/components/layout/AppShell';
@@ -46,6 +47,7 @@ const queryClient = new QueryClient({
 
 function RequireAuth({ permission, children }: { permission?: Permission; children: ReactNode }) {
   const { session, profile, loading, can } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
 
   if (loading) return <div className="page"><Skeleton rows={6} /></div>;
@@ -55,8 +57,8 @@ function RequireAuth({ permission, children }: { permission?: Permission; childr
     return (
       <div className="page">
         <EmptyState
-          title="No staff profile linked to this account"
-          description="Your login exists but it has not been linked to a clinic profile yet. Ask the administrator to assign your role."
+          title={t('access.noProfile')}
+          description={t('access.noProfileHint')}
         />
       </div>
     );
@@ -65,8 +67,8 @@ function RequireAuth({ permission, children }: { permission?: Permission; childr
     return (
       <div className="page">
         <EmptyState
-          title="This account is inactive"
-          description="Your access has been suspended. Contact the clinic administrator."
+          title={t('access.inactive')}
+          description={t('access.inactiveHint')}
         />
       </div>
     );
@@ -75,9 +77,9 @@ function RequireAuth({ permission, children }: { permission?: Permission; childr
     return (
       <div className="page">
         <EmptyState
-          title="You do not have access to this section"
-          description="Your role does not include this permission. If you need it, ask the administrator to grant it."
-          action={<Button onClick={() => window.history.back()}>Go back</Button>}
+          title={t('access.denied')}
+          description={t('access.deniedHint')}
+          action={<Button onClick={() => window.history.back()}>{t('common.goBack')}</Button>}
         />
       </div>
     );
@@ -89,6 +91,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <I18nProvider>
         <AuthProvider>
           <ToastProvider>
             <Suspense fallback={<div className="page"><Skeleton rows={6} /></div>}>
@@ -128,6 +131,7 @@ export default function App() {
             </Suspense>
           </ToastProvider>
         </AuthProvider>
+        </I18nProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );

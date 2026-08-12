@@ -406,6 +406,8 @@ const RPCS: Record<string, (args: Row) => unknown> = {
 /* -------------------------------------------------------------------------- */
 /* Client                                                                      */
 /* -------------------------------------------------------------------------- */
+const signedOut = () => new URLSearchParams(window.location.search).has('signedout');
+
 const SESSION = {
   access_token: 'demo', token_type: 'bearer', expires_in: 3600,
   refresh_token: 'demo', user: { id: 'u-1', email: 'amina@clinic.so' },
@@ -426,10 +428,12 @@ export const supabase = {
   },
 
   auth: {
-    getSession: async () => ({ data: { session: SESSION }, error: null }),
-    getUser: async () => ({ data: { user: SESSION.user }, error: null }),
+    // ?signedout lets the screenshot run reach the sign-in screen, which is
+    // otherwise unreachable because the demo session never expires.
+    getSession: async () => ({ data: { session: signedOut() ? null : SESSION }, error: null }),
+    getUser: async () => ({ data: { user: signedOut() ? null : SESSION.user }, error: null }),
     onAuthStateChange: (cb: (event: string, session: unknown) => void) => {
-      setTimeout(() => cb('SIGNED_IN', SESSION), 0);
+      setTimeout(() => (signedOut() ? cb('SIGNED_OUT', null) : cb('SIGNED_IN', SESSION)), 0);
       return { data: { subscription: { unsubscribe() {} } } };
     },
     signInWithPassword: async () => ({ data: { session: SESSION }, error: null }),

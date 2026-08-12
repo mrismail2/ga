@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listAuditLogs } from '@/services/admin';
-import { dateTime, isoDate, titleCase } from '@/lib/format';
-import { ROLE_LABEL } from '@/lib/permissions';
+import { dateTime, isoDate } from '@/lib/format';
 import {
   Badge, Card, EmptyState, Input, Pagination, QueryBoundary, Select,
 } from '@/components/ui';
+import { useI18n } from '@/i18n';
 
 const ENTITIES = [
   'all', 'patients', 'treatments', 'payments', 'prescriptions',
@@ -14,6 +14,7 @@ const ENTITIES = [
 const PAGE_SIZE = 50;
 
 export default function AuditLog() {
+  const { t, label } = useI18n();
   const [entity, setEntity] = useState('all');
   const [from, setFrom] = useState(isoDate(new Date(Date.now() - 7 * 86_400_000)));
   const [to, setTo] = useState(isoDate());
@@ -28,8 +29,8 @@ export default function AuditLog() {
     <>
       <div className="page__head">
         <div>
-          <h1>Audit log</h1>
-          <p>Who did what and when. Written by the database, so it cannot be edited from the app.</p>
+          <h1>{t('audit.title')}</h1>
+          <p>{t('audit.subtitle')}</p>
         </div>
       </div>
 
@@ -37,8 +38,10 @@ export default function AuditLog() {
         <div className="toolbar">
           <Select value={entity} onChange={(e) => { setEntity(e.target.value); setPage(1); }}
             style={{ width: 190 }}>
-            {ENTITIES.map((e) => (
-              <option key={e} value={e}>{e === 'all' ? 'All records' : titleCase(e)}</option>
+            {ENTITIES.map((name) => (
+              <option key={name} value={name}>
+                {name === 'all' ? t('audit.allRecords') : label('entity', name)}
+              </option>
             ))}
           </Select>
           <Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} />
@@ -48,14 +51,15 @@ export default function AuditLog() {
         <QueryBoundary
           query={{ ...query, data: query.data?.rows }}
           skeletonRows={10}
-          empty={<EmptyState title="No activity in this period"
-            description="Patient, treatment, payment and pharmacy changes are all recorded here." />}
+          empty={<EmptyState title={t('audit.empty')}
+            description={t('audit.emptyHint')} />}
         >
           {(rows) => (
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
-                  <tr><th>When</th><th>User</th><th>Action</th><th>Record</th><th>Details</th></tr>
+                  <tr><th>{t('common.when')}</th><th>{t('audit.user')}</th><th>{t('audit.action')}</th>
+                    <th>{t('audit.record')}</th><th>{t('audit.details')}</th></tr>
                 </thead>
                 <tbody>
                   {rows.map((log) => (
@@ -65,9 +69,9 @@ export default function AuditLog() {
                         {log.user ? (
                           <>
                             <b>{log.user.full_name}</b>
-                            <div className="text-2xs faint">{ROLE_LABEL[log.user.role]}</div>
+                            <div className="text-2xs faint">{label('role', log.user.role)}</div>
                           </>
-                        ) : <span className="faint">System</span>}
+                        ) : <span className="faint">{t('audit.system')}</span>}
                       </td>
                       <td>
                         <Badge tone={
@@ -77,7 +81,7 @@ export default function AuditLog() {
                           {log.action}
                         </Badge>
                       </td>
-                      <td className="text-xs">{titleCase(log.entity)}</td>
+                      <td className="text-xs">{label('entity', log.entity)}</td>
                       <td className="text-2xs faint">
                         <code style={{ wordBreak: 'break-all' }}>
                           {summarise(log.details)}

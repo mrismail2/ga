@@ -8,7 +8,7 @@ import { listDentists } from '@/services/admin';
 import { listTreatmentTypes } from '@/services/clinical';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
-import { dateOnly, isoDate, timeOnly, titleCase } from '@/lib/format';
+import { dateOnly, isoDate, timeOnly } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { AppointmentStatus } from '@/types/database';
 import {
@@ -16,6 +16,7 @@ import {
   Select, Textarea, useToast, cx,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
 
 const STATUS_TONE: Record<AppointmentStatus, 'ok' | 'warn' | 'danger' | 'info' | 'muted'> = {
   scheduled: 'muted', confirmed: 'info', checked_in: 'info', waiting: 'warn',
@@ -23,9 +24,9 @@ const STATUS_TONE: Record<AppointmentStatus, 'ok' | 'warn' | 'danger' | 'info' |
 };
 
 const RANGES = [
-  { id: 'today', label: 'Today' },
-  { id: 'week', label: 'This week' },
-  { id: 'month', label: 'This month' },
+  { id: 'today', key: 'common.today' },
+  { id: 'week', key: 'common.thisWeek' },
+  { id: 'month', key: 'common.thisMonth' },
 ] as const;
 
 function rangeFor(id: (typeof RANGES)[number]['id']) {
@@ -44,6 +45,7 @@ function rangeFor(id: (typeof RANGES)[number]['id']) {
 
 export default function Appointments() {
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { notify } = useToast();
@@ -64,7 +66,7 @@ export default function Appointments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      notify('Appointment updated');
+      notify(t('appt.updated'));
     },
     onError: (e) => notify(readableError(e), 'danger'),
   });
@@ -74,7 +76,7 @@ export default function Appointments() {
     onSuccess: (appt) => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['queue'] });
-      notify(`Checked in — queue number ${appt.queue_number}`);
+      notify(`${t('appt.checkedIn')} ${appt.queue_number}`);
     },
     onError: (e) => notify(readableError(e), 'danger'),
   });
@@ -83,13 +85,13 @@ export default function Appointments() {
     <>
       <div className="page__head">
         <div>
-          <h1>Appointments</h1>
-          <p>Schedule visits, check patients in and track how the day is running.</p>
+          <h1>{t('appt.title')}</h1>
+          <p>{t('appt.subtitle')}</p>
         </div>
         {can('appointments.write') && (
           <div className="page__actions">
             <Button variant="primary" onClick={() => setBooking(true)}>
-              <Icon name="plus" /> Book appointment
+              <Icon name="plus" /> {t('appt.book')}
             </Button>
           </div>
         )}
@@ -100,12 +102,12 @@ export default function Appointments() {
           <div className="segmented">
             {RANGES.map((r) => (
               <button key={r.id} className={cx(range === r.id && 'is-active')} onClick={() => setRange(r.id)}>
-                {r.label}
+                {t(r.key)}
               </button>
             ))}
           </div>
           <Select value={dentistId} onChange={(e) => setDentistId(e.target.value)} style={{ width: 190 }}>
-            <option value="">All dentists</option>
+            <option value="">{t('appt.allDentists')}</option>
             {dentists.data?.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
           </Select>
           <span className="ml-auto text-xs faint">
@@ -116,15 +118,16 @@ export default function Appointments() {
         <QueryBoundary
           query={appointments}
           skeletonRows={7}
-          empty={<EmptyState title="No appointments in this period"
-            description="Change the date range, or book a new appointment." />}
+          empty={<EmptyState title={t('appt.empty')}
+            description={t('appt.emptyHint')} />}
         >
           {(rows) => (
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
-                  <tr><th>When</th><th>Patient</th><th>Dentist</th><th>Treatment</th>
-                    <th>Duration</th><th>Status</th><th /></tr>
+                  <tr><th>{t('common.when')}</th><th>{t('common.patient')}</th><th>{t('common.dentist')}</th>
+                    <th>{t('common.treatment')}</th><th>{t('common.duration')}</th>
+                    <th>{t('common.status')}</th><th /></tr>
                 </thead>
                 <tbody>
                   {rows.map((a) => (
@@ -142,26 +145,26 @@ export default function Appointments() {
                           </div>
                         </div>
                       </td>
-                      <td>{a.dentist?.full_name ?? <span className="faint">Unassigned</span>}</td>
+                      <td>{a.dentist?.full_name ?? <span className="faint">{t('common.unassigned')}</span>}</td>
                       <td>{a.treatment_type?.name ?? <span className="faint">—</span>}</td>
-                      <td>{a.duration_minutes} min</td>
-                      <td><Badge tone={STATUS_TONE[a.status]}>{titleCase(a.status)}</Badge></td>
+                      <td>{a.duration_minutes} {t('common.min')}</td>
+                      <td><Badge tone={STATUS_TONE[a.status]}>{label('status', a.status)}</Badge></td>
                       <td className="right">
                         {can('appointments.write') && (
                           <div className="row row--sm" style={{ justifyContent: 'flex-end' }}>
                             {(a.status === 'scheduled' || a.status === 'confirmed') && (
                               <Button size="sm" variant="primary"
                                 loading={doCheckIn.isPending}
-                                onClick={() => doCheckIn.mutate(a.id)}>Check in</Button>
+                                onClick={() => doCheckIn.mutate(a.id)}>{t('appt.checkIn')}</Button>
                             )}
                             {a.status !== 'completed' && a.status !== 'cancelled' && (
                               <Button size="sm" onClick={() => setStatus.mutate({ id: a.id, status: 'completed' })}>
-                                Complete
+                                {t('appt.complete')}
                               </Button>
                             )}
                             {a.status === 'scheduled' && (
                               <Button size="sm" onClick={() => setStatus.mutate({ id: a.id, status: 'no_show' })}>
-                                No show
+                                {t('appt.noShow')}
                               </Button>
                             )}
                           </div>
@@ -184,6 +187,7 @@ export default function Appointments() {
 function BookingModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t } = useI18n();
   const [term, setTerm] = useState('');
   const [patient, setPatient] = useState<{ id: string; full_name: string; patient_code: string } | null>(null);
   const [dentistId, setDentistId] = useState('');
@@ -207,7 +211,7 @@ function BookingModal({ open, onClose }: { open: boolean; onClose: () => void })
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      notify('Appointment booked');
+      notify(t('appt.booked'));
       setPatient(null); setTerm(''); setNotes('');
       onClose();
     },
@@ -216,7 +220,7 @@ function BookingModal({ open, onClose }: { open: boolean; onClose: () => void })
 
   function submit() {
     setError(null);
-    if (!patient) { setError('Select a patient first.'); return; }
+    if (!patient) { setError(t('common.selectPatient')); return; }
     create.mutate({
       patient_id: patient.id,
       dentist_id: dentistId || null,
@@ -231,31 +235,31 @@ function BookingModal({ open, onClose }: { open: boolean; onClose: () => void })
     <Modal
       open={open}
       onClose={onClose}
-      title="Book appointment"
+      title={t('appt.book')}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={create.isPending} onClick={submit}>Confirm booking</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" loading={create.isPending} onClick={submit}>{t('appt.confirmBooking')}</Button>
         </>
       }
     >
       {error && <div className="login__error" role="alert">{error}</div>}
 
-      <Field label="Patient" required hint="Search by name, patient ID or phone">
+      <Field label={t('common.patient')} required hint={t('appt.searchHint')}>
         {patient ? (
           <div className="row">
             <Avatar name={patient.full_name} size="sm" />
             <b className="text-sm">{patient.full_name}</b>
             <span className="text-xs faint">{patient.patient_code}</span>
-            <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>Change</Button>
+            <Button size="sm" className="ml-auto" onClick={() => setPatient(null)}>{t('common.change')}</Button>
           </div>
         ) : (
           <>
-            <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Start typing…" />
+            <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder={t('appt.startTyping')} />
             {term.trim().length >= 2 && (
               <div className="col mt-8" style={{ gap: 4 }}>
-                {results.isPending && <span className="text-xs faint">Searching…</span>}
-                {results.data?.length === 0 && <span className="text-xs faint">No match found.</span>}
+                {results.isPending && <span className="text-xs faint">{t('common.searching')}</span>}
+                {results.data?.length === 0 && <span className="text-xs faint">{t('common.noMatch')}</span>}
                 {results.data?.map((p) => (
                   <button key={p.id} type="button" className="gsearch__item"
                     onClick={() => setPatient({ id: p.id, full_name: p.full_name, patient_code: p.patient_code })}>
@@ -271,31 +275,31 @@ function BookingModal({ open, onClose }: { open: boolean; onClose: () => void })
       </Field>
 
       <div className="form-grid mt-16">
-        <Field label="Date" required>
+        <Field label={t('common.date')} required>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
-        <Field label="Time" required>
+        <Field label={t('common.time')} required>
           <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </Field>
-        <Field label="Dentist" hint="Overlapping bookings are blocked by the database">
+        <Field label={t('common.dentist')} hint={t('appt.doubleBookHint')}>
           <Select value={dentistId} onChange={(e) => setDentistId(e.target.value)}>
-            <option value="">Unassigned</option>
+            <option value="">{t('common.unassigned')}</option>
             {dentists.data?.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
           </Select>
         </Field>
-        <Field label="Treatment">
+        <Field label={t('common.treatment')}>
           <Select value={typeId} onChange={(e) => setTypeId(e.target.value)}>
-            <option value="">Not specified</option>
+            <option value="">{t('common.notSpecified')}</option>
             {types.data?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </Select>
         </Field>
-        <Field label="Duration (minutes)">
+        <Field label={t('common.duration')}>
           <Select value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
-            {[15, 20, 30, 45, 60, 90, 120].map((m) => <option key={m} value={m}>{m} minutes</option>)}
+            {[15, 20, 30, 45, 60, 90, 120].map((m) => <option key={m} value={m}>{m} {t('common.minutes')}</option>)}
           </Select>
         </Field>
         <div className="full">
-          <Field label="Notes">
+          <Field label={t('common.notes')}>
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
         </div>

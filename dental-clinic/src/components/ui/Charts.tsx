@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { money } from '@/lib/format';
+import { useI18n } from '@/i18n';
 
 /** Measures the container so charts are drawn at real pixel size (crisp labels). */
 function useWidth<T extends HTMLElement>() {
@@ -21,8 +22,9 @@ export interface SeriesPoint { label: string; a: number; b?: number }
 export function LineChart({
   data, height = 220, format = money, labelA = 'Series A', labelB,
 }: { data: SeriesPoint[]; height?: number; format?: (n: number) => string; labelA?: string; labelB?: string }) {
+  const { t: translate } = useI18n();
   const [ref, width] = useWidth<HTMLDivElement>();
-  if (!data.length) return <div ref={ref} className="chart chart--empty">No data for this period</div>;
+  if (!data.length) return <div ref={ref} className="chart chart--empty">{translate('rep.noData')}</div>;
 
   const pad = { t: 14, r: 10, b: 26, l: 54 };
   const w = Math.max(width, 280);
@@ -80,8 +82,9 @@ export function LineChart({
 export function BarChart({
   data, height = 200, format = (n: number) => String(n),
 }: { data: { label: string; value: number }[]; height?: number; format?: (n: number) => string }) {
+  const { t: translate } = useI18n();
   const [ref, width] = useWidth<HTMLDivElement>();
-  if (!data.length) return <div ref={ref} className="chart chart--empty">No data for this period</div>;
+  if (!data.length) return <div ref={ref} className="chart chart--empty">{translate('rep.noData')}</div>;
 
   const pad = { t: 20, r: 6, b: 24, l: 6 };
   const w = Math.max(width, 240);

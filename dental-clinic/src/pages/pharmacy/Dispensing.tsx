@@ -3,22 +3,24 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { dispensePrescription, listMedicineStock, listPrescriptions } from '@/services/pharmacy';
 import { readableError } from '@/lib/supabase';
-import { dateTime, titleCase } from '@/lib/format';
+import { dateTime } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { Prescription } from '@/types/database';
 import {
   Avatar, Badge, Button, Card, EmptyState, Input, Modal, QueryBoundary, useToast, cx,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
 
 const FILTERS = [
-  { id: 'open', label: 'To dispense' },
-  { id: 'dispensed', label: 'Dispensed' },
-  { id: 'all', label: 'All' },
+  { id: 'open', key: 'disp.filterOpen' },
+  { id: 'dispensed', key: 'rx.filterDispensed' },
+  { id: 'all', key: 'common.all' },
 ] as const;
 
 export default function Dispensing() {
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('open');
   const [active, setActive] = useState<Prescription | null>(null);
 
@@ -31,8 +33,8 @@ export default function Dispensing() {
     <>
       <div className="page__head">
         <div>
-          <h1>Pharmacy dispensing</h1>
-          <p>Prescriptions written by the dentists arrive here immediately.</p>
+          <h1>{t('disp.title')}</h1>
+          <p>{t('disp.subtitle')}</p>
         </div>
       </div>
 
@@ -41,7 +43,7 @@ export default function Dispensing() {
           <div className="segmented">
             {FILTERS.map((f) => (
               <button key={f.id} className={cx(filter === f.id && 'is-active')} onClick={() => setFilter(f.id)}>
-                {f.label}
+                {t(f.key)}
               </button>
             ))}
           </div>
@@ -50,8 +52,8 @@ export default function Dispensing() {
         <QueryBoundary
           query={query}
           skeletonRows={6}
-          empty={<EmptyState title="Nothing waiting to be dispensed"
-            description="New prescriptions appear here as soon as a dentist writes them." />}
+          empty={<EmptyState title={t('disp.empty')}
+            description={t('disp.emptyHint')} />}
         >
           {(rows) => (
             <div className="col">
@@ -66,7 +68,7 @@ export default function Dispensing() {
                           <b className="text-sm">{rx.patient?.full_name}</b>
                           <span className="text-2xs faint">{rx.patient?.patient_code}</span>
                           {rx.patient?.allergies && (
-                            <Badge tone="danger">Allergy: {rx.patient.allergies}</Badge>
+                            <Badge tone="danger">{t('rx.allergy')}: {rx.patient.allergies}</Badge>
                           )}
                         </div>
                         <div className="text-2xs faint">
@@ -74,11 +76,11 @@ export default function Dispensing() {
                         </div>
                       </div>
                       <Badge tone={rx.status === 'dispensed' ? 'ok' : rx.status === 'cancelled' ? 'danger' : 'warn'}>
-                        {titleCase(rx.status)}
+                        {label('status', rx.status)}
                       </Badge>
                       {can('pharmacy.write') && rx.status !== 'dispensed' && rx.status !== 'cancelled' && (
                         <Button size="sm" variant="primary" onClick={() => setActive(rx)}>
-                          Dispense{pending ? ` (${pending})` : ''}
+                          {t('disp.dispense')}{pending ? ` (${pending})` : ''}
                         </Button>
                       )}
                     </div>
@@ -87,9 +89,9 @@ export default function Dispensing() {
                       {rx.items?.map((item) => (
                         <li key={item.id} className="text-sm muted">
                           • <b>{item.medicine_name}</b> {item.strength} — {item.dose} {item.frequency},
-                          {' '}{item.duration} · qty {item.quantity}
+                          {' '}{item.duration} · {t('rx.qty')} {item.quantity}
                           <span className={cx('ml-auto', item.dispensed_quantity >= item.quantity ? 'ok-text' : 'faint')}>
-                            {' '}({item.dispensed_quantity}/{item.quantity} dispensed)
+                            {' '}({item.dispensed_quantity}/{item.quantity} {t('disp.dispensedSuffix')})
                           </span>
                         </li>
                       ))}
@@ -112,6 +114,7 @@ function DispenseModal({
 }: { prescription: Prescription | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t } = useI18n();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
@@ -137,7 +140,7 @@ function DispenseModal({
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
       queryClient.invalidateQueries({ queryKey: ['stock'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      notify('Medicine dispensed and stock updated');
+      notify(t('disp.done'));
       onClose();
     },
     onError: (e) => setError(readableError(e)),
@@ -150,21 +153,21 @@ function DispenseModal({
     <Modal
       open={prescription !== null}
       onClose={onClose}
-      title="Dispense prescription"
+      title={t('disp.modalTitle')}
       wide
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" loading={dispense.isPending}
             onClick={() => {
               setError(null);
               if (!Object.values(quantities).some((q) => q > 0)) {
-                setError('Enter at least one quantity to dispense.');
+                setError(t('disp.errQuantity'));
                 return;
               }
               dispense.mutate();
             }}>
-            Dispense and update stock
+            {t('disp.submit')}
           </Button>
         </>
       }
@@ -174,15 +177,16 @@ function DispenseModal({
       {prescription?.patient?.allergies && (
         <div className="alert tone-danger mb-16">
           <Icon name="alert" />
-          <span><b>Allergy on file:</b> {prescription.patient.allergies}</span>
+          <span><b>{t('disp.allergyOnFile')}</b> {prescription.patient.allergies}</span>
         </div>
       )}
 
       <div className="table-wrap">
         <table className="tbl">
           <thead>
-            <tr><th>Medicine</th><th>Prescribed</th><th>Already given</th>
-              <th>In stock</th><th>Dispense now</th></tr>
+            <tr><th>{t('rx.medicine')}</th><th>{t('disp.colPrescribed')}</th>
+              <th>{t('disp.colGiven')}</th><th>{t('disp.colStock')}</th>
+              <th>{t('disp.colNow')}</th></tr>
           </thead>
           <tbody>
             {prescription?.items?.map((item) => {
@@ -194,7 +198,7 @@ function DispenseModal({
                   <td>
                     <b>{item.medicine_name}</b> {item.strength}
                     {!item.medicine_id && (
-                      <div className="text-2xs danger-text">Not linked to a stocked medicine</div>
+                      <div className="text-2xs danger-text">{t('disp.notLinked')}</div>
                     )}
                   </td>
                   <td>{item.quantity}</td>
@@ -202,7 +206,7 @@ function DispenseModal({
                   <td className={cx(shortfall && 'danger-text bold')}>
                     {available ? available.usable_quantity : <span className="faint">—</span>}
                     {available?.stock_status === 'expiring_soon' && (
-                      <div className="text-2xs"><Badge tone="warn">Expiring soon</Badge></div>
+                      <div className="text-2xs"><Badge tone="warn">{t('disp.expiringSoon')}</Badge></div>
                     )}
                   </td>
                   <td>
@@ -221,11 +225,8 @@ function DispenseModal({
         </table>
       </div>
 
-      <p className="text-2xs faint mt-12">
-        Stock is deducted first-expiring-first. Expired batches are never used, and the
-        database refuses to dispense more than is available.
-      </p>
-      <Link className="text-xs" to="/pharmacy/medicines">Open medicine stock</Link>
+      <p className="text-2xs faint mt-12">{t('disp.footnote')}</p>
+      <Link className="text-xs" to="/pharmacy/medicines">{t('disp.openStock')}</Link>
     </Modal>
   );
 }

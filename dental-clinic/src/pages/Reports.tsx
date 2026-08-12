@@ -3,19 +3,20 @@ import { useQuery } from '@tanstack/react-query';
 import { appointmentReport, patientReport, treatmentReport } from '@/services/admin';
 import { financialSummary, incomeByDay, listOutstanding } from '@/services/finance';
 import { listMedicineStock } from '@/services/pharmacy';
-import { dateOnly, isoDate, money, titleCase } from '@/lib/format';
+import { dateOnly, isoDate, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Button, Card, EmptyState, Input, QueryBoundary, Skeleton, StatCard, Tabs,
 } from '@/components/ui';
 import { BarChart, DonutChart, LineChart } from '@/components/ui/Charts';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
 
 const PRESETS = [
-  { id: 'today', label: 'Today' },
-  { id: 'week', label: 'Last 7 days' },
-  { id: 'month', label: 'This month' },
-  { id: 'year', label: 'This year' },
+  { id: 'today', key: 'common.today' },
+  { id: 'week', key: 'common.last7' },
+  { id: 'month', key: 'common.thisMonth' },
+  { id: 'year', key: 'common.thisYear' },
 ] as const;
 
 function presetRange(id: (typeof PRESETS)[number]['id']) {
@@ -30,6 +31,7 @@ function presetRange(id: (typeof PRESETS)[number]['id']) {
 
 export default function Reports() {
   const { can } = useAuth();
+  const { t } = useI18n();
   const [tab, setTab] = useState('financial');
   const [preset, setPreset] = useState<(typeof PRESETS)[number]['id']>('month');
   const initial = presetRange('month');
@@ -47,11 +49,11 @@ export default function Reports() {
     <>
       <div className="page__head">
         <div>
-          <h1>Reports</h1>
-          <p>Clinical and financial analysis for {dateOnly(from)} – {dateOnly(to)}.</p>
+          <h1>{t('rep.title')}</h1>
+          <p>{t('rep.subtitle')} {dateOnly(from)} – {dateOnly(to)}.</p>
         </div>
         <div className="page__actions">
-          <Button onClick={() => window.print()}><Icon name="print" /> Print</Button>
+          <Button onClick={() => window.print()}><Icon name="print" /> {t('common.print')}</Button>
         </div>
       </div>
 
@@ -61,7 +63,7 @@ export default function Reports() {
             {PRESETS.map((p) => (
               <button key={p.id} className={preset === p.id ? 'is-active' : undefined}
                 onClick={() => applyPreset(p.id)}>
-                {p.label}
+                {t(p.key)}
               </button>
             ))}
           </div>
@@ -70,11 +72,11 @@ export default function Reports() {
         </div>
         <Tabs
           tabs={[
-            { id: 'financial', label: 'Financial' },
-            { id: 'patients', label: 'Patients' },
-            { id: 'treatments', label: 'Treatments' },
-            { id: 'appointments', label: 'Appointments' },
-            { id: 'pharmacy', label: 'Pharmacy' },
+            { id: 'financial', label: t('rep.tabFinancial') },
+            { id: 'patients', label: t('rep.tabPatients') },
+            { id: 'treatments', label: t('rep.tabTreatments') },
+            { id: 'appointments', label: t('rep.tabAppointments') },
+            { id: 'pharmacy', label: t('rep.tabPharmacy') },
           ]}
           value={tab}
           onChange={setTab}
@@ -87,12 +89,13 @@ export default function Reports() {
       {tab === 'appointments' && <AppointmentsReport from={from} to={to} />}
       {tab === 'pharmacy' && (can('pharmacy.read')
         ? <PharmacyReport />
-        : <EmptyState title="Pharmacy reports are not available for your role" />)}
+        : <EmptyState title={t('rep.notForRole')} />)}
     </>
   );
 }
 
 function FinancialReport({ from, to }: { from: string; to: string }) {
+  const { t, label } = useI18n();
   const summary = useQuery({
     queryKey: ['financial-summary', from, to], queryFn: () => financialSummary(from, to),
   });
@@ -109,59 +112,61 @@ function FinancialReport({ from, to }: { from: string; to: string }) {
   return (
     <>
       <div className="grid grid--4 mb-16">
-        <StatCard tone="ok" label="Gross income" value={money(s.grossIncome)}
-          hint={`Treatments ${money(s.treatmentIncome)} · Pharmacy ${money(s.pharmacyIncome)}`} />
-        <StatCard tone="warn" label="Expenses" value={money(s.expenses)} />
-        <StatCard tone="brand" label="Net" value={money(s.net)} hint="Income minus expenses" />
-        <StatCard tone="danger" label="Outstanding" value={money(s.outstanding)}
-          hint="Still owed by patients" />
+        <StatCard tone="ok" label={t('rep.grossIncome')} value={money(s.grossIncome)}
+          hint={`${t('rep.treatments')} ${money(s.treatmentIncome)} · ${t('rep.pharmacy')} ${money(s.pharmacyIncome)}`} />
+        <StatCard tone="warn" label={t('rep.expenses')} value={money(s.expenses)} />
+        <StatCard tone="brand" label={t('rep.net')} value={money(s.net)} hint={t('rep.netHint')} />
+        <StatCard tone="danger" label={t('rep.outstanding')} value={money(s.outstanding)}
+          hint={t('rep.outstandingHint')} />
       </div>
 
       <div className="grid grid--wide">
-        <Card title="Income by day" subtitle="Treatment payments and pharmacy sales">
-          <QueryBoundary query={series} empty={<EmptyState title="No income in this period" />}>
+        <Card title={t('rep.incomeByDay')} subtitle={t('rep.incomeByDayHint')}>
+          <QueryBoundary query={series} empty={<EmptyState title={t('rep.noIncome')} />}>
             {(rows) => (
               <LineChart
                 data={rows.map((r) => ({
                   label: r.day.slice(5), a: r.treatment + r.pharmacy, b: r.pharmacy,
                 }))}
-                labelA="Total income"
-                labelB="Pharmacy"
+                labelA={t('rep.totalIncome')}
+                labelB={t('rep.pharmacy')}
                 height={250}
               />
             )}
           </QueryBoundary>
         </Card>
 
-        <Card title="Income split" subtitle="Where the money came from">
+        <Card title={t('rep.incomeSplit')} subtitle={t('rep.incomeSplitHint')}>
           <DonutChart
             slices={[
-              { label: 'Treatments', value: Math.round(s.treatmentIncome), tone: 'brand' },
-              { label: 'Pharmacy', value: Math.round(s.pharmacyIncome), tone: 'ok' },
+              { label: t('rep.treatments'), value: Math.round(s.treatmentIncome), tone: 'brand' },
+              { label: t('rep.pharmacy'), value: Math.round(s.pharmacyIncome), tone: 'ok' },
             ]}
             centerValue={money(s.grossIncome)}
-            centerLabel="Gross"
+            centerLabel={t('rep.gross')}
           />
           <div className="mt-16">
-            <div className="row between text-sm"><span className="muted">Expenses</span>
+            <div className="row between text-sm"><span className="muted">{t('rep.expenses')}</span>
               <b>{money(s.expenses)}</b></div>
-            <div className="row between text-sm mt-8"><span className="muted">Net</span>
+            <div className="row between text-sm mt-8"><span className="muted">{t('rep.net')}</span>
               <b className={s.net >= 0 ? 'ok-text' : 'danger-text'}>{money(s.net)}</b></div>
           </div>
         </Card>
       </div>
 
-      <Card title="Outstanding balances" subtitle="Top unpaid treatments" padded={false} className="mt-16">
+      <Card title={t('out.title')} subtitle={t('rep.topOutstanding')} padded={false} className="mt-16">
         <QueryBoundary
           query={{ ...outstanding, data: outstanding.data?.rows }}
-          empty={<EmptyState title="Nothing outstanding" />}
+          empty={<EmptyState title={t('out.empty')} />}
         >
           {(rows) => (
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
-                  <tr><th>Patient</th><th>Treatment</th><th className="right">Total</th>
-                    <th className="right">Paid</th><th className="right">Balance</th><th>Status</th></tr>
+                  <tr><th>{t('common.patient')}</th><th>{t('common.treatment')}</th>
+                    <th className="right">{t('common.total')}</th>
+                    <th className="right">{t('common.paid')}</th>
+                    <th className="right">{t('common.balance')}</th><th>{t('common.status')}</th></tr>
                 </thead>
                 <tbody>
                   {rows.slice(0, 15).map((r) => (
@@ -171,7 +176,7 @@ function FinancialReport({ from, to }: { from: string; to: string }) {
                       <td className="right">{money(r.final_cost)}</td>
                       <td className="right">{money(r.amount_paid)}</td>
                       <td className="right bold danger-text">{money(r.balance)}</td>
-                      <td>{titleCase(r.payment_status)}</td>
+                      <td>{label('status', r.payment_status)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -185,26 +190,27 @@ function FinancialReport({ from, to }: { from: string; to: string }) {
 }
 
 function PatientsReport({ from, to }: { from: string; to: string }) {
+  const { t } = useI18n();
   const report = useQuery({ queryKey: ['patient-report', from, to], queryFn: () => patientReport(from, to) });
   if (report.isPending) return <Skeleton rows={5} />;
   const r = report.data!;
 
   return (
     <div className="grid grid--wide">
-      <Card title="New patients by age" subtitle={`${r.total} registered in this period`}>
+      <Card title={t('rep.newPatientsByAge')} subtitle={`${r.total} ${t('rep.registeredInPeriod')}`}>
         {r.total === 0
-          ? <EmptyState title="No new patients in this period" />
+          ? <EmptyState title={t('rep.noNewPatients')} />
           : <BarChart data={r.ageGroups.map((g) => ({ label: g.label, value: g.value }))} height={230} />}
       </Card>
-      <Card title="Gender split">
-        {r.total === 0 ? <EmptyState title="No data" /> : (
+      <Card title={t('rep.genderSplit')}>
+        {r.total === 0 ? <EmptyState title={t('rep.noData')} /> : (
           <DonutChart
             slices={[
-              { label: 'Female', value: r.female, tone: 'pink' },
-              { label: 'Male', value: r.male, tone: 'brand' },
+              { label: t('rep.female'), value: r.female, tone: 'pink' },
+              { label: t('rep.male'), value: r.male, tone: 'brand' },
             ]}
             centerValue={String(r.total)}
-            centerLabel="Patients"
+            centerLabel={t('rep.patients')}
           />
         )}
       </Card>
@@ -213,6 +219,7 @@ function PatientsReport({ from, to }: { from: string; to: string }) {
 }
 
 function TreatmentsReport({ from, to }: { from: string; to: string }) {
+  const { t } = useI18n();
   const report = useQuery({ queryKey: ['treatment-report', from, to], queryFn: () => treatmentReport(from, to) });
   if (report.isPending) return <Skeleton rows={5} />;
   const r = report.data!;
@@ -220,24 +227,26 @@ function TreatmentsReport({ from, to }: { from: string; to: string }) {
   return (
     <>
       <div className="grid grid--4 mb-16">
-        <StatCard tone="brand" label="Treatments" value={r.total} />
-        <StatCard tone="ok" label="Completed" value={r.completed} />
-        <StatCard tone="warn" label="Billed" value={money(r.billed)} />
-        <StatCard tone="teal" label="Collected" value={money(r.collected)} />
+        <StatCard tone="brand" label={t('rep.treatments')} value={r.total} />
+        <StatCard tone="ok" label={t('rep.completed')} value={r.completed} />
+        <StatCard tone="warn" label={t('rep.billed')} value={money(r.billed)} />
+        <StatCard tone="teal" label={t('rep.collected')} value={money(r.collected)} />
       </div>
-      <Card title="Most common treatments" subtitle="By number performed" padded={false}>
+      <Card title={t('rep.commonTreatments')} subtitle={t('rep.commonTreatmentsHint')} padded={false}>
         {r.byTreatment.length === 0 ? (
-          <EmptyState title="No treatments in this period" />
+          <EmptyState title={t('rep.noTreatments')} />
         ) : (
           <div className="table-wrap">
             <table className="tbl">
-              <thead><tr><th>Treatment</th><th className="right">Count</th><th className="right">Collected</th></tr></thead>
+              <thead><tr><th>{t('common.treatment')}</th>
+                <th className="right">{t('rep.count')}</th>
+                <th className="right">{t('rep.collected')}</th></tr></thead>
               <tbody>
-                {r.byTreatment.map((t) => (
-                  <tr key={t.name}>
-                    <td><b>{t.name}</b></td>
-                    <td className="right">{t.count}</td>
-                    <td className="right">{money(t.revenue)}</td>
+                {r.byTreatment.map((row) => (
+                  <tr key={row.name}>
+                    <td><b>{row.name}</b></td>
+                    <td className="right">{row.count}</td>
+                    <td className="right">{money(row.revenue)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -250,6 +259,7 @@ function TreatmentsReport({ from, to }: { from: string; to: string }) {
 }
 
 function AppointmentsReport({ from, to }: { from: string; to: string }) {
+  const { t } = useI18n();
   const report = useQuery({
     queryKey: ['appointment-report', from, to], queryFn: () => appointmentReport(from, to),
   });
@@ -258,25 +268,25 @@ function AppointmentsReport({ from, to }: { from: string; to: string }) {
 
   return (
     <div className="grid grid--wide">
-      <Card title="Appointment outcomes" subtitle={`${r.total} appointments in this period`}>
-        {r.total === 0 ? <EmptyState title="No appointments in this period" /> : (
+      <Card title={t('rep.outcomes')} subtitle={`${r.total} ${t('rep.inPeriod')}`}>
+        {r.total === 0 ? <EmptyState title={t('rep.noAppointments')} /> : (
           <BarChart
             data={[
-              { label: 'Completed', value: r.completed },
-              { label: 'Scheduled', value: r.scheduled },
-              { label: 'Cancelled', value: r.cancelled },
-              { label: 'No show', value: r.noShow },
+              { label: t('rep.completed'), value: r.completed },
+              { label: t('rep.scheduled'), value: r.scheduled },
+              { label: t('rep.cancelled'), value: r.cancelled },
+              { label: t('rep.noShow'), value: r.noShow },
             ]}
             height={230}
           />
         )}
       </Card>
-      <Card title="Attendance">
+      <Card title={t('rep.attendance')}>
         <div className="col" style={{ gap: 10 }}>
-          <div className="row between text-sm"><span className="muted">Completed</span><b>{r.completed}</b></div>
-          <div className="row between text-sm"><span className="muted">Cancelled</span><b>{r.cancelled}</b></div>
-          <div className="row between text-sm"><span className="muted">No show</span><b>{r.noShow}</b></div>
-          <div className="row between text-sm"><span className="muted">Show rate</span>
+          <div className="row between text-sm"><span className="muted">{t('rep.completed')}</span><b>{r.completed}</b></div>
+          <div className="row between text-sm"><span className="muted">{t('rep.cancelled')}</span><b>{r.cancelled}</b></div>
+          <div className="row between text-sm"><span className="muted">{t('rep.noShow')}</span><b>{r.noShow}</b></div>
+          <div className="row between text-sm"><span className="muted">{t('rep.showRate')}</span>
             <b className="ok-text">
               {r.total ? Math.round((r.completed / r.total) * 100) : 0}%
             </b>
@@ -288,6 +298,7 @@ function AppointmentsReport({ from, to }: { from: string; to: string }) {
 }
 
 function PharmacyReport() {
+  const { t, label } = useI18n();
   const stock = useQuery({ queryKey: ['stock'], queryFn: () => listMedicineStock({}) });
   if (stock.isPending) return <Skeleton rows={6} />;
   const rows = stock.data ?? [];
@@ -298,22 +309,24 @@ function PharmacyReport() {
   return (
     <>
       <div className="grid grid--4 mb-16">
-        <StatCard tone="brand" label="Medicines" value={rows.length} />
-        <StatCard tone="warn" label="Low / out of stock" value={low.length} />
-        <StatCard tone="danger" label="Expiring soon" value={expiring.length} />
-        <StatCard tone="ok" label="Stock value"
+        <StatCard tone="brand" label={t('rep.medicines')} value={rows.length} />
+        <StatCard tone="warn" label={t('rep.lowOut')} value={low.length} />
+        <StatCard tone="danger" label={t('rep.expiringSoon')} value={expiring.length} />
+        <StatCard tone="ok" label={t('rep.stockValue')}
           value={money(rows.reduce((t, m) => t + m.usable_quantity * Number(m.purchase_price), 0))} />
       </div>
 
-      <Card title="Stock needing attention" padded={false}>
+      <Card title={t('rep.stockAttention')} padded={false}>
         {low.length + expiring.length + expired.length === 0 ? (
-          <EmptyState title="Stock is healthy" description="Nothing is low, expiring or expired." />
+          <EmptyState title={t('rep.stockHealthy')} description={t('rep.stockHealthyHint')} />
         ) : (
           <div className="table-wrap">
             <table className="tbl">
               <thead>
-                <tr><th>Medicine</th><th className="right">Usable</th><th className="right">Minimum</th>
-                  <th className="right">Expired</th><th>Earliest expiry</th><th>Status</th></tr>
+                <tr><th>{t('rx.medicine')}</th><th className="right">{t('rep.usable')}</th>
+                  <th className="right">{t('rep.minimum')}</th>
+                  <th className="right">{t('rep.expired')}</th>
+                  <th>{t('rep.earliestExpiry')}</th><th>{t('common.status')}</th></tr>
               </thead>
               <tbody>
                 {[...low, ...expiring, ...expired.filter((m) => !low.includes(m) && !expiring.includes(m))]
@@ -324,7 +337,7 @@ function PharmacyReport() {
                       <td className="right">{m.minimum_stock}</td>
                       <td className="right danger-text">{m.expired_quantity || '—'}</td>
                       <td>{m.earliest_expiry ? dateOnly(m.earliest_expiry) : '—'}</td>
-                      <td>{titleCase(m.stock_status)}</td>
+                      <td>{label('status', m.stock_status)}</td>
                     </tr>
                   ))}
               </tbody>

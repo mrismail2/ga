@@ -2,20 +2,22 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { listPatients } from '@/services/patients';
-import { ageOf, dateOnly, titleCase } from '@/lib/format';
+import { ageOf, dateOnly } from '@/lib/format';
 import {
   Avatar, Badge, Card, EmptyState, Input, Pagination, QueryBoundary, cx,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
 
 const PAGE_SIZE = 25;
 const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'active', label: 'Active' },
-  { id: 'inactive', label: 'Inactive' },
+  { id: 'all', key: 'common.all' },
+  { id: 'active', key: 'status.active' },
+  { id: 'inactive', key: 'status.inactive' },
 ] as const;
 
 export default function PatientList() {
+  const { t, label } = useI18n();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -36,11 +38,11 @@ export default function PatientList() {
     <>
       <div className="page__head">
         <div>
-          <h1>Patients</h1>
-          <p>The clinic's digital registration book — search by name, patient ID or phone number.</p>
+          <h1>{t('patients.title')}</h1>
+          <p>{t('patients.subtitle')}</p>
         </div>
         <div className="page__actions">
-          <Link className="btn btn--primary" to="/patients/new"><Icon name="plus" /> Register patient</Link>
+          <Link className="btn btn--primary" to="/patients/new"><Icon name="plus" /> {t('dash.registerPatient')}</Link>
         </div>
       </div>
 
@@ -48,9 +50,9 @@ export default function PatientList() {
         <div className="toolbar">
           <Input
             value={search}
-            placeholder="Search name, patient ID or phone…"
+            placeholder={t('patients.searchPlaceholder')}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search patients"
+            aria-label={t('common.search')}
           />
           <div className="segmented">
             {FILTERS.map((f) => (
@@ -59,12 +61,12 @@ export default function PatientList() {
                 className={cx(status === f.id && 'is-active')}
                 onClick={() => { setStatus(f.id); setPage(1); }}
               >
-                {f.label}
+                {t(f.key)}
               </button>
             ))}
           </div>
           <span className="ml-auto text-xs faint">
-            {query.data ? `${query.data.total} patient${query.data.total === 1 ? '' : 's'}` : ''}
+            {query.data ? `${query.data.total} ${t(query.data.total === 1 ? 'patients.countOne' : 'patients.count')}` : ''}
           </span>
         </div>
 
@@ -73,11 +75,9 @@ export default function PatientList() {
           skeletonRows={8}
           empty={
             <EmptyState
-              title={debounced ? `No patient matches “${debounced}”` : 'No patients registered yet'}
-              description={debounced
-                ? 'Check the spelling, or try the phone number instead. If this is a new patient, register them now.'
-                : 'Register the first patient to start replacing the paper book.'}
-              action={<Link className="btn btn--primary btn--sm" to="/patients/new">Register patient</Link>}
+              title={debounced ? `${t('patients.noMatch')} “${debounced}”` : t('patients.empty')}
+              description={debounced ? t('patients.noMatchHint') : t('patients.emptyHint')}
+              action={<Link className="btn btn--primary btn--sm" to="/patients/new">{t('dash.registerPatient')}</Link>}
             />
           }
         >
@@ -86,8 +86,9 @@ export default function PatientList() {
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>Patient</th><th>Phone</th><th>Age / gender</th>
-                    <th>Registered</th><th>Allergies</th><th>Status</th><th />
+                    <th>{t('common.patient')}</th><th>{t('common.phone')}</th><th>{t('patients.colAgeGender')}</th>
+                    <th>{t('patients.colRegistered')}</th><th>{t('patients.colAllergies')}</th>
+                    <th>{t('common.status')}</th><th />
                   </tr>
                 </thead>
                 <tbody>
@@ -103,14 +104,14 @@ export default function PatientList() {
                         </div>
                       </td>
                       <td>{p.phone}</td>
-                      <td>{ageOf(p)} · {titleCase(p.gender)}</td>
+                      <td>{ageOf(p)} · {label('gender', p.gender)}</td>
                       <td>{dateOnly(p.registered_at)}</td>
                       <td>
                         {p.allergies
                           ? <Badge tone="danger">{p.allergies}</Badge>
-                          : <span className="faint">None recorded</span>}
+                          : <span className="faint">{t('patients.noneRecorded')}</span>}
                       </td>
-                      <td><Badge tone={p.status === 'active' ? 'ok' : 'muted'}>{titleCase(p.status)}</Badge></td>
+                      <td><Badge tone={p.status === 'active' ? 'ok' : 'muted'}>{label('status', p.status)}</Badge></td>
                       <td className="right"><Icon name="chevronRight" /></td>
                     </tr>
                   ))}

@@ -5,7 +5,7 @@ import {
   listStockMovements, upsertMedicine,
 } from '@/services/pharmacy';
 import { readableError } from '@/lib/supabase';
-import { dateOnly, dateTime, money, titleCase } from '@/lib/format';
+import { dateOnly, dateTime, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { MedicineStock, StockMovementType } from '@/types/database';
 import {
@@ -13,20 +13,24 @@ import {
   Select, StatCard, Tabs, useToast, cx,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
 
 const STATUS_TONE = {
   in_stock: 'ok', low_stock: 'warn', out_of_stock: 'danger', expiring_soon: 'warn',
 } as const;
 
 const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'low_stock', label: 'Low stock' },
-  { id: 'out_of_stock', label: 'Out of stock' },
-  { id: 'expiring_soon', label: 'Expiring soon' },
+  { id: 'all', key: 'common.all' },
+  { id: 'low_stock', key: 'med.filterLow' },
+  { id: 'out_of_stock', key: 'med.filterOut' },
+  { id: 'expiring_soon', key: 'med.filterExpiring' },
 ] as const;
+
+const DOSAGE_FORMS = ['tablet', 'capsule', 'syrup', 'injection', 'gel', 'mouthwash', 'cartridge', 'other'];
 
 export default function Medicines() {
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const [tab, setTab] = useState('stock');
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all');
   const [search, setSearch] = useState('');
@@ -55,31 +59,31 @@ export default function Medicines() {
     <>
       <div className="page__head">
         <div>
-          <h1>Medicines & stock</h1>
-          <p>The clinic's single internal pharmacy — quantities, batches and expiry dates.</p>
+          <h1>{t('med.title')}</h1>
+          <p>{t('med.subtitle')}</p>
         </div>
         {can('pharmacy.write') && (
           <div className="page__actions">
             <Button variant="primary" onClick={() => setEditing('new')}>
-              <Icon name="plus" /> Add medicine
+              <Icon name="plus" /> {t('med.add')}
             </Button>
           </div>
         )}
       </div>
 
       <div className="grid grid--4 mb-16">
-        <StatCard tone="brand" label="Medicines" value={rows.length} />
-        <StatCard tone="warn" label="Low or out of stock"
+        <StatCard tone="brand" label={t('med.statMedicines')} value={rows.length} />
+        <StatCard tone="warn" label={t('med.statLow')}
           value={rows.filter((m) => m.stock_status === 'low_stock' || m.stock_status === 'out_of_stock').length} />
-        <StatCard tone="danger" label="Expiring soon"
+        <StatCard tone="danger" label={t('med.statExpiring')}
           value={rows.filter((m) => m.stock_status === 'expiring_soon').length} />
-        <StatCard tone="ok" label="Stock value" value={money(value)} hint="At purchase price" />
+        <StatCard tone="ok" label={t('med.statValue')} value={money(value)} hint={t('med.statValueHint')} />
       </div>
 
       <Card padded={false}>
         <Tabs
-          tabs={[{ id: 'stock', label: 'Stock' }, { id: 'batches', label: 'Batches' },
-                 { id: 'movements', label: 'Movement history' }]}
+          tabs={[{ id: 'stock', label: t('med.tabStock') }, { id: 'batches', label: t('med.tabBatches') },
+                 { id: 'movements', label: t('med.tabMovements') }]}
           value={tab}
           onChange={setTab}
         />
@@ -87,12 +91,12 @@ export default function Medicines() {
         {tab === 'stock' && (
           <>
             <div className="toolbar">
-              <Input value={search} placeholder="Search medicine, generic name or barcode…"
+              <Input value={search} placeholder={t('med.searchPlaceholder')}
                 onChange={(e) => setSearch(e.target.value)} />
               <div className="segmented">
                 {FILTERS.map((f) => (
                   <button key={f.id} className={cx(filter === f.id && 'is-active')} onClick={() => setFilter(f.id)}>
-                    {f.label}
+                    {t(f.key)}
                   </button>
                 ))}
               </div>
@@ -100,17 +104,19 @@ export default function Medicines() {
             <QueryBoundary
               query={stock}
               skeletonRows={8}
-              empty={<EmptyState title="No medicines yet"
-                description="Add the medicines the clinic keeps, then record a purchase to bring stock in." />}
+              empty={<EmptyState title={t('med.empty')}
+                description={t('med.emptyHint')} />}
             >
               {(list) => (
                 <div className="table-wrap">
                   <table className="tbl">
                     <thead>
-                      <tr><th>Medicine</th><th>Category</th><th>Form</th>
-                        <th className="right">In stock</th><th className="right">Minimum</th>
-                        <th>Earliest expiry</th><th className="right">Selling price</th>
-                        <th>Status</th><th /></tr>
+                      <tr><th>{t('rx.medicine')}</th><th>{t('common.category')}</th><th>{t('med.colForm')}</th>
+                        <th className="right">{t('med.colInStock')}</th>
+                        <th className="right">{t('med.colMinimum')}</th>
+                        <th>{t('med.colEarliestExpiry')}</th>
+                        <th className="right">{t('med.colSelling')}</th>
+                        <th>{t('common.status')}</th><th /></tr>
                     </thead>
                     <tbody>
                       {list.map((m) => (
@@ -120,22 +126,22 @@ export default function Medicines() {
                             {m.generic_name && <div className="text-2xs faint">{m.generic_name}</div>}
                           </td>
                           <td>{m.category_name ?? '—'}</td>
-                          <td>{titleCase(m.dosage_form)}</td>
+                          <td>{label('form', m.dosage_form)}</td>
                           <td className={cx('right bold', m.usable_quantity <= m.minimum_stock && 'danger-text')}>
                             {m.usable_quantity}
                             {m.expired_quantity > 0 && (
-                              <div className="text-2xs danger-text">{m.expired_quantity} expired</div>
+                              <div className="text-2xs danger-text">{m.expired_quantity} {t('med.expired')}</div>
                             )}
                           </td>
                           <td className="right">{m.minimum_stock}</td>
                           <td>{m.earliest_expiry ? dateOnly(m.earliest_expiry) : <span className="faint">—</span>}</td>
                           <td className="right">{money(m.selling_price)}</td>
-                          <td><Badge tone={STATUS_TONE[m.stock_status]}>{titleCase(m.stock_status)}</Badge></td>
+                          <td><Badge tone={STATUS_TONE[m.stock_status]}>{label('status', m.stock_status)}</Badge></td>
                           <td className="right">
                             {can('pharmacy.write') && (
                               <div className="row row--sm" style={{ justifyContent: 'flex-end' }}>
-                                <Button size="sm" onClick={() => setEditing(m)}>Edit</Button>
-                                <Button size="sm" onClick={() => setAdjusting(m)}>Adjust</Button>
+                                <Button size="sm" onClick={() => setEditing(m)}>{t('common.edit')}</Button>
+                                <Button size="sm" onClick={() => setAdjusting(m)}>{t('med.adjust')}</Button>
                               </div>
                             )}
                           </td>
@@ -155,22 +161,25 @@ export default function Medicines() {
           <QueryBoundary
             query={movements}
             skeletonRows={8}
-            empty={<EmptyState title="No stock movements yet"
-              description="Purchases, sales, dispensing and adjustments are all recorded here." />}
+            empty={<EmptyState title={t('med.noMovements')}
+              description={t('med.noMovementsHint')} />}
           >
             {(list) => (
               <div className="table-wrap">
                 <table className="tbl">
                   <thead>
-                    <tr><th>When</th><th>Medicine</th><th>Type</th><th className="right">Before</th>
-                      <th className="right">Change</th><th className="right">After</th><th>Reason</th><th>By</th></tr>
+                    <tr><th>{t('common.when')}</th><th>{t('rx.medicine')}</th>
+                      <th>{t('med.colType')}</th><th className="right">{t('med.colBefore')}</th>
+                      <th className="right">{t('med.colChange')}</th>
+                      <th className="right">{t('med.colAfter')}</th>
+                      <th>{t('common.reason')}</th><th>{t('med.colBy')}</th></tr>
                   </thead>
                   <tbody>
                     {list.map((mv) => (
                       <tr key={mv.id}>
                         <td>{dateTime(mv.created_at)}</td>
                         <td>{mv.medicine?.name ?? '—'}</td>
-                        <td><Badge tone={mv.quantity_change > 0 ? 'ok' : 'warn'}>{titleCase(mv.movement_type)}</Badge></td>
+                        <td><Badge tone={mv.quantity_change > 0 ? 'ok' : 'warn'}>{label('move', mv.movement_type)}</Badge></td>
                         <td className="right">{mv.quantity_before}</td>
                         <td className={cx('right bold', mv.quantity_change > 0 ? 'ok-text' : 'danger-text')}>
                           {mv.quantity_change > 0 ? '+' : ''}{mv.quantity_change}
@@ -198,20 +207,22 @@ export default function Medicines() {
 }
 
 function BatchTable() {
+  const { t } = useI18n();
   const batches = useQuery({ queryKey: ['batches'], queryFn: () => listBatches() });
   return (
     <QueryBoundary
       query={batches}
       skeletonRows={7}
-      empty={<EmptyState title="No stock batches"
-        description="Confirm a purchase to bring medicine into stock with a batch number and expiry date." />}
+      empty={<EmptyState title={t('med.noBatches')}
+        description={t('med.noBatchesHint')} />}
     >
       {(rows) => (
         <div className="table-wrap">
           <table className="tbl">
             <thead>
-              <tr><th>Medicine</th><th>Batch</th><th>Expiry</th>
-                <th className="right">Quantity</th><th className="right">Purchase price</th><th>Received</th></tr>
+              <tr><th>{t('rx.medicine')}</th><th>{t('med.batch')}</th><th>{t('med.expiry')}</th>
+                <th className="right">{t('common.quantity')}</th>
+                <th className="right">{t('med.purchasePrice')}</th><th>{t('med.received')}</th></tr>
             </thead>
             <tbody>
               {rows.map((b) => {
@@ -222,7 +233,7 @@ function BatchTable() {
                     <td>{b.batch_number}</td>
                     <td className={cx(expired && 'danger-text bold')}>
                       {b.expiry_date ? dateOnly(b.expiry_date) : '—'}
-                      {expired && <Badge tone="danger">Expired</Badge>}
+                      {expired && <Badge tone="danger">{t('med.expiredBadge')}</Badge>}
                     </td>
                     <td className="right">{b.quantity}</td>
                     <td className="right">{money(b.purchase_price)}</td>
@@ -243,6 +254,7 @@ function MedicineModal({
 }: { target: MedicineStock | 'new' | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t, label } = useI18n();
   const categories = useQuery({ queryKey: ['medicine-categories'], queryFn: listMedicineCategories });
   const isNew = target === 'new';
   const existing = target !== 'new' ? target : null;
@@ -286,7 +298,7 @@ function MedicineModal({
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock'] });
-      notify(isNew ? 'Medicine added' : 'Medicine updated');
+      notify(isNew ? t('med.added') : t('med.updated'));
       onClose();
     },
     onError: (e) => setError(readableError(e)),
@@ -298,56 +310,55 @@ function MedicineModal({
     <Modal
       open={target !== null}
       onClose={onClose}
-      title={isNew ? 'Add medicine' : 'Edit medicine'}
+      title={isNew ? t('med.addTitle') : t('med.editTitle')}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" loading={save.isPending}
             onClick={() => {
               setError(null);
-              if (form.name.trim().length < 2) { setError('Enter the medicine name.'); return; }
+              if (form.name.trim().length < 2) { setError(t('med.errName')); return; }
               save.mutate();
             }}>
-            Save
+            {t('common.save')}
           </Button>
         </>
       }
     >
       {error && <div className="login__error" role="alert">{error}</div>}
       <div className="form-grid">
-        <Field label="Medicine name" required>
+        <Field label={t('med.medicineName')} required>
           <Input value={form.name} onChange={(e) => set('name', e.target.value)} />
         </Field>
-        <Field label="Generic name">
+        <Field label={t('med.genericName')}>
           <Input value={form.generic_name} onChange={(e) => set('generic_name', e.target.value)} />
         </Field>
-        <Field label="Category">
+        <Field label={t('common.category')}>
           <Select value={form.category_id} onChange={(e) => set('category_id', e.target.value)}>
-            <option value="">Uncategorised</option>
+            <option value="">{t('med.uncategorised')}</option>
             {categories.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
         </Field>
-        <Field label="Dosage form">
+        <Field label={t('med.dosageForm')}>
           <Select value={form.dosage_form} onChange={(e) => set('dosage_form', e.target.value)}>
-            {['tablet', 'capsule', 'syrup', 'injection', 'gel', 'mouthwash', 'cartridge', 'other']
-              .map((f) => <option key={f} value={f}>{titleCase(f)}</option>)}
+            {DOSAGE_FORMS.map((f) => <option key={f} value={f}>{label('form', f)}</option>)}
           </Select>
         </Field>
-        <Field label="Strength">
+        <Field label={t('rx.strength')}>
           <Input value={form.strength} onChange={(e) => set('strength', e.target.value)} placeholder="500mg" />
         </Field>
-        <Field label="Barcode">
+        <Field label={t('med.barcode')}>
           <Input value={form.barcode} onChange={(e) => set('barcode', e.target.value)} />
         </Field>
-        <Field label="Purchase price">
+        <Field label={t('med.purchasePrice')}>
           <Input type="number" min={0} step="0.01" value={form.purchase_price}
             onChange={(e) => set('purchase_price', e.target.value)} />
         </Field>
-        <Field label="Selling price">
+        <Field label={t('med.sellingPrice')}>
           <Input type="number" min={0} step="0.01" value={form.selling_price}
             onChange={(e) => set('selling_price', e.target.value)} />
         </Field>
-        <Field label="Minimum stock" hint="Below this the medicine shows as low stock">
+        <Field label={t('med.minimumStock')} hint={t('med.minimumStockHint')}>
           <Input type="number" min={0} value={form.minimum_stock}
             onChange={(e) => set('minimum_stock', e.target.value)} />
         </Field>
@@ -359,6 +370,7 @@ function MedicineModal({
 function AdjustModal({ medicine, onClose }: { medicine: MedicineStock | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t, label } = useI18n();
   const batches = useQuery({
     queryKey: ['batches', medicine?.medicine_id],
     queryFn: () => listBatches(medicine!.medicine_id),
@@ -377,7 +389,7 @@ function AdjustModal({ medicine, onClose }: { medicine: MedicineStock | null; on
       queryClient.invalidateQueries({ queryKey: ['stock'] });
       queryClient.invalidateQueries({ queryKey: ['batches'] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      notify('Stock adjusted');
+      notify(t('med.adjusted'));
       setReason('');
       onClose();
     },
@@ -388,19 +400,19 @@ function AdjustModal({ medicine, onClose }: { medicine: MedicineStock | null; on
     <Modal
       open={medicine !== null}
       onClose={onClose}
-      title={`Adjust stock — ${medicine?.name ?? ''}`}
+      title={`${t('med.adjustTitle')} — ${medicine?.name ?? ''}`}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" loading={apply.isPending}
             onClick={() => {
               setError(null);
-              if (!batchId) { setError('Choose the batch to adjust.'); return; }
-              if (!Number(change)) { setError('Enter a non-zero change.'); return; }
-              if (reason.trim().length < 3) { setError('A reason is required.'); return; }
+              if (!batchId) { setError(t('med.errBatch')); return; }
+              if (!Number(change)) { setError(t('med.errChange')); return; }
+              if (reason.trim().length < 3) { setError(t('med.errReason')); return; }
               apply.mutate();
             }}>
-            Apply adjustment
+            {t('med.applyAdjustment')}
           </Button>
         </>
       }
@@ -408,39 +420,36 @@ function AdjustModal({ medicine, onClose }: { medicine: MedicineStock | null; on
       {error && <div className="login__error" role="alert">{error}</div>}
       <div className="form-grid">
         <div className="full">
-          <Field label="Batch" required>
+          <Field label={t('med.batch')} required>
             <Select value={batchId} onChange={(e) => setBatchId(e.target.value)}>
-              <option value="">Choose a batch…</option>
+              <option value="">{t('med.chooseBatch')}</option>
               {batches.data?.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.batch_number} · {b.quantity} in stock
-                  {b.expiry_date ? ` · expires ${b.expiry_date}` : ''}
+                  {b.batch_number} · {b.quantity} {t('rx.inStock')}
+                  {b.expiry_date ? ` · ${t('med.expires')} ${b.expiry_date}` : ''}
                 </option>
               ))}
             </Select>
           </Field>
         </div>
-        <Field label="Change" required hint="Negative removes stock, positive adds it">
+        <Field label={t('med.colChange')} required hint={t('med.changeHint')}>
           <Input type="number" value={change} onChange={(e) => setChange(e.target.value)} />
         </Field>
-        <Field label="Reason type" required>
+        <Field label={t('med.reasonType')} required>
           <Select value={type} onChange={(e) => setType(e.target.value as StockMovementType)}>
-            {(['adjustment', 'damaged', 'expired', 'returned'] as StockMovementType[]).map((t) => (
-              <option key={t} value={t}>{titleCase(t)}</option>
+            {(['adjustment', 'damaged', 'expired', 'returned'] as StockMovementType[]).map((mt) => (
+              <option key={mt} value={mt}>{label('move', mt)}</option>
             ))}
           </Select>
         </Field>
         <div className="full">
-          <Field label="Reason" required>
+          <Field label={t('common.reason')} required>
             <Input value={reason} onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. broken vial during handling" />
+              placeholder={t('med.reasonPlaceholder')} />
           </Field>
         </div>
       </div>
-      <p className="text-2xs faint mt-12">
-        Every adjustment is written to the stock movement log with your name and the quantity
-        before and after.
-      </p>
+      <p className="text-2xs faint mt-12">{t('med.adjustFootnote')}</p>
     </Modal>
   );
 }

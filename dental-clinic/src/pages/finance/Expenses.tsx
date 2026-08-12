@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createExpense, financialSummary, listExpenses } from '@/services/finance';
 import { readableError } from '@/lib/supabase';
-import { dateOnly, isoDate, money, titleCase } from '@/lib/format';
+import { dateOnly, isoDate, money } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
 import type { ExpenseCategory, PaymentMethod } from '@/types/database';
 import {
@@ -10,6 +10,7 @@ import {
   Select, StatCard, Textarea, useToast,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
+import { useI18n } from '@/i18n';
 
 const CATEGORIES: ExpenseCategory[] = [
   'rent', 'electricity', 'water', 'salaries', 'dental_supplies', 'pharmacy_purchases',
@@ -20,6 +21,7 @@ const PAGE_SIZE = 25;
 
 export default function Expenses() {
   const { can } = useAuth();
+  const { t, label } = useI18n();
   const [from, setFrom] = useState(isoDate(new Date(Date.now() - 30 * 86_400_000)));
   const [to, setTo] = useState(isoDate());
   const [category, setCategory] = useState<ExpenseCategory | 'all'>('all');
@@ -39,24 +41,24 @@ export default function Expenses() {
     <>
       <div className="page__head">
         <div>
-          <h1>Expenses</h1>
-          <p>Everything the clinic spends — rent, salaries, supplies and pharmacy purchases.</p>
+          <h1>{t('exp.title')}</h1>
+          <p>{t('exp.subtitle')}</p>
         </div>
         {can('finance.write') && (
           <div className="page__actions">
-            <Button variant="primary" onClick={() => setAdding(true)}><Icon name="plus" /> Record expense</Button>
+            <Button variant="primary" onClick={() => setAdding(true)}><Icon name="plus" /> {t('exp.record')}</Button>
           </div>
         )}
       </div>
 
       <div className="grid grid--4 mb-16">
-        <StatCard tone="ok" label="Income" value={summary.data ? money(summary.data.grossIncome) : '…'}
-          hint="Treatments + pharmacy" />
-        <StatCard tone="warn" label="Expenses" value={summary.data ? money(summary.data.expenses) : '…'} />
-        <StatCard tone="brand" label="Net" value={summary.data ? money(summary.data.net) : '…'}
-          hint="Income minus expenses" />
-        <StatCard tone="danger" label="Outstanding" value={summary.data ? money(summary.data.outstanding) : '…'}
-          hint="Owed by patients" />
+        <StatCard tone="ok" label={t('exp.income')} value={summary.data ? money(summary.data.grossIncome) : '…'}
+          hint={t('exp.incomeHint')} />
+        <StatCard tone="warn" label={t('exp.expenses')} value={summary.data ? money(summary.data.expenses) : '…'} />
+        <StatCard tone="brand" label={t('exp.net')} value={summary.data ? money(summary.data.net) : '…'}
+          hint={t('exp.netHint')} />
+        <StatCard tone="danger" label={t('exp.outstanding')} value={summary.data ? money(summary.data.outstanding) : '…'}
+          hint={t('exp.outstandingHint')} />
       </div>
 
       <Card padded={false}>
@@ -65,31 +67,32 @@ export default function Expenses() {
           <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} />
           <Select value={category} style={{ width: 190 }}
             onChange={(e) => { setCategory(e.target.value as ExpenseCategory | 'all'); setPage(1); }}>
-            <option value="all">All categories</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{titleCase(c)}</option>)}
+            <option value="all">{t('exp.allCategories')}</option>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{label('expcat', c)}</option>)}
           </Select>
         </div>
 
         <QueryBoundary
           query={{ ...query, data: query.data?.rows }}
           skeletonRows={7}
-          empty={<EmptyState title="No expenses in this period"
-            description="Record rent, salaries, supplies and other clinic costs to see the true net income." />}
+          empty={<EmptyState title={t('exp.empty')}
+            description={t('exp.emptyHint')} />}
         >
           {(rows) => (
             <div className="table-wrap">
               <table className="tbl">
                 <thead>
-                  <tr><th>Date</th><th>Category</th><th>Description</th><th>Method</th>
-                    <th>Recorded by</th><th className="right">Amount</th></tr>
+                  <tr><th>{t('common.date')}</th><th>{t('common.category')}</th>
+                    <th>{t('exp.description')}</th><th>{t('common.method')}</th>
+                    <th>{t('common.recordedBy')}</th><th className="right">{t('common.amount')}</th></tr>
                 </thead>
                 <tbody>
                   {rows.map((e) => (
                     <tr key={e.id}>
                       <td>{dateOnly(e.expense_date)}</td>
-                      <td>{titleCase(e.category)}</td>
+                      <td>{label('expcat', e.category)}</td>
                       <td><b>{e.description}</b>{e.notes && <div className="text-2xs faint">{e.notes}</div>}</td>
-                      <td>{titleCase(e.payment_method)}</td>
+                      <td>{label('method', e.payment_method)}</td>
                       <td>{e.recorded_by_profile?.full_name ?? '—'}</td>
                       <td className="right bold">{money(e.amount)}</td>
                     </tr>
@@ -111,6 +114,7 @@ export default function Expenses() {
 function ExpenseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
+  const { t, label } = useI18n();
   const [category, setCategory] = useState<ExpenseCategory>('dental_supplies');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -125,7 +129,7 @@ function ExpenseModal({ open, onClose }: { open: boolean; onClose: () => void })
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['financial-summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-      notify('Expense recorded');
+      notify(t('exp.saved'));
       setDescription(''); setAmount(''); setNotes('');
       onClose();
     },
@@ -135,8 +139,8 @@ function ExpenseModal({ open, onClose }: { open: boolean; onClose: () => void })
   function submit() {
     setError(null);
     const value = Number(amount);
-    if (!description.trim()) { setError('Describe what the money was spent on.'); return; }
-    if (!Number.isFinite(value) || value <= 0) { setError('Enter an amount greater than zero.'); return; }
+    if (!description.trim()) { setError(t('exp.errDescription')); return; }
+    if (!Number.isFinite(value) || value <= 0) { setError(t('exp.errAmount')); return; }
     create.mutate({
       category, description: description.trim(), amount: value,
       expense_date: date, payment_method: method, notes: notes.trim() || null,
@@ -147,40 +151,40 @@ function ExpenseModal({ open, onClose }: { open: boolean; onClose: () => void })
     <Modal
       open={open}
       onClose={onClose}
-      title="Record expense"
+      title={t('exp.record')}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={create.isPending} onClick={submit}>Save expense</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" loading={create.isPending} onClick={submit}>{t('exp.save')}</Button>
         </>
       }
     >
       {error && <div className="login__error" role="alert">{error}</div>}
       <div className="form-grid">
-        <Field label="Category" required>
+        <Field label={t('common.category')} required>
           <Select value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)}>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{titleCase(c)}</option>)}
+            {CATEGORIES.map((c) => <option key={c} value={c}>{label('expcat', c)}</option>)}
           </Select>
         </Field>
-        <Field label="Amount" required>
+        <Field label={t('common.amount')} required>
           <Input type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Field>
-        <Field label="Date" required>
+        <Field label={t('common.date')} required>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
-        <Field label="Payment method">
+        <Field label={t('pay.methodLabel')}>
           <Select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
-            {METHODS.map((m) => <option key={m} value={m}>{titleCase(m)}</option>)}
+            {METHODS.map((m) => <option key={m} value={m}>{label('method', m)}</option>)}
           </Select>
         </Field>
         <div className="full">
-          <Field label="Description" required>
+          <Field label={t('exp.description')} required>
             <Input value={description} onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Composite resin order" />
+              placeholder={t('exp.descriptionPlaceholder')} />
           </Field>
         </div>
         <div className="full">
-          <Field label="Notes">
+          <Field label={t('common.notes')}>
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
         </div>

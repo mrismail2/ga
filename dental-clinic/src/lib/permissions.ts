@@ -47,13 +47,6 @@ export function can(
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
 }
 
-export const ROLE_LABEL: Record<UserRole, string> = {
-  admin: 'Administrator',
-  dentist: 'Dentist',
-  receptionist: 'Receptionist',
-  pharmacist: 'Pharmacist',
-};
-
 /** Where each role lands after signing in. */
 export const ROLE_HOME: Record<UserRole, string> = {
   admin: '/',
