@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createPrescription, listMedicineStock, listPrescriptions, type PrescriptionDraftItem,
+  cancelPrescription, createPrescription, listMedicineStock, listPrescriptions,
+  type PrescriptionDraftItem,
 } from '@/services/pharmacy';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { useI18n } from '@/i18n';
+import type { Prescription } from '@/types/database';
 
 const FILTERS = [
   { id: 'all', key: 'common.all' },
@@ -26,6 +28,7 @@ export default function Prescriptions() {
   const { t, label } = useI18n();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all');
   const [writing, setWriting] = useState(false);
+  const [cancelling, setCancelling] = useState<Prescription | null>(null);
 
   const query = useQuery({
     queryKey: ['prescriptions', filter],
@@ -89,7 +92,15 @@ export default function Prescriptions() {
                     <Badge tone={rx.status === 'dispensed' ? 'ok' : rx.status === 'cancelled' ? 'danger' : 'warn'}>
                       {label('status', rx.status)}
                     </Badge>
+                    {can('clinical.write') && rx.status === 'pending' && (
+                      <Button size="sm" onClick={() => setCancelling(rx)}>{t('rx.cancel')}</Button>
+                    )}
                   </div>
+                  {rx.cancel_reason && (
+                    <div className="text-2xs danger-text mt-8">
+                      {t('rx.cancelReason')}: {rx.cancel_reason}
+                    </div>
+                  )}
                   <ul className="mt-8">
                     {rx.items?.map((item) => (
                       <li key={item.id} className="text-sm muted">
@@ -107,7 +118,60 @@ export default function Prescriptions() {
       </Card>
 
       <WriteModal open={writing} onClose={() => setWriting(false)} />
+      <CancelPrescriptionModal prescription={cancelling} onClose={() => setCancelling(null)} />
     </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+export function CancelPrescriptionModal({
+  prescription, onClose,
+}: { prescription: Prescription | null; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const { notify } = useToast();
+  const { t } = useI18n();
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const cancel = useMutation({
+    mutationFn: () => cancelPrescription(prescription!.id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+      notify(t('rx.cancelled'));
+      setReason('');
+      onClose();
+    },
+    onError: (e) => setError(readableError(e)),
+  });
+
+  return (
+    <Modal
+      open={prescription !== null}
+      onClose={onClose}
+      title={t('rx.cancelTitle')}
+      footer={
+        <>
+          <Button onClick={onClose}>{t('common.goBack')}</Button>
+          <Button variant="danger" loading={cancel.isPending}
+            onClick={() => {
+              setError(null);
+              if (reason.trim().length < 3) { setError(t('rx.errCancelReason')); return; }
+              cancel.mutate();
+            }}>
+            {t('rx.cancel')}
+          </Button>
+        </>
+      }
+    >
+      {error && <div className="login__error" role="alert">{error}</div>}
+      <p className="text-sm muted mb-16">
+        <b>{prescription?.prescription_number}</b> · {t('rx.cancelBody')}
+      </p>
+      <Field label={t('rx.cancelReason')} required>
+        <Input autoFocus value={reason} placeholder={t('rx.cancelReasonPlaceholder')}
+          onChange={(e) => setReason(e.target.value)} />
+      </Field>
+    </Modal>
   );
 }
 

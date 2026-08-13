@@ -139,11 +139,13 @@ export default function AppShell() {
 
         <div className="sidebar__foot">
           <div className="sidebar__user">
-            <Avatar name={profile?.full_name ?? '?'} size="sm" />
-            <div className="grow truncate">
-              <b className="truncate">{profile?.full_name}</b>
-              <small>{profile ? enumLabel('role', profile.role) : ''}</small>
-            </div>
+            <NavLink to="/account" className="sidebar__me" title={t('nav.account')}>
+              <Avatar name={profile?.full_name ?? '?'} size="sm" />
+              <div className="grow truncate">
+                <b className="truncate">{profile?.full_name}</b>
+                <small>{profile ? enumLabel('role', profile.role) : ''}</small>
+              </div>
+            </NavLink>
             <IconButton
               label={t('nav.signOut')}
               onClick={async () => { await signOut(); navigate('/login'); }}

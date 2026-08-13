@@ -92,6 +92,19 @@ export async function listPrescriptions(params: {
   return (data ?? []) as unknown as Prescription[];
 }
 
+/**
+ * A prescription is cancelled, never deleted, and only while nothing has been
+ * dispensed against it — the database enforces both.
+ */
+export async function cancelPrescription(id: string, reason: string) {
+  const { data, error } = await supabase
+    .from('prescriptions')
+    .update({ status: 'cancelled', cancel_reason: reason.trim() })
+    .eq('id', id).select('*').single();
+  if (error) throw error;
+  return data as unknown as Prescription;
+}
+
 export async function getPrescription(id: string) {
   const { data, error } = await supabase.from('prescriptions').select(RX_SELECT).eq('id', id).single();
   if (error) throw error;

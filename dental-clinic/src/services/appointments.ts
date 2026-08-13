@@ -65,6 +65,16 @@ export async function updateAppointmentStatus(id: string, status: AppointmentSta
   return data as unknown as Appointment;
 }
 
+/** Cancelling needs a reason — the database rejects a blank one. */
+export async function cancelAppointment(id: string, reason: string) {
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({ status: 'cancelled', cancel_reason: reason.trim() })
+    .eq('id', id).select('*').single();
+  if (error) throw error;
+  return data as Appointment;
+}
+
 export async function rescheduleAppointment(id: string, scheduledAt: string, duration: number) {
   const { data, error } = await supabase
     .from('appointments')

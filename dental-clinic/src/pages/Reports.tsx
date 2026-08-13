@@ -4,6 +4,7 @@ import { appointmentReport, patientReport, treatmentReport } from '@/services/ad
 import { financialSummary, incomeByDay, listOutstanding } from '@/services/finance';
 import { listMedicineStock } from '@/services/pharmacy';
 import { dateOnly, isoDate, money } from '@/lib/format';
+import { downloadCsv } from '@/lib/csv';
 import { useAuth } from '@/hooks/useAuth';
 import {
   Button, Card, EmptyState, Input, QueryBoundary, Skeleton, StatCard, Tabs,
@@ -11,6 +12,16 @@ import {
 import { BarChart, DonutChart, LineChart } from '@/components/ui/Charts';
 import { Icon } from '@/components/ui/Icon';
 import { useI18n } from '@/i18n';
+
+/** Small helper so every report exports the same way. */
+function ExportButton({ onExport }: { onExport: () => void }) {
+  const { t } = useI18n();
+  return (
+    <Button size="sm" onClick={onExport}>
+      <Icon name="upload" /> {t('rep.exportCsv')}
+    </Button>
+  );
+}
 
 const PRESETS = [
   { id: 'today', key: 'common.today' },
@@ -154,7 +165,21 @@ function FinancialReport({ from, to }: { from: string; to: string }) {
         </Card>
       </div>
 
-      <Card title={t('out.title')} subtitle={t('rep.topOutstanding')} padded={false} className="mt-16">
+      <Card
+        title={t('out.title')}
+        subtitle={t('rep.topOutstanding')}
+        padded={false}
+        className="mt-16"
+        actions={<ExportButton onExport={() => downloadCsv(
+          `outstanding-${from}-${to}`,
+          [t('common.patient'), t('receipt.patientId'), t('common.treatment'),
+            t('common.total'), t('common.paid'), t('common.balance'), t('common.status')],
+          (outstanding.data?.rows ?? []).map((r) => [
+            r.full_name, r.patient_code, r.treatment_name,
+            r.final_cost, r.amount_paid, r.balance, label('status', r.payment_status),
+          ]),
+        )} />}
+      >
         <QueryBoundary
           query={{ ...outstanding, data: outstanding.data?.rows }}
           empty={<EmptyState title={t('out.empty')} />}
@@ -197,7 +222,15 @@ function PatientsReport({ from, to }: { from: string; to: string }) {
 
   return (
     <div className="grid grid--wide">
-      <Card title={t('rep.newPatientsByAge')} subtitle={`${r.total} ${t('rep.registeredInPeriod')}`}>
+      <Card
+        title={t('rep.newPatientsByAge')}
+        subtitle={`${r.total} ${t('rep.registeredInPeriod')}`}
+        actions={<ExportButton onExport={() => downloadCsv(
+          `patients-${from}-${to}`,
+          [t('register.age'), t('rep.count')],
+          r.ageGroups.map((g) => [g.label, g.value]),
+        )} />}
+      >
         {r.total === 0
           ? <EmptyState title={t('rep.noNewPatients')} />
           : <BarChart data={r.ageGroups.map((g) => ({ label: g.label, value: g.value }))} height={230} />}
@@ -232,7 +265,16 @@ function TreatmentsReport({ from, to }: { from: string; to: string }) {
         <StatCard tone="warn" label={t('rep.billed')} value={money(r.billed)} />
         <StatCard tone="teal" label={t('rep.collected')} value={money(r.collected)} />
       </div>
-      <Card title={t('rep.commonTreatments')} subtitle={t('rep.commonTreatmentsHint')} padded={false}>
+      <Card
+        title={t('rep.commonTreatments')}
+        subtitle={t('rep.commonTreatmentsHint')}
+        padded={false}
+        actions={<ExportButton onExport={() => downloadCsv(
+          `treatments-${from}-${to}`,
+          [t('common.treatment'), t('rep.count'), t('rep.collected')],
+          r.byTreatment.map((row) => [row.name, row.count, row.revenue]),
+        )} />}
+      >
         {r.byTreatment.length === 0 ? (
           <EmptyState title={t('rep.noTreatments')} />
         ) : (
@@ -268,7 +310,16 @@ function AppointmentsReport({ from, to }: { from: string; to: string }) {
 
   return (
     <div className="grid grid--wide">
-      <Card title={t('rep.outcomes')} subtitle={`${r.total} ${t('rep.inPeriod')}`}>
+      <Card
+        title={t('rep.outcomes')}
+        subtitle={`${r.total} ${t('rep.inPeriod')}`}
+        actions={<ExportButton onExport={() => downloadCsv(
+          `appointments-${from}-${to}`,
+          [t('common.status'), t('rep.count')],
+          [[t('rep.completed'), r.completed], [t('rep.scheduled'), r.scheduled],
+            [t('rep.cancelled'), r.cancelled], [t('rep.noShow'), r.noShow]],
+        )} />}
+      >
         {r.total === 0 ? <EmptyState title={t('rep.noAppointments')} /> : (
           <BarChart
             data={[
@@ -316,7 +367,19 @@ function PharmacyReport() {
           value={money(rows.reduce((t, m) => t + m.usable_quantity * Number(m.purchase_price), 0))} />
       </div>
 
-      <Card title={t('rep.stockAttention')} padded={false}>
+      <Card
+        title={t('rep.stockAttention')}
+        padded={false}
+        actions={<ExportButton onExport={() => downloadCsv(
+          'pharmacy-stock',
+          [t('rx.medicine'), t('rep.usable'), t('rep.minimum'), t('rep.expired'),
+            t('rep.earliestExpiry'), t('common.status')],
+          rows.map((m) => [
+            `${m.name} ${m.strength ?? ''}`.trim(), m.usable_quantity, m.minimum_stock,
+            m.expired_quantity, m.earliest_expiry ?? '', label('status', m.stock_status),
+          ]),
+        )} />}
+      >
         {low.length + expiring.length + expired.length === 0 ? (
           <EmptyState title={t('rep.stockHealthy')} description={t('rep.stockHealthyHint')} />
         ) : (

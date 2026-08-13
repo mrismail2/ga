@@ -308,6 +308,118 @@ begin
                  'payments are written to the audit log');
 end $$;
 
+-- ============================================================================
+-- 7. Cancellations keep the record and demand a reason
+-- ============================================================================
+do $$
+declare
+  v_patient uuid;
+  v_dentist uuid := (select id from profiles where role = 'dentist' limit 1);
+  v_appt    uuid;
+  v_rx      uuid;
+  v_med     uuid := (select id from medicines limit 1);
+begin
+  insert into patients (full_name, gender, age_years, phone)
+  values ('Cancel Test', 'female', 30, '+252644444444') returning id into v_patient;
+
+  insert into appointments (patient_id, dentist_id, scheduled_at, duration_minutes)
+  values (v_patient, v_dentist, date_trunc('hour', now() + interval '9 days'), 30)
+  returning id into v_appt;
+
+  begin
+    update appointments set status = 'cancelled' where id = v_appt;
+    perform assert(false, 'cancelling without a reason should have been rejected');
+  exception when others then
+    perform assert(sqlerrm like '%needs a reason%', 'a cancelled appointment needs a reason');
+  end;
+
+  update appointments set status = 'cancelled', cancel_reason = 'patient postponed'
+  where id = v_appt;
+  perform assert((select status from appointments where id = v_appt) = 'cancelled',
+                 'an appointment with a reason can be cancelled');
+  perform assert((select count(*) from appointments where id = v_appt) = 1,
+                 'a cancelled appointment is kept, not deleted');
+
+  -- the freed slot can be booked again
+  insert into appointments (patient_id, dentist_id, scheduled_at, duration_minutes)
+  values (v_patient, v_dentist, date_trunc('hour', now() + interval '9 days'), 30);
+  perform assert(true, 'cancelling frees the slot for another booking');
+
+  update appointments set status = 'completed'
+  where id = (select id from appointments where patient_id = v_patient and status = 'scheduled' limit 1);
+  begin
+    update appointments set status = 'cancelled', cancel_reason = 'changed my mind'
+    where patient_id = v_patient and status = 'completed';
+    perform assert(false, 'cancelling a completed appointment should have been rejected');
+  exception when others then
+    perform assert(sqlerrm like '%completed appointment cannot be cancelled%',
+                   'a completed appointment cannot be cancelled');
+  end;
+
+  -- prescriptions
+  insert into prescriptions (patient_id, dentist_id) values (v_patient, v_dentist) returning id into v_rx;
+  insert into prescription_items (prescription_id, medicine_id, medicine_name, quantity)
+  values (v_rx, v_med, 'Paracetamol', 10);
+
+  begin
+    update prescriptions set status = 'cancelled' where id = v_rx;
+    perform assert(false, 'cancelling a prescription without a reason should have been rejected');
+  exception when others then
+    perform assert(sqlerrm like '%needs a reason%', 'a cancelled prescription needs a reason');
+  end;
+
+  update prescriptions set status = 'cancelled', cancel_reason = 'replaced' where id = v_rx;
+  perform assert((select status from prescriptions where id = v_rx) = 'cancelled',
+                 'a prescription with a reason can be cancelled');
+
+  update prescriptions set status = 'dispensed' where id = v_rx;
+  begin
+    update prescriptions set status = 'cancelled', cancel_reason = 'too late' where id = v_rx;
+    perform assert(false, 'cancelling a dispensed prescription should have been rejected');
+  exception when others then
+    perform assert(sqlerrm like '%already been dispensed%',
+                   'a dispensed prescription cannot be cancelled');
+  end;
+end $$;
+
+-- ============================================================================
+-- 8. Patients are archived, never deleted
+-- ============================================================================
+do $$
+declare
+  v_patient uuid;
+begin
+  insert into patients (full_name, gender, age_years, phone)
+  values ('Archive Test', 'male', 44, '+252633333333') returning id into v_patient;
+
+  insert into treatments (patient_id, estimated_cost) values (v_patient, 40);
+
+  update patients set archived_at = now(), status = 'inactive' where id = v_patient;
+  perform assert((select archived_at from patients where id = v_patient) is not null,
+                 'archiving stamps archived_at');
+  perform assert((select count(*) from treatments where patient_id = v_patient) = 1,
+                 'archiving a patient keeps their treatments');
+
+  update patients set archived_at = null, status = 'active' where id = v_patient;
+  perform assert((select archived_at from patients where id = v_patient) is null,
+                 'an archived patient can be restored');
+end $$;
+
+-- ============================================================================
+-- 9. Medical history is append-only
+-- ============================================================================
+do $$
+declare
+  v_patient uuid := (select id from patients where full_name = 'Archive Test');
+begin
+  insert into patient_medical_history (patient_id, condition, notes)
+  values (v_patient, 'Diabetes', 'Metformin');
+  insert into patient_medical_history (patient_id, condition)
+  values (v_patient, 'Hypertension');
+  perform assert((select count(*) from patient_medical_history where patient_id = v_patient) = 2,
+                 'every medical history entry is kept');
+end $$;
+
 \echo ''
 \echo '================================================'
 \echo ' All business-rule tests passed.'

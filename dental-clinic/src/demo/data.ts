@@ -258,6 +258,19 @@ export const examinations = [
   { id: 'ex-3', patient_id: 'p-3', dentist_id: 'u-2', exam_date: day(-28), chief_complaint: 'Xanuun daran oo bidix sare, habeenkii ka sii daran', medical_history: 'Dhiig-kar, wuxuu qaataa Amlodipine', dental_history: 'Buuxin 37', findings: 'Qudhun qoto dheer 26 oo gaadhay xididka, waa xanuunsan yahay marka la garaaco', diagnosis: 'Pulpitis aan laga soo noqon karin, iliga 26', recommended_treatment: 'Daaweynta xididka kadibna koron', notes: 'Xididka isla maalintii baa la bilaabay', created_at: at(-28, 9), dentist: { id: 'u-2', full_name: 'Dr. Omar Jama' } },
 ];
 
+export const medicalHistory = [
+  { id: 'mh-1', patient_id: 'p-1', condition: 'Xasaasiyad Penicillin', notes: 'Waxaa la xaqiijiyay 2023, finan iyo neefta cidhiidhi', recorded_by: 'u-1', recorded_at: at(-120, 10), recorded_by_profile: { id: 'u-1', full_name: 'Dr. Amina Warsame' } },
+  { id: 'mh-2', patient_id: 'p-1', condition: 'Ilko-jiidasho habeenkii (bruxism)', notes: 'Waxaa la soo jeediyay hayaha habeenkii', recorded_by: 'u-1', recorded_at: at(-60, 10), recorded_by_profile: { id: 'u-1', full_name: 'Dr. Amina Warsame' } },
+  { id: 'mh-3', patient_id: 'p-3', condition: 'Dhiig-kar', notes: 'Wuxuu qaataa Amlodipine 5mg maalintii', recorded_by: 'u-2', recorded_at: at(-28, 9), recorded_by_profile: { id: 'u-2', full_name: 'Dr. Omar Jama' } },
+  { id: 'mh-4', patient_id: 'p-5', condition: 'Sonkorow nooca 2-aad', notes: 'Metformin; ka feejignow bogsashada qalliinka kadib', recorded_by: 'u-2', recorded_at: at(-118, 11), recorded_by_profile: { id: 'u-2', full_name: 'Dr. Omar Jama' } },
+];
+
+export const treatmentPlans = [
+  { id: 'pl-1', patient_id: 'p-1', dentist_id: 'u-1', title: 'Qorshaha qalinka — 18 bilood', status: 'in_progress', notes: 'Labada qaansho, elastics bisha 6-aad, hayaha kadib.', created_by: 'u-1', created_at: at(-120, 11), updated_at: at(-30, 9) },
+  { id: 'pl-2', patient_id: 'p-3', dentist_id: 'u-2', title: 'Xididka 26 kadibna koron', status: 'in_progress', notes: 'Kalfadhi 2 ee 3 waa la dhammeeyay.', created_by: 'u-2', created_at: at(-28, 9), updated_at: at(-7, 11) },
+  { id: 'pl-3', patient_id: 'p-5', dentist_id: 'u-2', title: 'Dayactirka qaanshaha hoose', status: 'planned', notes: null, created_by: 'u-2', created_at: at(-20, 10), updated_at: at(-20, 10) },
+];
+
 export const medicineCategories = [
   { id: 'mc-1', name: 'Antibiyootig' }, { id: 'mc-2', name: 'Xanuun-joojiye' },
   { id: 'mc-3', name: 'Suuxin' }, { id: 'mc-4', name: 'Barar-joojiye' },

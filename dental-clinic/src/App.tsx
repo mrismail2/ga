@@ -29,6 +29,7 @@ const Reports = lazy(() => import('@/pages/Reports'));
 const Staff = lazy(() => import('@/pages/Staff'));
 const AuditLog = lazy(() => import('@/pages/AuditLog'));
 const Settings = lazy(() => import('@/pages/Settings'));
+const Account = lazy(() => import('@/pages/Account'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -125,6 +126,8 @@ export default function App() {
                   <Route path="staff" element={<RequireAuth permission="staff.manage"><Staff /></RequireAuth>} />
                   <Route path="audit" element={<RequireAuth permission="audit.read"><AuditLog /></RequireAuth>} />
                   <Route path="settings" element={<RequireAuth permission="settings.manage"><Settings /></RequireAuth>} />
+                  {/* Every signed-in user can reach their own account. */}
+                  <Route path="account" element={<Account />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

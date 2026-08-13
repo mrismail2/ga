@@ -58,7 +58,8 @@ Apply the database in the Supabase SQL editor (or `supabase db push`), in order:
 supabase/migrations/0001_schema.sql          tables, enums, constraints, indexes
 supabase/migrations/0002_functions.sql       balance views, RPCs, triggers
 supabase/migrations/0003_rls.sql             Row Level Security + storage bucket
-supabase/migrations/0004_reference_data.sql  treatment price list, categories, settings
+supabase/migrations/0004_reference_data.sql  service list, medicine categories, settings
+supabase/migrations/0005_completion.sql      cancellation reasons and their guards
 ```
 
 Then create the first admin: sign the user up in Supabase Auth, and set
@@ -159,14 +160,32 @@ Braces  $500
 
 ## Modules
 
-**Clinic** — Dashboard · Patients · Appointments · Patient queue
-**Clinical** — Dental treatments · Braces/orthodontics · Prescriptions · Dental chart · Examinations · Documents
+**Clinic** — Dashboard · Patients (register, edit, archive/restore) · Appointments (book, check in, reschedule, cancel) · Patient queue
+**Clinical** — Dental treatments · Treatment plans · Braces/orthodontics · Prescriptions (write, cancel) · Dental chart · Examinations · Medical history · Documents
 **Finance** — Payments · Outstanding balances · Expenses · Receipts · Patient statements
 **Pharmacy** — Dispensing · Medicines & stock · Batches · Sales · Purchases · Suppliers
-**Administration** — Reports · Staff · Audit log · Settings
+**Administration** — Reports (with CSV export) · Staff · Audit log · Settings · My account
 
 Every list has explicit **loading, empty and error** states, and every screen
 reads from the database — there are no hardcoded numbers and no dead buttons.
+Every service function in `src/services` is reachable from the interface; there
+is no capability that exists only in code.
+
+### The patient record
+
+The profile is the whole paper file: overview, dental chart, treatments and
+plans, clinical notes and examinations, payments, appointments, prescriptions
+and documents. Beyond reading it you can
+
+- **edit** any registration detail, and **archive** the patient — hidden from
+  lists and search, never deleted, restorable by an admin;
+- add to an **append-only medical history**, so a condition recorded once stays
+  in the record even when it is later corrected;
+- record a **dental examination** (complaint, history, findings, diagnosis,
+  recommendation);
+- open a **treatment plan** grouping what was agreed with the patient;
+- **upload documents** — X-rays, photos, consent forms — into a private bucket
+  reached only through five-minute signed URLs, deletable by an admin.
 
 ---
 
@@ -208,6 +227,11 @@ Enforced in PostgreSQL, verified by the test suite:
 - A prescription cannot be dispensed beyond the quantity prescribed
 - A dentist cannot be double-booked (PostgreSQL exclusion constraint)
 - The tooth chart is append-only: every change keeps the previous record
+- The medical history is append-only for the same reason
+- A cancelled appointment or prescription **must carry a reason**
+- A completed appointment cannot be cancelled after the fact
+- A prescription cannot be cancelled once medicine has been dispensed against it
+- Archiving a patient keeps their treatments, payments and chart, and is reversible
 - A patient must have either a date of birth or an age
 - Every important action is written to `audit_logs` by a database trigger
 
@@ -228,8 +252,9 @@ psql -d clinic -f supabase/migrations/0004_reference_data.sql
 psql -d clinic -v ON_ERROR_STOP=1 -f supabase/test/01_business_rules.sql
 ```
 
-30 assertions covering installments, duplicate payments, voiding, the tooth
-chart, pharmacy stock and expiry, double-booking and the integrity guards.
+42 assertions covering installments, duplicate payments, voiding, the tooth
+chart, pharmacy stock and expiry, double-booking, cancellations, patient
+archiving, the append-only medical history and the integrity guards.
 
 ---
 
@@ -243,7 +268,7 @@ dental-clinic/
 └── src/
     ├── demo/                in-memory client + sample data for `npm run demo`
     ├── i18n/                Somali + English dictionaries and the t() provider
-    ├── lib/                 supabase client, permissions, formatting
+    ├── lib/                 supabase client, permissions, formatting, CSV export
     ├── types/database.ts    types mirroring the SQL schema
     ├── services/            one module per domain; all queries live here
     ├── hooks/useAuth.tsx    session, profile, role and permission context
@@ -251,6 +276,7 @@ dental-clinic/
     │   ├── ui/              buttons, forms, tables, modals, states, charts
     │   ├── layout/          app shell, sidebar, global search
     │   ├── dental/          interactive FDI tooth chart
+    │   ├── patients/        edit-patient dialog
     │   └── finance/         payment dialog, receipt, patient statement
     └── pages/               one file per screen
 ```

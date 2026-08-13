@@ -96,6 +96,15 @@ export async function createPlan(input: { patient_id: string; dentist_id: string
   return data as TreatmentPlan;
 }
 
+export async function updatePlan(id: string, patch: Partial<TreatmentPlan>) {
+  const { data, error } = await supabase
+    .from('treatment_plans')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id).select('*').single();
+  if (error) throw error;
+  return data as TreatmentPlan;
+}
+
 // --- Treatments -------------------------------------------------------------
 export interface TreatmentInput {
   patient_id: string;

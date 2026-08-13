@@ -79,6 +79,16 @@ export type PatientInput = Omit<
   'id' | 'patient_code' | 'registered_at' | 'created_at' | 'updated_at' | 'archived_at' | 'created_by'
 >;
 
+export interface MedicalHistoryEntry {
+  id: string;
+  patient_id: string;
+  condition: string;
+  notes: string | null;
+  recorded_by: string | null;
+  recorded_at: string;
+  recorded_by_profile?: Pick<Profile, 'id' | 'full_name'> | null;
+}
+
 export interface DentalExamination {
   id: string;
   patient_id: string;
@@ -258,6 +268,7 @@ export interface Appointment {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  cancel_reason: string | null;
   patient?: Pick<Patient, 'id' | 'full_name' | 'patient_code' | 'phone'> | null;
   dentist?: Pick<Profile, 'id' | 'full_name'> | null;
   treatment_type?: Pick<TreatmentType, 'id' | 'name'> | null;
@@ -292,6 +303,7 @@ export interface Prescription {
   prescribed_at: string;
   status: PrescriptionStatus;
   notes: string | null;
+  cancel_reason: string | null;
   patient?: Pick<Patient, 'id' | 'full_name' | 'patient_code' | 'allergies'> | null;
   dentist?: Pick<Profile, 'id' | 'full_name'> | null;
   items?: PrescriptionItem[];

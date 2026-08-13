@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type {
-  DentalExamination, Patient, PatientBalance, PatientDocument, PatientInput, ToothRecord,
+  DentalExamination, MedicalHistoryEntry, Patient, PatientBalance, PatientDocument,
+  PatientInput, ToothRecord,
 } from '@/types/database';
 
 const PATIENT_COLUMNS = '*';
@@ -118,6 +119,39 @@ export async function archivePatient(id: string) {
   if (error) throw error;
 }
 
+export async function restorePatient(id: string) {
+  const { error } = await supabase
+    .from('patients')
+    .update({ archived_at: null, status: 'active' })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// --- Medical history --------------------------------------------------------
+export async function listMedicalHistory(patientId: string) {
+  const { data, error } = await supabase
+    .from('patient_medical_history')
+    .select('*, recorded_by_profile:profiles!patient_medical_history_recorded_by_fkey(id, full_name)')
+    .eq('patient_id', patientId)
+    .order('recorded_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as MedicalHistoryEntry[];
+}
+
+/** Append-only: a condition that was true once stays in the record. */
+export async function addMedicalHistory(input: {
+  patient_id: string; condition: string; notes?: string | null;
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from('patient_medical_history')
+    .insert({ ...input, notes: input.notes ?? null, recorded_by: auth.user?.id ?? null })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as MedicalHistoryEntry;
+}
+
 // --- Examinations -----------------------------------------------------------
 export async function listExaminations(patientId: string) {
   const { data, error } = await supabase
@@ -220,6 +254,15 @@ export async function uploadDocument(
     .single();
   if (error) throw error;
   return data as PatientDocument;
+}
+
+/** Admin-only: removes the row and the object behind it. */
+export async function deleteDocument(id: string, storagePath: string) {
+  const { error } = await supabase.from('documents').delete().eq('id', id);
+  if (error) throw error;
+  // The row is the record of truth; a leftover object is harmless, a missing
+  // row with a live object is not.
+  await supabase.storage.from(DOCUMENT_BUCKET).remove([storagePath]);
 }
 
 /** Documents live in a private bucket; links are short-lived signed URLs. */

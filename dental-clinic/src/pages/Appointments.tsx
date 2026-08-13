@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  checkIn, createAppointment, listAppointments, updateAppointmentStatus,
+  cancelAppointment, checkIn, createAppointment, listAppointments,
+  rescheduleAppointment, updateAppointmentStatus,
 } from '@/services/appointments';
 import { listTreatmentTypes } from '@/services/clinical';
 import { quickSearchPatients } from '@/services/patients';
 import { readableError } from '@/lib/supabase';
 import { dateOnly, isoDate, timeOnly } from '@/lib/format';
 import { useAuth } from '@/hooks/useAuth';
-import type { AppointmentStatus } from '@/types/database';
+import type { Appointment, AppointmentStatus } from '@/types/database';
 import {
   Avatar, Badge, Button, Card, EmptyState, Field, Input, Modal, QueryBoundary,
   Select, Textarea, useToast, cx,
@@ -52,6 +53,8 @@ export default function Appointments() {
   const [range, setRange] = useState<(typeof RANGES)[number]['id']>('today');
   const [dentistId, setDentistId] = useState('');
   const [booking, setBooking] = useState(false);
+  const [moving, setMoving] = useState<Appointment | null>(null);
+  const [cancelling, setCancelling] = useState<Appointment | null>(null);
 
   const { from, to } = rangeFor(range);
   const appointments = useQuery({
@@ -162,10 +165,16 @@ export default function Appointments() {
                                 {t('appt.complete')}
                               </Button>
                             )}
+                            {a.status !== 'completed' && a.status !== 'cancelled' && (
+                              <Button size="sm" onClick={() => setMoving(a)}>{t('appt.reschedule')}</Button>
+                            )}
                             {a.status === 'scheduled' && (
                               <Button size="sm" onClick={() => setStatus.mutate({ id: a.id, status: 'no_show' })}>
                                 {t('appt.noShow')}
                               </Button>
+                            )}
+                            {a.status !== 'completed' && a.status !== 'cancelled' && (
+                              <Button size="sm" onClick={() => setCancelling(a)}>{t('appt.cancel')}</Button>
                             )}
                           </div>
                         )}
@@ -180,7 +189,132 @@ export default function Appointments() {
       </Card>
 
       <BookingModal open={booking} onClose={() => setBooking(false)} />
+      <RescheduleModal appointment={moving} onClose={() => setMoving(null)} />
+      <CancelModal appointment={cancelling} onClose={() => setCancelling(null)} />
     </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+function RescheduleModal({
+  appointment, onClose,
+}: { appointment: Appointment | null; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const { notify } = useToast();
+  const { t } = useI18n();
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [date, setDate] = useState(isoDate());
+  const [time, setTime] = useState('09:00');
+  const [duration, setDuration] = useState(30);
+  const [error, setError] = useState<string | null>(null);
+
+  if (appointment && loadedFor !== appointment.id) {
+    setLoadedFor(appointment.id);
+    const at = new Date(appointment.scheduled_at);
+    setDate(isoDate(at));
+    setTime(`${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`);
+    setDuration(appointment.duration_minutes);
+    setError(null);
+  }
+
+  const move = useMutation({
+    mutationFn: () => rescheduleAppointment(
+      appointment!.id, new Date(`${date}T${time}`).toISOString(), duration,
+    ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['queue'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      notify(t('appt.rescheduled'));
+      onClose();
+    },
+    onError: (e) => setError(readableError(e)),
+  });
+
+  return (
+    <Modal
+      open={appointment !== null}
+      onClose={onClose}
+      title={t('appt.rescheduleTitle')}
+      footer={
+        <>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" loading={move.isPending} onClick={() => { setError(null); move.mutate(); }}>
+            {t('appt.reschedule')}
+          </Button>
+        </>
+      }
+    >
+      {error && <div className="login__error" role="alert">{error}</div>}
+      <p className="text-sm muted mb-16">
+        {appointment?.patient?.full_name} · {dateOnly(appointment?.scheduled_at)} {timeOnly(appointment?.scheduled_at)}
+      </p>
+      <div className="form-grid">
+        <Field label={t('common.date')} required>
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </Field>
+        <Field label={t('appt.newTime')} required>
+          <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        </Field>
+        <Field label={t('common.duration')} hint={t('appt.doubleBookHint')}>
+          <Select value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
+            {[15, 20, 30, 45, 60, 90, 120].map((m) => <option key={m} value={m}>{m} {t('common.minutes')}</option>)}
+          </Select>
+        </Field>
+      </div>
+    </Modal>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+function CancelModal({
+  appointment, onClose,
+}: { appointment: Appointment | null; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const { notify } = useToast();
+  const { t } = useI18n();
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const cancel = useMutation({
+    mutationFn: () => cancelAppointment(appointment!.id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['queue'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      notify(t('appt.cancelled'));
+      setReason('');
+      onClose();
+    },
+    onError: (e) => setError(readableError(e)),
+  });
+
+  return (
+    <Modal
+      open={appointment !== null}
+      onClose={onClose}
+      title={t('appt.cancelTitle')}
+      footer={
+        <>
+          <Button onClick={onClose}>{t('common.goBack')}</Button>
+          <Button variant="danger" loading={cancel.isPending}
+            onClick={() => {
+              setError(null);
+              if (reason.trim().length < 3) { setError(t('appt.errReason')); return; }
+              cancel.mutate();
+            }}>
+            {t('appt.cancel')}
+          </Button>
+        </>
+      }
+    >
+      {error && <div className="login__error" role="alert">{error}</div>}
+      <p className="text-sm muted mb-16">{t('appt.cancelBody')}</p>
+      <Field label={t('appt.cancelReason')} required>
+        <Input autoFocus value={reason} placeholder={t('appt.cancelReasonPlaceholder')}
+          onChange={(e) => setReason(e.target.value)} />
+      </Field>
+    </Modal>
   );
 }
 

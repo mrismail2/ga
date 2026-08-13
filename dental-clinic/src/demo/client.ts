@@ -21,7 +21,8 @@ const store: Record<string, Row[]> = {
   patients: [...demo.patients],
   treatments: [...demo.treatments],
   treatment_types: [...demo.treatmentTypes],
-  treatment_plans: [],
+  treatment_plans: [...demo.treatmentPlans],
+  patient_medical_history: [...demo.medicalHistory],
   payments: [...demo.payments],
   appointments: [...demo.appointments],
   tooth_records: [...demo.toothRecords],
@@ -437,6 +438,7 @@ export const supabase = {
       return { data: { subscription: { unsubscribe() {} } } };
     },
     signInWithPassword: async () => ({ data: { session: SESSION }, error: null }),
+    updateUser: async () => ({ data: { user: SESSION.user }, error: null }),
     signUp: async () => ({ data: { user: SESSION.user }, error: null }),
     signOut: async () => ({ error: null }),
     resetPasswordForEmail: async () => ({ error: null }),

@@ -166,6 +166,10 @@ svg { display: block; flex-shrink: 0; }
 .sidebar__user { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: var(--r-sm); }
 .sidebar__user b { display: block; color: #fff; font-size: var(--fs-sm); }
 .sidebar__user small { color: var(--nav-text); font-size: var(--fs-2xs); }
+.sidebar__me { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;
+  padding: 4px; margin: -4px; border-radius: var(--r-sm); color: inherit;
+  transition: background var(--dur); }
+.sidebar__me:hover { background: rgba(255, 255, 255, .07); }
 
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar {

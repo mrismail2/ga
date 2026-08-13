@@ -28,6 +28,8 @@ const PATHS: Record<string, string> = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.6v2M12 19.4v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2.6 12h2M19.4 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   upload: '<path d="M20.8 15.2v3.6a2 2 0 0 1-2 2H5.2a2 2 0 0 1-2-2v-3.6"/><path d="m7.4 7.8 4.6-4.6 4.6 4.6M12 3.2V15"/>',
   document: '<path d="M14 2.5H7.2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h9.6a2 2 0 0 0 2-2V7.2Z"/><path d="M14 2.5v5.7h4.8"/>',
+  edit: '<path d="M12 20.5h8.5"/><path d="M16.4 3.9a2.1 2.1 0 0 1 3 3L7.9 18.4l-4 1 1-4Z"/>',
+  trash: '<path d="M3.8 6h16.4M8.5 6V4.2a1.7 1.7 0 0 1 1.7-1.7h3.6a1.7 1.7 0 0 1 1.7 1.7V6"/><path d="M18.4 6v14a1.7 1.7 0 0 1-1.7 1.7H7.3A1.7 1.7 0 0 1 5.6 20V6"/><path d="M10.2 10.8v6M13.8 10.8v6"/>',
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof PATHS | string; size?: number }) {

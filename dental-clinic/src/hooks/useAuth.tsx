@@ -13,6 +13,10 @@ interface AuthValue {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  /** Changes the signed-in user's own password. */
+  changePassword: (password: string) => Promise<void>;
+  /** Refreshes the cached profile after the user edits their own details. */
+  refreshProfile: () => Promise<void>;
   can: (permission: Permission) => boolean;
 }
 
@@ -86,6 +90,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           redirectTo: `${window.location.origin}/login`,
         });
         if (resetError) throw resetError;
+      },
+      async changePassword(password) {
+        const { error: pwError } = await supabase.auth.updateUser({ password });
+        if (pwError) throw pwError;
+      },
+      async refreshProfile() {
+        const userId = session?.user?.id;
+        if (!userId) return;
+        const { data } = await supabase
+          .from('profiles').select('*').eq('id', userId).maybeSingle();
+        if (data) setProfile(data as Profile);
       },
       can: (permission) => can(profile?.role, permission, overrides),
     }),
