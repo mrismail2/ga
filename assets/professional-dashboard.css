@@ -51,7 +51,7 @@ button,
 input,
 textarea,
 select {
-  font-family: "Segoe UI", Inter, Arial, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .dashboard-body {
@@ -141,7 +141,7 @@ html[data-theme="dark"] .commander-mini-profile { background: #1a202a; border-co
   color: #9a9faa;
   font-size: 0.786rem;
   letter-spacing: .1em;
-  font-weight: 700;
+  font-weight: 600;
 }
 .sidebar-link {
   height: 39px;
@@ -219,7 +219,7 @@ html[data-theme="dark"] .sidebar-footer-card { background: #1a202a; border-color
 }
 html[data-theme="dark"] .dashboard-topbar { background: #151922; border-bottom-color: #2c3440; }
 .page-heading p { color: #969ca6; font-size: 0.769rem; letter-spacing: .04em; }
-.page-heading h1 { font-family: inherit; font-size: 1.304rem; font-weight: 700; letter-spacing: -.01em; }
+.page-heading h1 { font-family: inherit; font-size: 1.304rem; font-weight: 600; letter-spacing: -.01em; }
 .topbar-right { gap: 8px; }
 .dashboard-search {
   width: 310px;
@@ -272,7 +272,7 @@ html[data-theme="dark"] .dashboard-topbar { background: #151922; border-bottom-c
   margin: 3px 0 2px;
   font-family: inherit;
   font-size: 1.688rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -.025em;
   color: #0c2f67;
 }
@@ -290,7 +290,7 @@ html[data-theme="dark"] .page-toolbar h2 { color: #f3f6fa; }
   padding: 0 14px;
   border-radius: 7px;
   font-size: 0.903rem;
-  font-weight: 650;
+  font-weight: 600;
   box-shadow: none;
   transform: none !important;
 }
@@ -360,7 +360,7 @@ html[data-theme="dark"] .summary-card { background: #151922; border-color: #2c34
   margin: 5px 0 1px;
   font-family: inherit;
   font-size: 1.781rem;
-  font-weight: 750;
+  font-weight: 700;
   color: #171b24;
 }
 html[data-theme="dark"] .summary-body > strong { color: #f2f4f7; }
@@ -404,7 +404,7 @@ html[data-theme="dark"] .station-card { background: #151922; border-color: #2c34
   margin-top: 2px;
   font-family: inherit;
   font-size: 1.058rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 .card-kicker { color: #9298a2; font-size: 0.753rem; letter-spacing: .08em; }
 .card-actions select,
@@ -457,7 +457,7 @@ html[data-theme="dark"] .data-table { background: #151922; }
   border-bottom: 1px solid #e1e4e9;
   font-size: 0.761rem;
   letter-spacing: .05em;
-  font-weight: 700;
+  font-weight: 600;
 }
 html[data-theme="dark"] .data-table th { background: #1a202a; border-bottom-color: #303844; }
 .data-table td {
@@ -474,7 +474,7 @@ html[data-theme="dark"] .data-table tbody tr:hover { background: #19212c; }
 .status-pill {
   border-radius: 999px;
   font-size: 0.786rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 .pagination {
   min-height: 56px;
@@ -752,9 +752,9 @@ html[data-theme="dark"] .pagination { background: #151922; }
 .access-notice strong{font-size: 0.938rem}.access-notice span{font-size: 0.875rem;color:#64748b}.access-notice.is-ready{border-color:#bfe7d5;background:#f1fbf6}.access-notice.is-ready span{color:#0b7c58}.access-notice.is-warning{border-color:#f2d5a6;background:#fff9ef}.access-notice.is-warning span{color:#9a6412}
 .modal-dialog-wide{width:min(920px,calc(100vw - 36px));max-width:920px}
 .permission-builder{margin-top:16px;padding:16px;border:1px solid #dfe6ef;border-radius:12px;background:#fbfcfe}.permission-builder h4{margin:0 0 4px;font-size: 1rem;color:#1d2939}.permission-builder p{margin:0 0 12px;color:#667085;font-size: 0.9rem;line-height:1.45}
-.permission-check-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.permission-check{display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer}.permission-check input{width:16px;height:16px;margin:2px 0 0;accent-color:#1f62d6;flex:0 0 auto}.permission-check span{font-size: 0.875rem;font-weight:700;color:#344054;line-height:1.35}.permission-check:has(input:checked){border-color:#9fc0f2;background:#f2f7ff}.permission-check.locked{opacity:.72;background:#f6f8fb;cursor:not-allowed}
+.permission-check-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.permission-check{display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer}.permission-check input{width:16px;height:16px;margin:2px 0 0;accent-color:#1f62d6;flex:0 0 auto}.permission-check span{font-size: 0.875rem;font-weight:600;color:#344054;line-height:1.35}.permission-check:has(input:checked){border-color:#9fc0f2;background:#f2f7ff}.permission-check.locked{opacity:.72;background:#f6f8fb;cursor:not-allowed}
 .invite-note{margin-top:16px;padding:12px 14px;border-left:4px solid #1f62d6;border-radius:8px;background:#eef5ff;color:#355174;font-size: 0.875rem;line-height:1.55}.permission-summary{padding:11px 13px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;color:#475467;font-size: 0.875rem;align-self:end}.permission-summary strong{display:block;color:#1d2939;margin-bottom:3px}
-.permission-actions{display:flex;gap:7px;flex-wrap:wrap}.permission-actions .btn{padding:7px 10px;min-height:auto;font-size: 0.875rem}.invite-status{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;font-size: 0.8125rem;font-weight:800}.invite-status.sent,.invite-status.accepted{background:#e9f8f1;color:#0a7b55}.invite-status.pending,.invite-status.not_configured{background:#fff5df;color:#9a650e}.invite-status.failed,.invite-status.revoked,.invite-status.expired{background:#fff0f1;color:#b52d38}
+.permission-actions{display:flex;gap:7px;flex-wrap:wrap}.permission-actions .btn{padding:7px 10px;min-height:auto;font-size: 0.875rem}.invite-status{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;font-size: 0.8125rem;font-weight:700}.invite-status.sent,.invite-status.accepted{background:#e9f8f1;color:#0a7b55}.invite-status.pending,.invite-status.not_configured{background:#fff5df;color:#9a650e}.invite-status.failed,.invite-status.revoked,.invite-status.expired{background:#fff0f1;color:#b52d38}
 @media(max-width:900px){.permission-check-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.permission-check-grid{grid-template-columns:1fr}.access-notice{align-items:flex-start;flex-direction:column}}
 .invite-link-box{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;margin:-8px 0 18px;padding:11px 13px;border:1px dashed #b8c8df;border-radius:10px;background:#fff}.invite-link-box strong{font-size: 0.875rem}.invite-link-box input{min-width:0;width:100%;padding:8px 10px;border:1px solid #dde5ef;border-radius:8px;background:#f8fafc;font-size: 0.875rem}
 @media(max-width:620px){.invite-link-box{grid-template-columns:1fr}.invite-link-box button{width:100%}}
@@ -793,7 +793,7 @@ html[data-theme="dark"] .pagination { background: #151922; }
   display: block;
   margin-top: 0;
   color: #16233a;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .01em;
   white-space: nowrap;
   overflow: hidden;
@@ -831,7 +831,7 @@ html[data-theme="dark"] .sidebar-brand .light-brand small { color: #9da5b2; }
 .dashboard-empty-state h3 {
   margin: 0 0 8px;
   font-size: 1.125rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 .dashboard-empty-state p {
@@ -848,3 +848,171 @@ html[data-theme="dark"] .sidebar-brand .light-brand small { color: #9da5b2; }
   flex-wrap: wrap;
   justify-content: center;
 }
+
+/* ======================================================================
+   VISUAL REFINEMENT
+   ======================================================================
+   Applied on top of the layout above; no rule here changes structure,
+   markup or behaviour. The intent is institutional polish — depth kept to
+   a whisper, motion kept to colour, and every surface sharing one spacing
+   rhythm. Hover feedback deliberately avoids transforms, matching the
+   existing decision not to animate the interface.
+   ====================================================================== */
+
+/* --- Surfaces ---------------------------------------------------------
+   Cards were completely flat, which left them reading as regions of the
+   page rather than as objects on it. A 1px shadow is enough to separate
+   them from the canvas without any visible glow. */
+.dashboard-card,
+.data-section-card,
+.mini-stat-grid article,
+.complaint-grid article,
+.role-grid article,
+.station-card,
+.summary-card {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .03);
+}
+
+html[data-theme="dark"] .dashboard-card,
+html[data-theme="dark"] .data-section-card,
+html[data-theme="dark"] .summary-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .28);
+}
+
+/* --- Summary / KPI cards ---------------------------------------------
+   The figure and its unit were colliding. Baseline-align them, give the
+   unit its own weight, and let the whole card respond to the pointer so
+   it reads as the entry point it is. */
+.summary-card {
+  padding: 18px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.summary-card:hover {
+  border-color: #c6d2e4;
+  box-shadow: 0 2px 6px rgba(16, 24, 40, .07);
+}
+.summary-body > strong {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 2px 0 4px;
+}
+.summary-body > strong small {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0;
+}
+.summary-body > span {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* --- Tables -----------------------------------------------------------
+   A records system lives in its tables. Give rows room, a clear hover
+   target, and a header that separates from the body without shouting. */
+.data-table th {
+  padding: 12px 16px;
+  color: #6b7280;
+  text-transform: uppercase;
+  border-bottom: 1px solid #dfe3e9;
+}
+.data-table td {
+  padding: 14px 16px;
+  color: #404a58;
+}
+.data-table tbody tr {
+  transition: background-color .12s ease;
+}
+.data-table tbody tr:hover {
+  background: #f7f9fc;
+}
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.data-table td strong {
+  color: var(--text);
+  font-weight: 600;
+}
+html[data-theme="dark"] .data-table tbody tr:hover { background: #1b212b; }
+html[data-theme="dark"] .data-table td { color: #c3c9d3; }
+
+/* --- Status pills and tags -------------------------------------------
+   Sized to sit on the same baseline as the text beside them. */
+.status-pill,
+.risk-tag,
+.unit-label,
+.invite-status {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  white-space: nowrap;
+}
+
+/* --- Buttons ----------------------------------------------------------
+   Hierarchy by weight of surface, not by decoration. */
+.btn {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  transition: background-color .14s ease, border-color .14s ease, color .14s ease;
+}
+.btn.btn-outline:hover,
+.btn.ghost:hover {
+  border-color: #b9c6da;
+  background: #f5f8fd;
+}
+
+/* --- Empty states -----------------------------------------------------
+   These are seen constantly on a new installation, so they should look
+   considered rather than like a rendering failure. A dashed well marks the
+   region as intentionally empty; inside table cells and the notification
+   tray the well would be out of place, so those keep plain centred text. */
+.panel-empty {
+  margin: 8px;
+  padding: 30px 20px;
+  border: 1px dashed #dde3ec;
+  border-radius: 9px;
+  background: #fcfdfe;
+  color: #77808d;
+  text-align: center;
+  line-height: 1.6;
+}
+td > .panel-empty,
+.notification-list > .panel-empty,
+.finance-kpis > .panel-empty {
+  margin: 0;
+  padding: 30px 16px;
+  border: 0;
+  background: transparent;
+  color: #77808d;
+}
+html[data-theme="dark"] .panel-empty {
+  border-color: #2c3440;
+  background: #171c25;
+  color: #98a0ac;
+}
+html[data-theme="dark"] td > .panel-empty,
+html[data-theme="dark"] .notification-list > .panel-empty { background: transparent; }
+
+/* --- Focus -------------------------------------------------------------
+   Keyboard users need to see where they are; this was previously invisible
+   on most controls. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.sidebar-link:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* --- Sidebar ----------------------------------------------------------
+   Only the current section carries full weight, so the eye finds it at a
+   glance instead of scanning a wall of equally bold labels. */
+.sidebar-link { font-weight: 500; }
+.sidebar-link.active { font-weight: 600; }
+.nav-group-title { color: #8b939f; }

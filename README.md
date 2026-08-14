@@ -120,6 +120,17 @@ caddeymo iyo maxaabiis tijaabo ah lama gelin. Tirakoob kasta oo dashboard-ka
 ah wuxuu ka soo baxaa `COUNT` toos ah, sidaas darteed database madhan wuxuu si
 sax ah u tusayaa `0`, qayb kastaana waxay tusaysaa empty state.
 
+## Font-ka
+
+Interface-ku wuxuu isticmaalaa **hal font oo keliya — Inter** — oo lala
+soo guray application-ka (`assets/fonts/`, ~300 KB). Internet uma baahna:
+saldhigga oo offline ah ayuu si sax ah ugu shaqeeyaa, codsina dibadda uma
+baxo. Kala duwanaanshaha waxaa lagu sameeyaa culays iyo cabbir, ma aha font
+labaad.
+
+Inter waxaa lagu shatiyeeyay SIL Open Font License 1.1, taasoo oggolaanaysa
+isticmaal ganacsi iyo mid dowladeed oo bilaash ah.
+
 ## Roles & access
 
 - **Super Admin:** system configuration, users, dhammaan operational modules.

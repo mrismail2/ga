@@ -6,13 +6,16 @@
   <meta name="description" content="Gal nidaamka Ciidanka Booliska Gobolka Gabiley." />
   <title>Gal Nidaamka — CIIDANKA BOOLISKA GOBOLKA GABILEY</title>
   <link rel="icon" type="image/png" href="assets/favicon.png" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/inter-400.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="assets/fonts/inter-600.woff2" crossorigin>
+  <link rel="stylesheet" href="assets/typeface.css?v=type-unified-20260814" />
+  <link rel="stylesheet" href="styles.css?v=type-unified-20260814" />
   <style>
     .login-body { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 70% 30%, rgba(49,91,255,.35), transparent 40%), linear-gradient(120deg, #050b22 0%, #07163d 52%, #111182 100%); }
     .login-card { width: min(420px, 100%); padding: 34px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow-lg); }
     .login-brand { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 26px; text-align: center; }
     .login-brand img { width: 78px; height: 78px; object-fit: contain; }
-    .login-brand b { font-family: Manrope, sans-serif; font-size: .95rem; letter-spacing: .03em; }
+    .login-brand b { font-family: var(--font-sans); font-size: .95rem; letter-spacing: .03em; }
     .login-brand small { color: var(--text-muted); font-size: .62rem; letter-spacing: .1em; }
     .login-form { display: grid; gap: 15px; }
     .login-error { display: none; padding: 11px 13px; border-radius: 9px; background: var(--red-100); color: var(--red-600); font-size: .7rem; font-weight: 600; }
@@ -20,7 +23,7 @@
     .login-hint { margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: .63rem; text-align: center; }
     .login-back { display: block; margin-top: 10px; color: var(--blue-600); font-size: .68rem; font-weight: 700; text-align: center; }
   </style>
-  <link rel="stylesheet" href="assets/professional-dashboard.css?v=font-readable-20260812" />
+  <link rel="stylesheet" href="assets/professional-dashboard.css?v=type-unified-20260814" />
 </head>
 <body class="login-body">
   <div class="login-card">

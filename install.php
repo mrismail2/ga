@@ -180,10 +180,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $requirementsOk) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rakibaadda — CIIDANKA BOOLISKA GOBOLKA GABILEY</title>
 <link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/typeface.css?v=type-unified-20260814">
 <style>
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:grid;place-items:center;padding:40px 20px;
-  font-family:Inter,Arial,sans-serif;color:#172235;
+  font-family:var(--font-sans);color:#172235;
   background:radial-gradient(circle at 75% 20%,rgba(49,91,255,.35),transparent 40%),linear-gradient(125deg,#050b22,#07163d 55%,#111182)}
 .card{width:min(620px,100%);padding:38px;border-radius:20px;background:#fff;box-shadow:0 30px 90px rgba(4,20,43,.4)}
 .head{display:flex;gap:14px;align-items:center;margin-bottom:26px}
