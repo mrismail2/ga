@@ -1,0 +1,32 @@
+CIIDANKA BOOLISKA GOBOLKA GABILEY — GLOBAL POLICING WORKFLOW UPDATE
+===================================================================
+
+1. Nidaamku weli waa HAL SALDHIG oo keliya: Gobolka Gabiley.
+2. Qof kasta wuxuu leeyahay profile iyo sawir: users, officers, citizens, prisoners.
+3. Waxaa lagu daray CAD/emergency call-taking iyo incident auto-link.
+4. Waxaa lagu daray warrants iyo arrest register sharci-ku-saleysan.
+5. Waxaa lagu daray custody booking, medical/risk screening iyo welfare checks.
+6. Evidence-ga waxaa lagu daray chain-of-custody movements.
+7. Waxaa lagu daray duty roster iyo workflow tasks/deadlines.
+8. Waxaa lagu daray controlled document repository, classification iyo SHA-256.
+9. Global search wuxuu ixtiraamaa role-ka user-ka.
+10. Amniga waxaa lagu daray CSRF, login lockout, idle timeout, secure cookies,
+    clearance levels, request IDs iyo audit outcomes.
+11. Database cusub wuxuu leeyahay 32 table.
+12. Existing database: orod database/migration_global_policing.sql HAL MAR.
+13. Xogta demo-ga waa laga saaray; akoonka koowaad waxaa dhigaya qofka rakibaya.
+14. Tani waa standards-aligned application design, mana aha independent
+    compliance certification. Production-ku wuxuu u baahan yahay HTTPS, MFA,
+    backup/DR, security testing iyo sharci/policy review.
+
+=== 12 AUG 2026 — STAFF EMAIL + INDIVIDUAL ACCESS ===
+- Per-user page/action permissions added.
+- Commander can invite staff by email and choose exact access.
+- 48-hour one-time invite link; employee chooses own password.
+- SMTP configuration + copy-link fallback.
+- Server-side 403 enforcement + fail-closed staff defaults.
+- Permission changes revoke employee sessions immediately.
+- Resend/revoke invitation workflow added.
+- Case assigned/all row scope enforced.
+- Duty own-update and custody welfare-check permissions separated.
+- CSRF exemption tightened for public contact endpoint.

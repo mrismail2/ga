@@ -1,0 +1,53 @@
+================================================================
+ CIIDANKA BOOLISKA GOBOLKA GABILEY — SIDA LOO BILAABO
+================================================================
+
+Nidaamku waa HAL SALDHIG: Saldhigga Ciidanka Booliska Gobolka Gabiley.
+
+1. Bilow Apache iyo MySQL (XAMPP/Laragon/WAMP).
+2. Folder-ka geli htdocs, tusaale:
+      C:\xampp\htdocs\ciidanka
+3. Fur:
+      http://localhost/ciidanka/install.php
+4. Geli xogta MySQL; XAMPP badanaa:
+      Host: localhost
+      Database: gabiley_police
+      Username: root
+      Password: madhan
+5. Buuxi akoonka maamulaha koowaad: magac buuxa, email iyo password.
+   (Ugu yaraan 10 xaraf, xaraf weyn, xaraf yar iyo tiro.)
+6. Guji Rakib Nidaamka.
+7. Marka uu dhammaado TIRTIR install.php.
+8. Fur login.html oo gal adigoo isticmaalaya akoonkaas.
+
+AKOONKA KOOWAAD
+---------------
+Password wadaagsan oo hore loo sameeyay MA JIRO. Akoonka Super Admin
+waxaad adigu dhigaysaa marka aad rakibayso.
+
+Shaqaalaha kale: Users & Permissions -> Email ugu Casuum Shaqaale.
+Qofkaasi wuxuu password-kiisa ka sameystaa link ammaan ah.
+
+Database-ku wuxuu ku bilaabmaa MADHAN — xog tijaabo ah lama gelin.
+
+QAYBAHA MUHIIMKA AH
+--------------------
+CAD & Emergency Calls; Command Center; Cases; Warrants & Arrests;
+Custody & Welfare Checks; Evidence Chain of Custody; Duty Roster;
+Workflow Tasks; Controlled Documents; Profiles; Patrol; Fleet;
+Intelligence; Complaints; Field Reports; Finance; Audit.
+
+DATABASE HORE
+-------------
+Backup samee. Haddii global policing migration-ka aanu hore u socon, orod:
+  database/migration_global_policing.sql
+
+Kadib staff permissions/email upgrade-ka browser-ka ka fur:
+  http://localhost/ciidanka/upgrade-access.php
+Marka uu guulaysto TIRTIR upgrade-access.php.
+
+EMAIL: Akhri EMAIL-IYO-PERMISSIONS-SETUP.txt
+
+AKHRI README.md si aad u aragto roles-ka, workflows-ka, API-yada iyo
+production security checklist-ka.
+================================================================

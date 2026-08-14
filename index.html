@@ -1,228 +1,237 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
-    <title> Gabiley Ice</title>
-  </head>
-  <body>
-    <nav>
-      <div class="nav__header">
-        <div class="nav__logo">
-          <a href="#" class="logo">GABILEY<span>ICE</span></a>
-        </div>
-        <div class="nav__menu__btn" id="menu-btn">
-          <i class="ri-menu-3-line"></i>
+<html lang="so" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Ciidanka Booliska Gobolka Gabiley — landing page iyo xarunta maamulka booliska." />
+  <title>CIIDANKA BOOLISKA GOBOLKA GABILEY</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="landing-body">
+  <div class="site-loader" id="siteLoader" aria-hidden="true">
+    <div class="loader-badge"><img src="assets/police-logo.png" alt="Astaanta Ciidanka Booliska"></div>
+    <p>CIIDANKA BOOLISKA GOBOLKA GABILEY</p>
+  </div>
+
+  <header class="public-header" id="home">
+    <div class="public-topbar">
+      <div class="container topbar-inner">
+        <p><span class="live-dot"></span> Xarunta adeegga dadweynaha: 24/7</p>
+        <div class="topbar-actions">
+          <a href="tel:999" class="emergency-link">Gurmad Degdeg ah: <strong>999</strong></a>
+          <button class="text-button" id="landingThemeToggle" aria-label="Beddel muuqaalka">Muuqaal</button>
         </div>
       </div>
-      <ul class="nav__links" id="nav-links">
-        <li><a href="#home">Home</a></li>
-        <li><a href="#menu">Menu</a></li>
-        <li><a href="#categories">Categories</a></li>
-        <li><a href="#contact">Contact Us</a></li>
-      </ul>
-      <div class="nav__btns">
-        <button class="btn"><i class="ri-shopping-cart-line"></i></button>
-        <button class="btn"><i class="ri-notification-3-fill"></i></button>
+    </div>
+
+    <nav class="public-nav" id="publicNav">
+      <div class="container nav-inner">
+        <a class="brand" href="#home" aria-label="Ciidanka Booliska Gobolka Gabiley">
+          <span class="brand-mark" aria-hidden="true"><img src="assets/police-logo.png" alt=""></span>
+          <span class="brand-copy"><b>CIIDANKA BOOLISKA</b><b class="brand-second-line">GOBOLKA GABILEY</b><small>Police Management System</small></span>
+        </a>
+
+        <button class="nav-toggle" id="navToggle" aria-label="Fur menu-ga" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+
+        <div class="nav-menu" id="navMenu">
+          <a href="#home" class="active">Bogga Hore</a>
+          <a href="#about">Nagu Saabsan</a>
+          <a href="#services">Adeegyada</a>
+          <a href="#statistics">Tirakoob</a>
+          <a href="#wanted">Dadka La Raadinayo</a>
+          <a href="#contact">Xiriir</a>
+          <a href="login.html" class="btn btn-small btn-primary">Gali Dashboard-ka</a>
+        </div>
       </div>
     </nav>
 
-    <header id="home">
-      <div class="header__image">
-        <img src="assets/header.png" alt="header" />
-      </div>
-      <div class="header__content">
-        <h1>KU SOO DHAWAW <span>GABILEY ICE </span> SOMALILAND</h1>
-        <p class="section__description">
-          Macaan Dhab Ah Halkaan Ayuu Ka Bilaabmaa!
-Ku raaxayso ice cream tayo sare leh oo laga sameeyey dhadhan aad jeclaan doonto.
-Qabowgiisa iyo macaankiisu waxay kuu abuuri doonaan farxad gaar ah daqiiqad kasta.
-Dalbo hadda oo la wadaag dadka aad jeceshahay!
-        <div class="">
-          <button class="btn"> HADA IIBSO </button>
+    <section class="hero-section">
+      <div class="hero-grid-overlay"></div>
+      <div class="container hero-layout">
+        <div class="hero-copy reveal">
+          <span class="eyebrow"><span class="live-dot"></span> Adeeg, Amni iyo Isla Xisaabtan</span>
+          <h1>Maamul Boolis oo <span>Casri ah, Hufan</span> kana Jawaaba Bulshada.</h1>
+          <p>Nidaam isku xira saraakiisha, kiisaska, hawlgallada, gaadiidka, caddeymaha, cabashooyinka iyo warbixinnada taliska.</p>
+          <div class="hero-actions">
+            <a href="login.html" class="btn btn-primary btn-large">Fur Xarunta Taliyaha <span>→</span></a>
+            <a href="#services" class="btn btn-ghost btn-large">Eeg Adeegyada</a>
+          </div>
+          <div class="hero-trust">
+            <div><strong>24/7</strong><span>La socod hawlgallo</span></div>
+            <div><strong>12+</strong><span>Qaybood oo maamulka ah</span></div>
+            <div><strong>100%</strong><span>Responsive System</span></div>
+          </div>
         </div>
-        <ul class="socials">
-          <li>
-            <a href="#"><i class="ri-facebook-fill"></i></a>
-          </li>
-          <li>
-            <a href="#"><i class="ri-twitter-fill"></i></a>
-          </li>
-          <li>
-            <a href="#"><i class="ri-pinterest-line"></i></a>
-          </li>
-          <li>
-            <a href="#"><i class="ri-phone-fill"></i></a>
-          </li>
-        </ul>
-      </div>
-    </header>
 
-    <section class="section__container popular__container" id="menu">
-      <h2 class="section__header"> KUWA UGU CAANSAN GABILEY ICE </ICE-CREAM></h2>
-      <div class="popular__grid">
-        <div class="popular__card">
-          <img src="assets/popular-1.png" alt="popular" />
-          <div class="popular__card__content">
-            <h4>Mango Tango Sorbet</h4>
-            <h3>$5.49</h3>
+        <div class="hero-command-card reveal delay-1" aria-label="Muuqaalka kooban ee command center">
+          <div class="command-card-head">
+            <div>
+              <span class="mini-label">LIVE COMMAND CENTER</span>
+              <h3>Xaaladda Maanta</h3>
+            </div>
+            <span class="status-pill online">Nidaamku wuu shaqaynayaa</span>
           </div>
-        </div>
-        <div class="popular__card">
-          <img src="assets/popular-2.png" alt="popular" />
-          <div class="popular__card__content">
-            <h4>Chocolate Fudge Delight</h4>
-            <h3>$5.99</h3>
+          <div class="mini-map">
+            <div class="map-ring ring-a"></div>
+            <div class="map-ring ring-b"></div>
+            <div class="map-street street-a"></div>
+            <div class="map-street street-b"></div>
+            <span class="map-point point-a"><i></i> Patrol 04</span>
+            <span class="map-point point-b"><i></i> Unit 12</span>
+            <span class="map-point point-c alert"><i></i> Incident</span>
+            <div class="map-center"><span>HQ</span></div>
           </div>
-        </div>
-        <div class="popular__card">
-          <img src="assets/popular-3.png" alt="popular" />
-          <div class="popular__card__content">
-            <h4>Strawberry Swirl Bliss</h4>
-            <h3>$4.99</h3>
+          <div class="command-metrics">
+            <article><span>Hawlgallo Firfircoon</span><strong>08</strong><small class="positive">+2 maanta</small></article>
+            <article><span>Gaadiid Shaqaynaya</span><strong>24</strong><small>3 keyd ah</small></article>
+            <article><span>Kiisas Cusub</span><strong>13</strong><small class="warning-text">5 mudnaan sare</small></article>
           </div>
         </div>
       </div>
     </section>
+  </header>
 
-    <section class="section__container discover__container" id="categories">
-      <h2 class="section__header">Ice Cream-ka Ugu Iibka Badan </h2>
-      <p class="section__description">
-       Baro ice cream-yada ay dadku ugu jecel yihiin!
-       Kuwaan waa dhadhannada ugu caansan ee ay macaamiishu aad u doortaan,
-       waxayna caan ku noqdeen macaankooda aan la iska celin karin iyo kareemkooda jilicsan.
-      <div class="discover__grid">
-        <div class="discover__card">
-          <img src="assets/discover-1.jpg" alt="discover" />
-          <div class="discover__card__content">
-            <h4>Shukulaato Laba Jibbaaran</h4>
-            <p class="section__description">
-              Ice cream-kan hodanka ah ee kareemka leh waxaa lagu sameeyey kooko tayo sare leh, waxaana lagu dhex daray jajabyo shukulaato oo qaniinyo leh si uu kuu siiyo isku dheelitirnaan macaan oo u dhexeysa jilicsanaan iyo dhadhan xooggan.
-            </p>
-            <h3>
-              $1.99 <span><s>$2.99</s></span>
-            </h3>
-            <div class="discover__card__btn">
-              <button class="btn">HADA IIBSO</button>
-            </div>
+  <main>
+    <section class="public-strip">
+      <div class="container strip-grid">
+        <div><span class="strip-icon">01</span><p><strong>Cabasho Online ah</strong><small>Si ammaan ah u gudbi cabashadaada.</small></p></div>
+        <div><span class="strip-icon">02</span><p><strong>Soo Sheeg Fal-dambiyeed</strong><small>Macluumaadkaaga waa la ilaalinayaa.</small></p></div>
+        <div><span class="strip-icon">03</span><p><strong>Hubi Warqad Boolis</strong><small>La soco codsiga iyo ansixinta.</small></p></div>
+        <div><span class="strip-icon">04</span><p><strong>Xiriir Saldhigga</strong><small>Hel xogta saldhigga Gobolka Gabiley.</small></p></div>
+      </div>
+    </section>
+
+    <section class="section about-section" id="about">
+      <div class="container two-column-layout">
+        <div class="about-visual reveal">
+          <div class="visual-main">
+            <img class="visual-logo" src="assets/police-logo.png" alt="Astaanta Ciidanka Booliska Gobolka Gabiley">
+            <div class="visual-caption"><span>Tan iyo</span><strong>2026</strong><small>Police System</small></div>
           </div>
+          <div class="floating-card floating-card-a"><span>✓</span><p><strong>Hawlgal la maamulay</strong><small>Warbixin toos ah</small></p></div>
+          <div class="floating-card floating-card-b"><span>◎</span><p><strong>Amniga xogta</strong><small>Roles & permissions</small></p></div>
         </div>
-        <div class="discover__card">
-          <img src="assets/discover-2.jpg" alt="discover" />
-          <div class="discover__card__content">
-            <h4>Farxadda Cheesecake-ka Strawberry-ga 🍓</h4>
-            <p class="section__description">
-              La kulan isku dhafka ugu fiican ee dhadhan miro leh iyo kareem macaan adigoo tijaabinaya Strawberry Cheesecake Bliss.
-              dessert.
-            </p>
-            <h3>
-              $2.99 <span><s> $3.99</s></span>
-            </h3>
-            <div class="discover__card__btn">
-              <button class="btn">Buy Now</button>
-            </div>
+        <div class="section-copy reveal delay-1">
+          <span class="eyebrow dark">Nidaamka Taliska</span>
+          <h2>Hal meel oo laga maamulo hawlaha booliska oo dhan.</h2>
+          <p>Nidaamka Ciidanka Booliska Gobolka Gabiley wuxuu mideeyaa maamulka hal saldhig, saraakiisha, kiisaska, hawlgallada iyo warbixinnada taliska.</p>
+          <div class="feature-list">
+            <div><span>✓</span><p><strong>Maamul dhexe</strong><small>Saraakiil, waaxyo, profiles sawir leh iyo rukhsado.</small></p></div>
+            <div><span>✓</span><p><strong>Go'aan xog ku dhisan</strong><small>Charts, tirakoob, khariidad iyo warbixinno.</small></p></div>
+            <div><span>✓</span><p><strong>La socod hawlgallo</strong><small>Dhacdooyin, patrol, gurmad iyo xaalad cutub.</small></p></div>
+            <div><span>✓</span><p><strong>Isla xisaabtan</strong><small>Audit log iyo raad-raac ficillada maamulka.</small></p></div>
           </div>
-        </div>
-        <div class="discover__card">
-          <img src="assets/discover-3.jpg" alt="discover" />
-          <div class="discover__card__content">
-            <h4>Buskud iyo Kareem🍪</h4>
-            <p class="section__description">
-             Waxaa lagu diyaariyey vanilla kareem jilicsan oo macaan, waxaana si deeqsinimo leh loogu dhex daray jajabyo buskud shukulaato ah, kuwaasoo qaniinyo kasta ka dhigaya mid leh crunch macaan oo lagu raaxaysto.
-            </p>
-            <h3>
-              $5.49 <span><s> $10.49</s></span>
-            </h3>
-            <div class="discover__card__btn">
-              <button class="btn"> HADA IIBSO</button>
-            </div>
-          </div>
+          <a href="dashboard.html" class="inline-link">Daawo dashboard-ka taliyaha <span>→</span></a>
         </div>
       </div>
     </section>
 
-    <section class="banner">
-      <div class="banner__image"></div>
-      <div class="banner__content">
-        <h2 class="section__header">
-         Ku hel Ice Cream macaan oo qiimo macquul ah!
-        </h2>
-        <p class="section__description">
-          Isku nafaqee ice cream macaan adigoon lacag badan bixin!
-          Ku raaxayso tayo sare iyo dhadhan afka ka dhiga biyo, iyadoo qiimo jaban kuu suurtagelinaya in qaniinyo kasta ay noqoto mid mudan farxadda.
-        </p>
-        <div class="banner__flex">
-          <div class="banner__card">
-            <img src="assets/banner-1.png" alt="banner" />
-            <h4>DABIICI AH </h4>
-          </div>
-          <div class="banner__card">
-            <img src="assets/banner-2.png" alt="banner" />
-            <h4>BAAKAD DEGDEG AH </h4>
-          </div>
-          <div class="banner__card">
-            <img src="assets/banner-3.png" alt="banner" />
-            <h4>GAARSIIN DEGDEG AH</h4>
-          </div>
+    <section class="section services-section" id="services">
+      <div class="container">
+        <div class="section-heading centered reveal">
+          <span class="eyebrow dark">Adeegyada Muhiimka ah</span>
+          <h2>Nidaam loo diyaariyey taliska, saraakiisha iyo bulshada.</h2>
+          <p>Qayb walba waxay leedahay xog, raad-raac iyo awood maamul oo cad.</p>
+        </div>
+        <div class="service-grid">
+          <article class="service-card reveal"><span class="service-number">01</span><div class="service-icon">CM</div><h3>Case Management</h3><p>Abuur kiis, u xilsaar baaraha, ku lifaaq caddeymo, markhaatiyo iyo jadwal maxkamadeed.</p><a href="dashboard.html#cases">Fur qaybta <span>→</span></a></article>
+          <article class="service-card reveal delay-1"><span class="service-number">02</span><div class="service-icon">OP</div><h3>Operations Center</h3><p>La soco hawlgallada socda, heerka khatarta, cutubyada ka qaybgalaya iyo natiijada.</p><a href="dashboard.html#operations">Fur qaybta <span>→</span></a></article>
+          <article class="service-card reveal delay-2"><span class="service-number">03</span><div class="service-icon">OF</div><h3>Officer Management</h3><p>Maamul diiwaanka saraakiisha, darajooyinka, shaqooyinka, xaadiriska iyo beddelka.</p><a href="dashboard.html#officers">Fur qaybta <span>→</span></a></article>
+          <article class="service-card reveal"><span class="service-number">04</span><div class="service-icon">EV</div><h3>Evidence Registry</h3><p>Kaydi nooca caddeynta, lambarka tixraaca, meesha laga helay iyo chain of custody.</p><a href="dashboard.html#evidence">Fur qaybta <span>→</span></a></article>
+          <article class="service-card reveal delay-1"><span class="service-number">05</span><div class="service-icon">TR</div><h3>Traffic & Vehicles</h3><p>Shilal, ganaaxyo, gaadiidka booliska, dayactir, shidaal iyo xaalad hawlgal.</p><a href="dashboard.html#traffic">Fur qaybta <span>→</span></a></article>
+          <article class="service-card reveal delay-2"><span class="service-number">06</span><div class="service-icon">RP</div><h3>Reports & Analytics</h3><p>Soo saar warbixin maalinle, toddobaadle iyo bille ah oo la daabici karo.</p><a href="dashboard.html#reports">Fur qaybta <span>→</span></a></article>
         </div>
       </div>
     </section>
 
-    <section class="section__container subscribe__container" id="contact">
-      <div class="subscribe__content">
-        <h2 class="section__header"> FOUNDERS BY </h2>
-        <p class="section__description">
-          XAMDA AHMED OMAR 
-           <p class="section__description">
-            HINDA C/LAAHI CABDI 
-             <p class="section__description">
-              RAHMA MAXAMED CABDILAAHI 
-        </p>
-         
+    <section class="section statistics-section" id="statistics">
+      <div class="container stats-layout">
+        <div class="stats-copy reveal">
+          <span class="eyebrow">Tirakoobka Nidaamka</span>
+          <h2>Xog kooban oo si degdeg ah u taageerta go'aanka taliyaha.</h2>
+          <p>Tirooyinkan waa xog tijaabo ah oo muujinaysa qaabka nidaamku u soo bandhigi karo waxqabadka guud.</p>
+          <a href="dashboard.html" class="btn btn-light">Fur Warbixinta Buuxda</a>
+        </div>
+        <div class="stat-cards">
+          <article class="stat-card reveal"><strong data-count="248">0</strong><span>Saraakiil Diiwaangashan</span><small>92% shaqo ku jira</small></article>
+          <article class="stat-card reveal delay-1"><strong data-count="76">0</strong><span>Kiisas Firfircoon</span><small>18 mudnaan sare</small></article>
+          <article class="stat-card reveal delay-2"><strong data-count="41">0</strong><span>Gaadiid Ciidanka</span><small>35 diyaar ah</small></article>
+          <article class="stat-card reveal delay-3"><strong data-count="96">0</strong><span>Cabasho La Xalliyey</span><small>Boqolkiiba bishan</small></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wanted-section" id="wanted">
+      <div class="container">
+        <div class="section-heading split-heading reveal">
+          <div><span class="eyebrow dark">Ogeysiis Bulsho</span><h2>Dadka la raadinayo & dadka maqan.</h2></div>
+          <p>Dhammaan magacyada iyo sawirrada hoose waa xog tijaabo ah, mana matalaan dad dhab ah.</p>
+        </div>
+        <div class="wanted-grid">
+          <article class="wanted-card reveal"><div class="avatar-photo avatar-one"><span>AX</span><small>MOST WANTED</small></div><div class="wanted-info"><span class="risk-tag high">Khatarta Sare</span><h3>Cabdiraxmaan X.</h3><p>Case ID: CR-2026-047</p><div><span>Da'da: 34</span><span>La arkay: Aagga Waqooyi</span></div></div></article>
+          <article class="wanted-card reveal delay-1"><div class="avatar-photo avatar-two"><span>MK</span><small>WANTED</small></div><div class="wanted-info"><span class="risk-tag medium">Khatarta Dhexe</span><h3>Maxamed K.</h3><p>Case ID: CR-2026-039</p><div><span>Da'da: 29</span><span>La arkay: Aagga Koonfureed</span></div></div></article>
+          <article class="wanted-card reveal delay-2"><div class="avatar-photo avatar-three"><span>HN</span><small>MISSING</small></div><div class="wanted-info"><span class="risk-tag missing">Qof Maqan</span><h3>Hodan N.</h3><p>Report ID: MP-2026-015</p><div><span>Da'da: 21</span><span>La arkay: Xaafadda Bariga</span></div></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section news-section">
+      <div class="container">
+        <div class="section-heading centered reveal"><span class="eyebrow dark">Wararka Taliska</span><h2>Ogeysiisyo iyo dhacdooyin muhiim ah.</h2></div>
+        <div class="news-grid">
+          <article class="news-card reveal"><div class="news-cover cover-one"><span>AMNI</span></div><div class="news-body"><small>04 Agoosto 2026 · Ogeysiis</small><h3>Wacyigelin ku saabsan badbaadada waddooyinka</h3><p>Talooyin kooban oo lagu yareynayo shilalka iyo khataraha ka dhasha xawaaraha.</p><a href="#contact">Akhri faahfaahin →</a></div></article>
+          <article class="news-card reveal delay-1"><div class="news-cover cover-two"><span>BULSHO</span></div><div class="news-body"><small>02 Agoosto 2026 · Bulshada</small><h3>Kulan wada-shaqayn boolis iyo bulshada</h3><p>Barnaamijka cusub wuxuu xoojinayaa kalsoonida, xog-wadaagga iyo ka hortagga dambiyada.</p><a href="#contact">Akhri faahfaahin →</a></div></article>
+          <article class="news-card reveal delay-2"><div class="news-cover cover-three"><span>TABABAR</span></div><div class="news-body"><small>30 Luulyo 2026 · Tababar</small><h3>Tababar maamul xogeed oo loo qabtay saraakiisha</h3><p>Saraakiishu waxay barteen isticmaalka dashboard-ka iyo habka saxda ah ee warbixinta.</p><a href="#contact">Akhri faahfaahin →</a></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="emergency-section">
+      <div class="container emergency-layout reveal">
+        <div><span class="emergency-badge">!</span><div><small>XAALAD DEGDEG AH?</small><h2>Wac xarunta gurmadka: <a href="tel:999">999</a></h2><p>Ha isticmaalin foomka internetka marka ay jirto khatar degdeg ah.</p></div></div>
+        <a class="btn btn-emergency" href="tel:999">Wac Hadda</a>
+      </div>
+    </section>
+
+    <section class="section contact-section" id="contact">
+      <div class="container contact-layout">
+        <div class="contact-copy reveal">
+          <span class="eyebrow dark">La Xiriir Taliska</span>
+          <h2>Gudbi fariin, cabasho ama xog waxtar leh.</h2>
+          <p>Foomkan wuxuu fariimaha ku kaydiyaa database-ka nidaamka si maamulka saldhiggu uga jawaabo.</p>
+          <div class="contact-points">
+            <div><span>01</span><p><strong>Xarunta Dhexe</strong><small>Waddada Taliska, Xarunta Magaalada</small></p></div>
+            <div><span>02</span><p><strong>Telefoon</strong><small>999 · +252 63 0000000</small></p></div>
+            <div><span>03</span><p><strong>Email</strong><small>info@gabiley-police.gov.so</small></p></div>
+          </div>
+        </div>
+        <form class="contact-form reveal delay-1" id="publicContactForm">
+          <div class="form-heading"><h3>Fariin noo reeb</h3><span class="secure-label">Xogta waa la ilaalinayaa</span></div>
+          <div class="form-row"><label>Magaca oo buuxa<input type="text" name="name" placeholder="Geli magacaaga" required></label><label>Lambarka telefoonka<input type="tel" name="phone" placeholder="+252 ..." required></label></div>
+          <div class="form-row"><label>Nooca fariinta<select name="type"><option>Cabasho guud</option><option>Soo sheeg fal-dambiyeed</option><option>Codsi adeeg</option><option>Macluumaad kale</option></select></label><label>Degmada<input type="text" name="district" placeholder="Degmadaada"></label></div>
+          <label>Faahfaahinta<textarea name="message" rows="5" placeholder="Qor faahfaahinta..." required></textarea></label>
+          <div class="form-footer"><label class="checkbox-label"><input type="checkbox" required><span>Waxaan xaqiijinayaa in xogtu sax tahay.</span></label><button class="btn btn-primary" type="submit">Dir Fariinta <span>→</span></button></div>
+          <p class="form-message" id="publicFormMessage" role="status"></p>
         </form>
       </div>
     </section>
+  </main>
 
-    <footer>
-      <div class="section__container footer__container">
-        <div class="footer__col">
-          <a href="#" class="logo">GABILEY<span>ICE</span></a>
-        </div>
-        <div class="footer__col">
-          <ul class="footer__links">
-            <li><a href="#home">Home</a></li>
-            <li><a href="#menu">Menu</a></li>
-            <li><a href="#categories">Categories</a></li>
-            <li><a href="#contact">Contact Us</a></li>
-          </ul>
-        </div>
-        <div class="footer__col">
-          <ul class="socials">
-            <li>
-              <a href="#"><i class="ri-facebook-fill"></i></a>
-            </li>
-            <li>
-              <a href="#"><i class="ri-twitter-fill"></i></a>
-            </li>
-            <li>
-              <a href="#"><i class="ri-pinterest-line"></i></a>
-            </li>
-            <li>
-              <a href="#"><i class="ri-phone-fill"></i></a>
-            </li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer__bar">
-        Copyright © 2026 GABILEY ICE . All rights reserved.
-      </div>
-    </footer>
-    <script src="https://unpkg.com/scrollreveal"></script>
-    <script src="main.js"></script>
-  </body>
+  <footer class="public-footer">
+    <div class="container footer-grid">
+      <div class="footer-brand"><a class="brand light-brand" href="#home"><span class="brand-mark" aria-hidden="true"><img src="assets/police-logo.png" alt=""></span><span class="brand-copy"><b>CIIDANKA BOOLISKA</b><b class="brand-second-line">GOBOLKA GABILEY</b><small>Police Management System</small></span></a><p>Nidaam maamul oo loogu talagalay hal saldhig oo Gobolka Gabiley ah.</p></div>
+      <div><h4>Linkiyada</h4><a href="#about">Nagu saabsan</a><a href="#services">Adeegyada</a><a href="#wanted">Dadka la raadinayo</a><a href="dashboard.html">Dashboard-ka</a></div>
+      <div><h4>Adeegyada</h4><a href="#contact">Gudbi cabasho</a><a href="#contact">Soo sheeg dhacdo</a><a href="#contact">Codso warqad</a><a href="#statistics">Tirakoob</a></div>
+      <div><h4>Xaalad Degdeg ah</h4><a href="tel:999" class="footer-emergency">999</a><p>Xarunta gurmadka waxay shaqaysaa 24 saacadood.</p></div>
+    </div>
+    <div class="container footer-bottom"><p>© 2026 CIIDANKA BOOLISKA GOBOLKA GABILEY. Police Management System.</p><p>HTML · CSS · JavaScript</p></div>
+  </footer>
+
+  <button class="back-to-top" id="backToTop" aria-label="Ku noqo korka">↑</button>
+  <script src="assets/api.js"></script>
+  <script src="app.js"></script>
+</body>
 </html>

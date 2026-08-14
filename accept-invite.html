@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="so">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Hawlgelinta Akoonka — Ciidanka Booliska Gobolka Gabiley</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:Inter,Arial,sans-serif;background:#f3f6fb;color:#172235}.card{width:min(620px,100%);background:#fff;border:1px solid #dfe6ef;border-radius:16px;box-shadow:0 18px 55px rgba(25,45,80,.12);overflow:hidden}.head{display:flex;align-items:center;gap:14px;padding:24px 28px;background:#0f2f6f;color:#fff}.head img{width:54px;height:54px;object-fit:contain}.head strong{display:block;font-size:18px}.head small{opacity:.82}.body{padding:30px}h1{font-size:25px;margin:0 0 8px}.lead{color:#6b7788;margin:0 0 22px;line-height:1.6}.meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}.meta div{padding:13px;border:1px solid #e4e9f1;border-radius:10px}.meta small{display:block;color:#798598;margin-bottom:4px}.pages{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 22px}.pages span{padding:7px 10px;background:#eef4ff;color:#184c9e;border-radius:999px;font-size:13px;font-weight:700}label{display:block;margin:13px 0;font-weight:700;font-size:14px}input{width:100%;margin-top:7px;padding:13px 14px;border:1px solid #cfd8e6;border-radius:10px;font:inherit}button{width:100%;padding:14px;border:0;border-radius:10px;background:#1f62d6;color:#fff;font-weight:800;font-size:15px;cursor:pointer;margin-top:10px}button:disabled{opacity:.6}.msg{padding:12px 14px;border-radius:9px;margin:14px 0;font-size:14px;display:none}.msg.err{display:block;background:#fff0f1;color:#b12632}.msg.ok{display:block;background:#eaf8f1;color:#08724f}.footer{text-align:center;margin-top:18px;font-size:13px}.footer a{color:#1f62d6;text-decoration:none;font-weight:700}@media(max-width:560px){.meta{grid-template-columns:1fr}.body{padding:22px}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="head"><img src="assets/police-logo.png" alt=""><div><strong>CIIDANKA BOOLISKA GOBOLKA GABILEY</strong><small>Police Management System</small></div></div>
+  <div class="body">
+    <h1>Hawlgelinta Akoonka Shaqaalaha</h1>
+    <p class="lead" id="intro">Casuumaadda ayaa la xaqiijinayaa…</p>
+    <div id="message" class="msg"></div>
+    <div id="inviteDetails" hidden>
+      <div class="meta"><div><small>Magaca</small><strong id="staffName">—</strong></div><div><small>Role</small><strong id="staffRole">—</strong></div></div>
+      <small>Qaybaha Taliyuhu kuu oggolaaday:</small><div class="pages" id="allowedPages"></div>
+      <form id="acceptForm">
+        <label>Password cusub<input type="password" name="password" required minlength="10" autocomplete="new-password"></label>
+        <label>Ku celi password-ka<input type="password" name="confirm_password" required minlength="10" autocomplete="new-password"></label>
+        <small>Password-ku waa inuu leeyahay ugu yaraan 10 xaraf, xaraf weyn, xaraf yar iyo tiro.</small>
+        <button type="submit">Hawlgelinta Akoonka</button>
+      </form>
+    </div>
+    <div class="footer"><a href="login.html">← Ku noqo Login</a></div>
+  </div>
+</div>
+<script>
+const params=new URLSearchParams(location.search);const token=params.get('token')||'';const msg=document.getElementById('message');
+function show(message,type='err'){msg.textContent=message;msg.className='msg '+type;}
+async function api(method,body){const url='api/invite-accept.php'+(method==='GET'?`?token=${encodeURIComponent(token)}`:'');const res=await fetch(url,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):null});let data={};try{data=await res.json()}catch{}if(!res.ok)throw new Error(data.error||'Khalad ayaa dhacay.');return data;}
+(async()=>{try{if(!token)throw new Error('Link-ga casuumaaddu token ma laha.');const res=await api('GET');document.getElementById('staffName').textContent=res.invite.full_name;document.getElementById('staffRole').textContent=res.invite.role;document.getElementById('allowedPages').innerHTML=res.invite.pages.map(p=>`<span>${String(p).replace(/[<>&]/g,'')}</span>`).join('');document.getElementById('intro').textContent=`${res.invite.email} — Samee password-kaaga si aad u gasho qaybaha laguu oggolaaday.`;document.getElementById('inviteDetails').hidden=false;}catch(e){show(e.message)}})();
+document.getElementById('acceptForm').addEventListener('submit',async e=>{e.preventDefault();const b=e.currentTarget.querySelector('button');b.disabled=true;b.textContent='Sugaya…';const fd=new FormData(e.currentTarget);try{const res=await api('POST',{token,password:fd.get('password'),confirm_password:fd.get('confirm_password')});show(res.message,'ok');e.currentTarget.hidden=true;setTimeout(()=>location.href='login.html',1800);}catch(err){show(err.message)}finally{b.disabled=false;b.textContent='Hawlgelinta Akoonka';}});
+</script>
+</body>
+</html>

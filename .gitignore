@@ -1,0 +1,10 @@
+# Xogta isku xirka ee installer-ku sameeyo — ha la gelin git
+config/config.local.php
+
+# System files
+.DS_Store
+Thumbs.db
+*.log
+
+# SMTP password/config — ha la gelin git
+config/mail.local.php

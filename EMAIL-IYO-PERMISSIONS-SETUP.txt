@@ -1,0 +1,49 @@
+================================================================
+ EMAIL INVITATIONS + RUKHSADAHA SHAQAALAHA
+================================================================
+
+A) HADDII DATABASE-KU CUSUB YAHAY
+- install.php ayaa si toos ah u sameynaya user_permissions iyo user_invitations.
+
+B) HADDII DATABASE-KU HORE U JIRAY
+1. Backup samee.
+2. Fur browser-ka:
+   http://localhost/ciidanka/upgrade-access.php
+3. Guji "Orod Upgrade-ka Hal Mar".
+4. Marka uu guulaysto, TIRTIR upgrade-access.php.
+
+C) SI EMAIL DHAB AH LOO DIRO
+1. Nuqul ka samee:
+   config/mail.local.example.php
+2. Magaca nuqulka ka dhig:
+   config/mail.local.php
+3. Geli SMTP-gaaga: host, port, username, password/app-password,
+   from_email iyo app_base_url.
+4. enabled => true ka dhig.
+5. app_base_url sax: haddii staff-ka PC/telefoon kale ka galayo, HA isticmaalin localhost;
+   isticmaal IP/URL ay gaadhi karaan (tusaale http://192.168.1.50/ciidanka) ama HTTPS domain.
+6. Gmail badanaa: smtp.gmail.com, port 587, encryption tls,
+   waxaana la isticmaalaa App Password haddii account-ku sidaas u baahan yahay.
+
+Haddii SMTP aan weli la dejin:
+- Taliyuhu wali wuu abuuri karaa account-ka iyo rukhsadaha.
+- System-ku wuxuu siinayaa invitation link la koobi-gareyn karo.
+- Shaqaalaha link-gaas ayuu ka sameysan karaa password.
+
+D) HABKA SHAQAALAHA
+1. Taliyaha -> Users & Permissions.
+2. "+ Email ugu Casuum Shaqaale".
+3. Geli magaca, email, role iyo clearance.
+4. Calaamadee QAYBAHA uu arki karo.
+5. Calaamadee FICILLADA uu samayn karo.
+6. Dir casuumaadda.
+7. Shaqaaluhu email/link ayuu ka sameystaa password.
+8. Markuu galo, wuxuu arkaa oo keliya wixii loo oggolaaday.
+9. Haddii Taliyuhu rukhsad ka beddelo, session-kiisa waa la xiraa oo waa inuu dib u login sameeyaa.
+
+AMNI:
+- Sidebar keliya lama qariyo; API-ga server-ka ayaa sidoo kale 403 ku diidaya qaybaha/actions-ka aan la oggolaan.
+- Shaqaale aan weli individual permission loo qoondeyn wuxuu arkaa Dashboard + Profile oo keliya (fail-closed).
+- Marka Taliyuhu rukhsad beddelo, sessions-kii shaqaalaha waa la revoke-gareeyaa,
+  wuxuuna ku qasbanaanayaa inuu dib u login sameeyo.
+================================================================

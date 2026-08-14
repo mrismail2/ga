@@ -1,0 +1,91 @@
+====================================================================
+ CIIDANKA BOOLISKA GOBOLKA GABILEY — HUBINTA FINAL-KA
+ 12 August 2026
+====================================================================
+
+WAXA LAGU DARAY / LA ADKEEYEY
+-----------------------------
+1. Shaqaale kasta wuxuu leeyahay INDIVIDUAL PERMISSIONS:
+   - Qaybaha/pages-ka uu arki karo.
+   - Ficillada/actions-ka uu samayn karo.
+   - Data scope: own / assigned / all halka workflow-ku leeyahay owner/assignee.
+2. Taliyaha (Commander) wuxuu maamuli karaa shaqaalaha ka hooseeya Commander.
+   Ma siin karo staff-ka Users/Settings administration.
+3. Shaqaale aan rukhsad gaar ah loo qoondeyn wuxuu arkaa Dashboard + Profile oo keliya.
+4. Menu-ga oo keliya lama qariyo; API server-side ayaa sidoo kale 403 ku diidaya
+   section/action aan la oggolaan.
+5. Marka rukhsad shaqaale la beddelo, sessions-kiisa waa la revoke-gareeyaa,
+   sidaas darteed waa inuu dib u login sameeyaa.
+6. Cases-ka own/assigned scope waa server-side la xaddiday; cases.view_all/all scope
+   ayaa loo baahan yahay si kiisaska oo dhan loo arko.
+7. Duty status, welfare checks, dispatch edits iyo task completion waxay leeyihiin
+   action permissions gaar ah.
+
+EMAIL INVITATION
+----------------
+- Taliyaha -> Users & Permissions -> Email ugu Casuum Shaqaale.
+- Taliyuhu wuxuu dooranayaa magaca, email, role, clearance, pages iyo actions.
+- Invitation token: 256-bit random; DB-ga waxaa lagu kaydiyaa SHA-256 hash oo keliya.
+- Link: 48 saac, one-time.
+- Shaqaalaha password laguma diro email; isaga ayaa link-ga ka samaysanaya password.
+- Resend iyo revoke invitation waa la taageeraa.
+- Haddii SMTP aanu diyaar ahayn, system-ku wuxuu siinayaa copyable invitation link.
+- SMTP test transport local fake-server: PASS.
+
+AMNI
+----
+- CSRF authenticated writes.
+- Server-side session revocation.
+- Bcrypt password hash cost 12.
+- Login throttling/temporary lock.
+- 30 minute idle session timeout.
+- SameSite/HttpOnly session cookie.
+- Prepared statements.
+- Audit logs.
+- Upload MIME/size validation.
+- Hal saldhig enforcement.
+- upgrade-access.php waxaa lagu xaddiday localhost oo keliya, waana in la tirtiro
+  marka migration-ku dhammaado.
+
+AUTOMATED STATIC TESTS
+----------------------
+- PHP syntax: 42 PHP files — PASS.
+- JavaScript syntax: app.js + assets/api.js — PASS.
+- accept-invite inline JavaScript — PASS.
+- dashboard.html IDs: 198, duplicate IDs: 0 — PASS.
+- login.html duplicate IDs: 0 — PASS.
+- accept-invite.html duplicate IDs: 0 — PASS.
+- index.html duplicate IDs: 0 — PASS.
+- API client referenced endpoints: all found — PASS.
+- UI modal references: all found — PASS.
+- Permission page keys vs dashboard pages: match — PASS.
+- Database schema CREATE TABLE count: 34.
+- Permission grant sanitization test: PASS.
+- Capability requires its permitted page test: PASS.
+- SMTP message transport test: PASS.
+- SMTP secret test config removed after test: PASS.
+
+RUNTIME LIMITATION OF THIS REVIEW ENVIRONMENT
+---------------------------------------------
+Container-ka lagu hubiyey mashruuca ma laha MySQL/MariaDB server iyo PHP pdo_mysql/
+mbstring, sidaas darteed database end-to-end login/API test kama aanan ordi karin halkan.
+XAMPP-gaaga waa inuu leeyahay Apache + MySQL iyo extensions-kaas; ku samee manual test
+ka dib install/upgrade. Tani macnaheedu ma aha database-ka inuu khaldan yahay, balse
+runtime DB test-ka wuxuu u baahan yahay deegaanka XAMPP/MySQL ee aad ku rakibayso.
+
+EXTERNAL SERVICES AAN LA SHEEGAN INAY DIYAAR YIHIIN
+---------------------------------------------------
+- Live GPS/GIS map provider.
+- TOTP/SMS MFA provider.
+- Automatic operational SMS/push alerts.
+- Automated encrypted backup service.
+- CSV officer import mapping.
+Kuwani UI-ga si cad ayay disabled/setup-required ugu qoran yihiin ilaa provider/
+workflow dhab ah lagu xiro. Staff invitation EMAIL-ka SMTP waa la taageeraa.
+
+AKHRI
+-----
+- BILOW-HALKAN.txt
+- EMAIL-IYO-PERMISSIONS-SETUP.txt
+- README.md
+====================================================================

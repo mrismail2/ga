@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="so" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Gal nidaamka Ciidanka Booliska Gobolka Gabiley." />
+  <title>Gal Nidaamka — CIIDANKA BOOLISKA GOBOLKA GABILEY</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .login-body { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 70% 30%, rgba(49,91,255,.35), transparent 40%), linear-gradient(120deg, #050b22 0%, #07163d 52%, #111182 100%); }
+    .login-card { width: min(420px, 100%); padding: 34px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow-lg); }
+    .login-brand { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 26px; text-align: center; }
+    .login-brand img { width: 78px; height: 78px; object-fit: contain; }
+    .login-brand b { font-family: Manrope, sans-serif; font-size: .95rem; letter-spacing: .03em; }
+    .login-brand small { color: var(--text-muted); font-size: .62rem; letter-spacing: .1em; }
+    .login-form { display: grid; gap: 15px; }
+    .login-error { display: none; padding: 11px 13px; border-radius: 9px; background: var(--red-100); color: var(--red-600); font-size: .7rem; font-weight: 600; }
+    .login-error.show { display: block; }
+    .login-hint { margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: .63rem; text-align: center; }
+    .login-back { display: block; margin-top: 10px; color: var(--blue-600); font-size: .68rem; font-weight: 700; text-align: center; }
+  </style>
+  <link rel="stylesheet" href="assets/professional-dashboard.css?v=font-readable-20260812" />
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <div class="login-brand">
+      <img src="assets/police-logo.png" alt="Astaanta Ciidanka Booliska" />
+      <b>CIIDANKA BOOLISKA GOBOLKA GABILEY</b>
+      <small>POLICE MANAGEMENT SYSTEM</small>
+    </div>
+
+    <p class="login-error" id="loginError" role="alert"></p>
+
+    <form class="login-form" id="loginForm">
+      <label>Email
+        <input type="email" name="email" id="loginEmail" placeholder="magaca@saldhigga.gov" required autocomplete="username" />
+      </label>
+      <label>Password
+        <input type="password" name="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password" />
+      </label>
+      <button class="btn btn-primary btn-full" type="submit" id="loginSubmit">Gal Nidaamka</button>
+    </form>
+
+    <a class="login-back" href="index.html">← Ku noqo bogga hore</a>
+  </div>
+
+  <script src="assets/api.js"></script>
+  <script>
+    const form   = document.getElementById('loginForm');
+    const errBox = document.getElementById('loginError');
+    const submit = document.getElementById('loginSubmit');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      errBox.classList.remove('show');
+      submit.disabled = true;
+      submit.textContent = 'Sugaya...';
+
+      try {
+        await API.login(
+          document.getElementById('loginEmail').value.trim(),
+          document.getElementById('loginPassword').value
+        );
+        window.location.href = 'dashboard.html';
+      } catch (error) {
+        errBox.textContent = error.message;
+        errBox.classList.add('show');
+        submit.disabled = false;
+        submit.textContent = 'Gal Nidaamka';
+      }
+    });
+  </script>
+</body>
+</html>
