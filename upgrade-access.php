@@ -1,13 +1,26 @@
 <?php
-/** One-time browser migration for per-user permissions + email invitations. Delete after use. */
+/**
+ * One-time browser migration for per-user permissions + email invitations.
+ * Delete after use.
+ *
+ * Access control: this used to trust REMOTE_ADDR alone. Behind a reverse proxy
+ * (nginx/Apache in front of PHP-FPM, which is how this is normally deployed)
+ * every request arrives from 127.0.0.1, so that check would have admitted the
+ * whole internet to an unauthenticated migration runner. A signed-in Super
+ * Admin session is now required as well.
+ */
 declare(strict_types=1);
-error_reporting(E_ALL); ini_set('display_errors','1');
-$remote = $_SERVER['REMOTE_ADDR'] ?? '';
-if (!in_array($remote, ['127.0.0.1','::1'], true)) {
+error_reporting(E_ALL);
+ini_set('display_errors', '0');   // errors are caught and shown deliberately below
+require_once __DIR__ . '/includes/helpers.php';
+
+startSecureSession();
+$isLoopback = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
+$isSuperAdmin = !empty($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'Super Admin';
+if (!$isLoopback || !$isSuperAdmin) {
     http_response_code(403);
-    exit('Upgrade-kan waxaa lagu ordi karaa localhost oo keliya.');
+    exit('Upgrade-kan waxaa ordi kara Super Admin gashan oo localhost-ka ka shaqeynaya oo keliya.');
 }
-require_once __DIR__ . '/config/database.php';
 function splitUpgradeSql(string $sql): array {
     $lines=[]; foreach(preg_split('/\R/',$sql) as $line){$t=ltrim($line);if($t===''||str_starts_with($t,'--'))continue;$lines[]=$line;}
     return array_values(array_filter(array_map('trim',explode(';',implode("\n",$lines)))));

@@ -1579,7 +1579,10 @@
     if (!container) return;
     const toast = document.createElement('div');
     toast.className = 'toast';
-    toast.innerHTML = `<span>✓</span><div><strong>${title}</strong><small>${message}</small></div>`;
+    // Both arguments routinely carry values the user or the database controls —
+    // the global search term, a report title, a server error message — so they
+    // are escaped here rather than at each of the forty-odd call sites.
+    toast.innerHTML = `<span>✓</span><div><strong>${escapeHtml(title)}</strong><small>${escapeHtml(message)}</small></div>`;
     container.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';

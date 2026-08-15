@@ -14,7 +14,10 @@
  */
 declare(strict_types=1);
 error_reporting(E_ALL);
-ini_set('display_errors', '1');
+// Errors are caught and rendered as readable alerts below. Leaving
+// display_errors on would additionally dump uncaught warnings — including
+// database credentials in a failed PDO connection — straight to the page.
+ini_set('display_errors', '0');
 
 const LOCAL_CONFIG = __DIR__ . '/config/config.local.php';
 

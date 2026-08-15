@@ -94,6 +94,18 @@ mysql -u root -p gabiley_police < database/migration_production_ui.sql
 Wuxuu keliya nadiifiyaa tirooyinkii gacanta lagu qoray ee `stations`
 (hadda si toos ah ayaa loo xisaabiyaa) iyo email placeholder-ka.
 
+### Cusboonaysiinta amniga (security audit)
+
+Nooca kan wuxuu ku daraa throttling boggga fariimaha dadweynaha. Orod
+migration-kan **nabdoon** (column iyo index oo keliya ayuu ku darayaa):
+
+```bash
+mysql -u root -p gabiley_police < database/migration_audit_hardening.sql
+```
+
+Haddii aadan orodin, foomka dadweynuhu wuu sii shaqaynayaa — throttling-ka
+oo keliya ayaan la dami doonin.
+
 Haddii rakibaaddaadu ahayd mid **xogta demo-ga oo keliya** ku shaqaynaysay oo
 aadan weli xog dhab ah gelin, waxaa jira fayl **ikhtiyaari** ah oo tirtira
 diiwaannadii tijaabada ahaa:

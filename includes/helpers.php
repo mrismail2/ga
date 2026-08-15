@@ -4,6 +4,56 @@ require_once __DIR__ . '/permissions.php';
 
 const SESSION_IDLE_SECONDS = 1800;
 
+/**
+ * Global failure net for the JSON API.
+ *
+ * Without this, any uncaught Throwable — a bad ENUM value rejected by MySQL, a
+ * type error from malformed JSON — ended the request with an empty body and a
+ * bare 500. The browser then failed to parse the response and showed the user
+ * a meaningless error. Every failure now returns well-formed JSON carrying a
+ * request id, while the detail goes to the server log only, so nothing about
+ * the schema or file layout is disclosed to the client.
+ */
+function apiFailure(string $logLine, int $status = 500, string $clientMessage = ''): void {
+    error_log('[gabiley-police] ' . $logLine);
+    if (!headers_sent()) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    echo json_encode([
+        'success'    => false,
+        'error'      => $clientMessage !== '' ? $clientMessage : 'Khalad nidaam ayaa dhacay. Isku day mar kale ama la xidhiidh maamulaha.',
+        'request_id' => requestId(),
+    ], JSON_UNESCAPED_UNICODE);
+}
+
+set_exception_handler(function (Throwable $e): void {
+    // A value the database refused (wrong ENUM member, oversized column) is the
+    // caller's mistake, not a server fault, so it is reported as 422.
+    $isDataFault = $e instanceof PDOException
+        && preg_match('/Data truncated|Incorrect \w+ value|Out of range|cannot be null|Duplicate entry/i', $e->getMessage());
+
+    // A TypeError raised while coercing a request value — an array handed to
+    // trim(), an object where a string belongs — is likewise malformed input
+    // rather than a server fault.
+    $isShapeFault = $e instanceof TypeError
+        && preg_match('/must be of type (string|int|float|bool)/i', $e->getMessage());
+
+    if ($isDataFault || $isShapeFault) {
+        apiFailure('rejected input: ' . $e->getMessage(), 422,
+            'Qiimaha la gudbiyey ma saxna. Fadlan hubi qaybaha foomka.');
+        return;
+    }
+    apiFailure(get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+});
+
+register_shutdown_function(function (): void {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        apiFailure('fatal: ' . $err['message'] . ' @ ' . $err['file'] . ':' . $err['line']);
+    }
+});
+
 function startSecureSession(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
     $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['SERVER_PORT'] ?? '') === '443');
@@ -55,7 +105,25 @@ function jsonError(string $message, int $status = 400): void {
 function getInput(): array {
     $json = file_get_contents('php://input');
     $data = json_decode($json, true);
-    return is_array($data) ? $data : [];
+    if (!is_array($data)) return [];
+
+    // Endpoints read these values as scalars — trim(), (int), PDO binding. A JSON
+    // array or object arriving where a string belongs used to reach trim() and
+    // abort the request with a TypeError, so it is rejected here with a clear
+    // message instead. Nested arrays are legitimate for permission grants, which
+    // are lists of scalars, so those are allowed through.
+    foreach ($data as $key => $value) {
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                if (is_array($item) || is_object($item)) {
+                    jsonError('Qiimaha "' . htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8') . '" qaab saxan kuma jiro.', 422);
+                }
+            }
+        } elseif (is_object($value)) {
+            jsonError('Qiimaha "' . htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8') . '" qaab saxan kuma jiro.', 422);
+        }
+    }
+    return $data;
 }
 
 function requireAuth(): array {
@@ -130,20 +198,43 @@ function requireRole(array $allowed): array {
     return $auth;
 }
 
-function auditLog(int $userId, string $action, string $entityType, ?int $entityId = null, ?string $details = null, string $outcome = 'success'): void {
-    $db = getDB();
-    $stmt = $db->prepare('INSERT INTO audit_log (user_id, action, entity_type, entity_id, details, ip_address, user_agent, request_id, outcome) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([
-        $userId,
-        $action,
-        $entityType,
-        $entityId,
-        $details,
-        $_SERVER['REMOTE_ADDR'] ?? null,
-        substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
-        requestId(),
-        $outcome,
-    ]);
+/**
+ * Record an action in the audit trail.
+ *
+ * $details is deliberately untyped: callers pass it straight from request data,
+ * and a strict ?string signature meant an array in the payload raised a
+ * TypeError *after* the record had already been written — the row was created
+ * and the caller was still told the request failed. Logging must never be able
+ * to fail the operation it is recording, so the value is coerced here and a
+ * failure to write the audit row is logged rather than propagated.
+ */
+function auditLog(int $userId, string $action, string $entityType, ?int $entityId = null, mixed $details = null, string $outcome = 'success'): void {
+    if (is_array($details) || is_object($details)) {
+        $details = json_encode($details, JSON_UNESCAPED_UNICODE);
+    } elseif ($details !== null) {
+        $details = (string)$details;
+    }
+    if (is_string($details) && strlen($details) > 1000) {
+        $details = substr($details, 0, 997) . '...';
+    }
+
+    try {
+        $db = getDB();
+        $stmt = $db->prepare('INSERT INTO audit_log (user_id, action, entity_type, entity_id, details, ip_address, user_agent, request_id, outcome) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([
+            $userId,
+            $action,
+            $entityType,
+            $entityId,
+            $details,
+            $_SERVER['REMOTE_ADDR'] ?? null,
+            substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
+            requestId(),
+            $outcome,
+        ]);
+    } catch (Throwable $e) {
+        error_log('[gabiley-police] audit write failed: ' . $e->getMessage());
+    }
 }
 
 function revokeUserSessions(int $userId, ?string $exceptSessionId = null): void {
